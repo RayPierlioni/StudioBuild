@@ -1,5 +1,5 @@
 const currentDemoUrl = "https://raypierlioni.github.io/StudioBuild/";
-const heroImageUrl = "https://raypierlioni.github.io/StudioBuild/assets/cinematic-hero.webp";
+const heroImageUrl = "/cinematic-hero.webp";
 
 const foundationTiles = [
   ["01", "Vercel will host the real app shell, routes, and server functions."],
