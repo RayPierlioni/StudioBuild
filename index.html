@@ -2379,6 +2379,7 @@ const STORAGE_KEY = "studiobuild.static-mvp.v1";
 const SUPABASE_URL = "https://zqzvpvqduvxvbqkijjtc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zbh_v8o7KNEVznhrpINClQ_PrfkYAbz";
 const SUPABASE_JS_URL = "https://esm.sh/@supabase/supabase-js@2";
+const ADMIN_EMAILS = ["rpierlioni@gmail.com"];
 
 const stages = [
   { id: "idea", label: "Idea", doc: "idea" },
@@ -2512,11 +2513,12 @@ function ensureStateDefaults(value) {
   const subscription = value.subscription?.status === "active"
     ? value.subscription
     : { status: "free" };
+  const auth = value.auth || null;
 
   return {
-    auth: value.auth || null,
+    auth,
     subscription,
-    role: subscription.status === "active" ? "subscriber" : "free",
+    role: roleForAccount(auth, subscription),
     activeProjectId: value.activeProjectId,
     projects: value.projects || [],
   };
@@ -2554,6 +2556,26 @@ function flushScheduledSave() {
   clearTimeout(pendingSaveTimer);
   pendingSaveTimer = null;
   writeState();
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function isAdminEmail(email) {
+  return ADMIN_EMAILS.includes(normalizeEmail(email));
+}
+
+function roleForAccount(auth = state.auth, subscription = state.subscription) {
+  if (isAdminEmail(auth?.email)) {
+    return "admin";
+  }
+
+  return subscription?.status === "active" ? "subscriber" : "free";
+}
+
+function syncRole() {
+  state.role = roleForAccount();
 }
 
 function parseCommaList(value) {
@@ -2615,6 +2637,7 @@ async function getSupabaseClient() {
 function applyAuthSession(session) {
   if (!session?.user) {
     state.auth = null;
+    syncRole();
     writeState();
     return;
   }
@@ -2627,6 +2650,7 @@ function applyAuthSession(session) {
     avatarUrl: session.user.user_metadata?.avatar_url || "",
     signedInAt: new Date().toISOString(),
   };
+  syncRole();
   writeState();
 }
 
@@ -2698,6 +2722,7 @@ async function signOut() {
     }
 
     state.auth = null;
+    syncRole();
     writeState();
     currentView = "landing";
     render();
@@ -2712,12 +2737,24 @@ function hasSubscription() {
   return state.subscription?.status === "active";
 }
 
+function hasAdminAccess() {
+  return isAdminEmail(state.auth?.email);
+}
+
+function hasFullAccess() {
+  return hasAdminAccess() || hasSubscription();
+}
+
 function planLabel() {
+  if (hasAdminAccess()) {
+    return "Admin Access";
+  }
+
   return hasSubscription() ? "Studio Pass" : "Free";
 }
 
 function hasAccess(feature) {
-  return !featureGates[feature] || hasSubscription();
+  return !featureGates[feature] || hasFullAccess();
 }
 
 function openPaywall(feature = "full access") {
@@ -3065,10 +3102,12 @@ function renderSidebar(project) {
         <div class="plan-card">
           <span class="plan-label">Current Plan</span>
           <strong>${planLabel()}</strong>
-          <p>${hasSubscription()
+          <p>${hasAdminAccess()
+            ? `Your admin sign-in unlocks every feature without a paid subscription.`
+            : hasSubscription()
             ? `Full access is active at ${WEEKLY_PRICE}.`
             : `Free includes project setup and core drafting. Studio Pass unlocks the advanced filmmaking tools.`}</p>
-          ${hasSubscription()
+          ${hasFullAccess()
             ? `<button class="button-dark" disabled>Full Access Active</button>`
             : `<button class="button-primary" data-action="open-paywall" data-feature="full access">Upgrade - ${WEEKLY_PRICE}</button>`}
         </div>
@@ -3102,7 +3141,7 @@ function renderTopbar(project) {
           <p class="project-meta">${escapeHtml(project.genre)} / ${escapeHtml(project.tone)}</p>
         </div>
         <div class="status-cluster">
-          <span class="status-pill ${hasSubscription() ? "is-subscriber" : ""}">${escapeHtml(planLabel().toUpperCase())}</span>
+          <span class="status-pill ${hasAdminAccess() ? "is-admin" : hasSubscription() ? "is-subscriber" : ""}">${escapeHtml(planLabel().toUpperCase())}</span>
           <span class="status-pill">${stats.scenes} scenes</span>
           <span class="status-pill">${stats.pages} script pages</span>
         </div>
@@ -3920,6 +3959,7 @@ document.addEventListener("click", (event) => {
       startedAt: new Date().toISOString(),
     };
     state.role = "subscriber";
+    syncRole();
     saveState();
     document.querySelector("#paywall-dialog")?.close();
     render();
