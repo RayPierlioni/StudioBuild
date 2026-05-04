@@ -8,7 +8,7 @@ export async function GET() {
 
   try {
     const supabase = getSupabaseAdminClient();
-    const { count, error, status, statusText } = await supabase
+    const { count: profileCount, error, status, statusText } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true });
 
@@ -29,6 +29,11 @@ export async function GET() {
       );
     }
 
+    const [{ count: projectCount }, { count: documentCount }] = await Promise.all([
+      supabase.from("projects").select("id", { count: "exact", head: true }),
+      supabase.from("documents").select("id", { count: "exact", head: true }),
+    ]);
+
     return Response.json({
       ok: true,
       service: "studiobuild-admin-db-check",
@@ -36,7 +41,9 @@ export async function GET() {
       env,
       serviceRoleValid: true,
       profilesTableReachable: true,
-      profileCount: count ?? 0,
+      profileCount: profileCount ?? 0,
+      projectCount: projectCount ?? 0,
+      documentCount: documentCount ?? 0,
       note: "The server-only Supabase key can reach protected StudioBuild tables. No secret value is exposed.",
     });
   } catch (error) {

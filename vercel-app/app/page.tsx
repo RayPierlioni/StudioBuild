@@ -1,6 +1,5 @@
 import { StudioWorkspace } from "./studio-workspace";
 
-const currentDemoUrl = "https://raypierlioni.github.io/StudioBuild/";
 const heroImageUrl = "/cinematic-hero.webp";
 
 const foundationTiles = [
@@ -31,20 +30,19 @@ export default function Home() {
 
       <section className="workspace">
         <div className="topline">
-          <span className="pill">Admin email ready: rpierlioni@gmail.com</span>
-          <span className="pill">Target stack: Vercel + Supabase</span>
+          <span className="pill">Live Vercel app</span>
+          <span className="pill">Database-backed saves</span>
         </div>
+
+        <StudioWorkspace />
 
         <article className="panel">
           <h2>Next build target</h2>
           <p>
-            This folder is the first Vercel-ready version of StudioBuild. The current public demo stays
-            online while we move dynamic features into protected routes and database-backed workflows.
+            This is the live Vercel version of StudioBuild. Use the workspace above for real
+            database-backed saves; the older GitHub Pages demo is now only a visual reference.
           </p>
           <div className="actions" style={{ marginTop: 22 }}>
-            <a className="button" href={currentDemoUrl}>
-              Open Current Demo
-            </a>
             <a className="button secondary" href="/api/health">
               Check API Health
             </a>
@@ -65,8 +63,6 @@ export default function Home() {
             </article>
           ))}
         </section>
-
-        <StudioWorkspace />
 
         <article className="panel">
           <h2>Backend checkpoint</h2>

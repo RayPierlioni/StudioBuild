@@ -45,6 +45,9 @@ Never commit real values for:
 - `/api/projects` - authenticated project list/create route backed by Supabase
 - `/api/generate` - reserved backend route for future protected AI generation
 
+Successful project saves show the saved Supabase project ID in the browser so the database write can
+be verified immediately.
+
 ## Deployment Direction
 
 When ready, create a Vercel project connected to the GitHub repository and set the root directory to:

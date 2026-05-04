@@ -121,6 +121,9 @@ export function StudioWorkspace() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
 
@@ -176,7 +179,7 @@ export function StudioWorkspace() {
 
       setProjects((current) => [result.project as Project, ...current]);
       setForm(emptyForm);
-      setMessage("Project saved to Supabase.");
+      setMessage(`Project saved to Supabase. Database ID: ${result.project.id}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save project.");
     } finally {
@@ -205,8 +208,8 @@ export function StudioWorkspace() {
       ) : !session ? (
         <div className="auth-box">
           <p>
-            Sign in with Google to create a project that is stored in the StudioBuild Supabase
-            database.
+            This is the real Vercel workspace. Sign in with Google here, then save a project to the
+            StudioBuild Supabase database.
           </p>
           <button className="button" type="button" onClick={signInWithGoogle}>
             Sign in with Google
