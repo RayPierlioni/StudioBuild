@@ -49,6 +49,9 @@ export default function Home() {
             <a className="button secondary" href="/api/db-status">
               Check Database Status
             </a>
+            <a className="button secondary" href="/api/admin-db-check">
+              Check Admin DB Key
+            </a>
           </div>
         </article>
 
@@ -65,9 +68,10 @@ export default function Home() {
           <h2>Backend checkpoint</h2>
           <p>
             The first server route is <code>/api/health</code>. The database handshake route is{" "}
-            <code>/api/db-status</code>. The reserved generation route is <code>/api/generate</code>.
-            Once Vercel environment variables are connected, those routes become the safe place for
-            OpenAI, Stripe, and service-role Supabase calls.
+            <code>/api/db-status</code>. The server-only admin key check is{" "}
+            <code>/api/admin-db-check</code>. The reserved generation route is{" "}
+            <code>/api/generate</code>. Once Vercel environment variables are connected, those routes
+            become the safe place for OpenAI, Stripe, and service-role Supabase calls.
           </p>
         </article>
       </section>
