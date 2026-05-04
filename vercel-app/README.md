@@ -43,13 +43,15 @@ Never commit real values for:
 - `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
 - `/api/projects` - authenticated project list/create route backed by Supabase
+- `/api/projects/[projectId]` - authenticated single-project loader
+- `/app/projects/[projectId]` - project command center route
 - `/api/generate` - reserved backend route for future protected AI generation
 
 Successful project saves show the saved Supabase project ID in the browser so the database write can
 be verified immediately.
 
-Saved project cards open into a project command center with the writing room, production pipeline,
-and placeholder action buttons for the AI routes that will be connected next.
+Saved project cards are normal links to a project command center route with the writing room,
+production pipeline, and placeholder action buttons for the AI routes that will be connected next.
 
 ## Deployment Direction
 

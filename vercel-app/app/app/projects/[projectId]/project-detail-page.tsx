@@ -1,0 +1,146 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+
+import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
+import { ProjectWorkspace, type Project } from "../../../studio-workspace";
+
+type DocumentRecord = {
+  id: string;
+  doc_type: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectResponse = {
+  ok: boolean;
+  project?: Project;
+  documents?: DocumentRecord[];
+  error?: string;
+};
+
+export function ProjectDetailPage({ projectId }: { projectId: string }) {
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const [session, setSession] = useState<Session | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [draftText, setDraftText] = useState("");
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setSession(data.session);
+      setIsLoadingSession(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setError("");
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    async function loadProject(accessToken: string) {
+      setIsLoadingProject(true);
+      setError("");
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        const result = (await response.json()) as ProjectResponse;
+
+        if (!response.ok || !result.ok || !result.project) {
+          throw new Error(result.error ?? "Unable to open project.");
+        }
+
+        setProject(result.project);
+        setDraftText(result.documents?.[0]?.content ?? "");
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Unable to open project.");
+      } finally {
+        setIsLoadingProject(false);
+      }
+    }
+
+    if (session?.access_token) {
+      void loadProject(session.access_token);
+    }
+  }, [projectId, session?.access_token]);
+
+  async function signInWithGoogle() {
+    setError("");
+
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.href,
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+    }
+  }
+
+  return (
+    <main className="detail-shell">
+      <div className="detail-topbar">
+        <a className="brand-link" href="/">
+          STUDIOBUILD
+        </a>
+        <a className="button secondary" href="/">
+          All Projects
+        </a>
+      </div>
+
+      <section className="detail-panel panel">
+        {isLoadingSession || isLoadingProject ? (
+          <p className="subtle">Opening project...</p>
+        ) : !session ? (
+          <div className="auth-box">
+            <p>Sign in with Google to open this StudioBuild project.</p>
+            <button className="button" type="button" onClick={signInWithGoogle}>
+              Sign in with Google
+            </button>
+          </div>
+        ) : project ? (
+          <ProjectWorkspace
+            draftText={draftText}
+            project={project}
+            userEmail={session.user.email ?? "Signed-in user"}
+            onBack={() => {
+              window.location.assign("/");
+            }}
+            onDraftChange={setDraftText}
+          />
+        ) : (
+          <p className="status error">{error || "Project could not be opened."}</p>
+        )}
+
+        {error && project ? <p className="status error">{error}</p> : null}
+      </section>
+    </main>
+  );
+}

@@ -5,7 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
 
-type Project = {
+export type Project = {
   id: string;
   title: string;
   genre: string;
@@ -193,6 +193,7 @@ export function StudioWorkspace() {
       setDraftText(form.initialContent);
       setForm(emptyForm);
       setMessage(`Project saved to Supabase. Opening workspace. Database ID: ${result.project.id}`);
+      window.location.assign(`/app/projects/${result.project.id}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save project.");
     } finally {
@@ -322,14 +323,10 @@ export function StudioWorkspace() {
               <p className="empty-state">No saved projects yet.</p>
             ) : (
               projects.map((project) => (
-                <button
+                <a
                   className={`project-item ${project.id === selectedProjectId ? "active" : ""}`}
+                  href={`/app/projects/${project.id}`}
                   key={project.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedProjectId(project.id);
-                    setDraftText("");
-                  }}
                 >
                   <span>{project.active_stage}</span>
                   <h4>{project.title}</h4>
@@ -338,7 +335,7 @@ export function StudioWorkspace() {
                     {[project.genre, project.tone].filter(Boolean).join(" / ") || "Project shell"}
                   </small>
                   <strong>Open project</strong>
-                </button>
+                </a>
               ))
             )}
 
@@ -370,7 +367,7 @@ export function StudioWorkspace() {
   );
 }
 
-function ProjectWorkspace({
+export function ProjectWorkspace({
   draftText,
   project,
   userEmail,
