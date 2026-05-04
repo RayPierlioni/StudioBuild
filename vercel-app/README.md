@@ -40,6 +40,7 @@ Never commit real values for:
 
 - `/` - Vercel foundation screen
 - `/api/health` - checks which environment variable groups are configured
+- `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
 - `/api/generate` - reserved backend route for future protected AI generation
 
 ## Deployment Direction
