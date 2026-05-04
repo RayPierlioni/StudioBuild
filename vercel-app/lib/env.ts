@@ -14,6 +14,7 @@ export function envStatus() {
     supabasePublishableKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     supabaseServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     openaiApiKey: Boolean(process.env.OPENAI_API_KEY),
+    openaiModel: process.env.OPENAI_MODEL || "gpt-5.5",
     stripeSecretKey: Boolean(process.env.STRIPE_SECRET_KEY),
     stripeWebhookSecret: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     adminEmails: Boolean(process.env.ADMIN_EMAILS),

@@ -6,7 +6,7 @@ const foundationTiles = [
   ["01", "Vercel will host the real app shell, routes, and server functions."],
   ["02", "Supabase will store users, projects, scripts, breakdowns, and admin status."],
   ["03", "Stripe will enforce the $4.99/week Studio Pass for non-admin users."],
-  ["04", "AI calls will move behind protected API routes so secrets never touch the browser."],
+  ["04", "Protected AI generation writes treatments, scripts, breakdowns, and prompt plans."],
 ];
 
 export default function Home() {
@@ -69,9 +69,9 @@ export default function Home() {
           <p>
             The first server route is <code>/api/health</code>. The database handshake route is{" "}
             <code>/api/db-status</code>. The server-only admin key check is{" "}
-            <code>/api/admin-db-check</code>. The reserved generation route is{" "}
-            <code>/api/generate</code>. Once Vercel environment variables are connected, those routes
-            become the safe place for OpenAI, Stripe, and service-role Supabase calls.
+            <code>/api/admin-db-check</code>. The protected generation route is{" "}
+            <code>/api/generate</code>. Once the OpenAI key is connected on Vercel, that route becomes
+            the safe place for professional StudioBuild writing passes.
           </p>
         </article>
       </section>

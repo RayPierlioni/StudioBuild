@@ -20,6 +20,15 @@ export type Project = {
 
 type StageId = "idea" | "treatment" | "script" | "breakdown" | "production";
 type DocType = "idea" | "synopsis" | "treatment" | "story" | "script" | "breakdown_notes";
+type GenerateMode =
+  | "treatment"
+  | "script"
+  | "breakdown"
+  | "production"
+  | "improve"
+  | "dialogue"
+  | "insert_shot"
+  | "structure";
 
 export type ProjectDocument = {
   id: string;
@@ -27,6 +36,17 @@ export type ProjectDocument = {
   content: string;
   created_at: string;
   updated_at: string;
+};
+
+type GenerateResponse = {
+  ok: boolean;
+  mode?: GenerateMode;
+  generatedText?: string;
+  content?: string;
+  document?: ProjectDocument;
+  documents?: ProjectDocument[];
+  message?: string;
+  error?: string;
 };
 
 type ProjectForm = {
@@ -440,6 +460,7 @@ export function ProjectWorkspace({
   onDraftChange: (value: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const initialStep =
     pipelineSteps.find((step) => step.projectStage === project.active_stage)?.id ?? "idea";
   const [activeStepId, setActiveStepId] = useState<StageId>(initialStep);
@@ -451,9 +472,11 @@ export function ProjectWorkspace({
     script: "",
     breakdown_notes: "",
   });
+  const [workflowTools, setWorkflowTools] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSavingStage, setIsSavingStage] = useState(false);
+  const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
 
@@ -480,130 +503,76 @@ export function ProjectWorkspace({
     setSaveError("");
   }
 
-  function buildTemplate(stepId: StageId) {
-    const title = project.title || "Untitled Project";
-    const logline = project.logline || "Logline to be refined.";
-    const tone = project.tone || "Define tone.";
-    const genre = project.genre || "Define genre.";
+  function selectedTextareaText() {
+    const textarea = textareaRef.current;
 
-    if (stepId === "treatment") {
-      return `# ${title} Treatment
-
-## Logline
-${logline}
-
-## Tone and Genre
-${genre} / ${tone}
-
-## Act I
-- Opening image:
-- Main character want:
-- Inciting incident:
-
-## Act II
-- Escalation:
-- Midpoint reversal:
-- Lowest point:
-
-## Act III
-- Final choice:
-- Climax:
-- Closing image:
-`;
+    if (!textarea) {
+      return { selectedText: "", selectionStart: undefined, selectionEnd: undefined };
     }
 
-    if (stepId === "script") {
-      return `FADE IN:
+    const { selectionStart, selectionEnd } = textarea;
+    const selectedText =
+      selectionEnd > selectionStart ? currentDraft.slice(selectionStart, selectionEnd) : "";
 
-INT. LOCATION - TIME
-
-Write the opening scene here.
-
-CHARACTER
-Dialogue that sounds human, specific, and cinematic.
-`;
-    }
-
-    if (stepId === "breakdown") {
-      return `# Scene Breakdown
-
-## Scene 1
-- Heading:
-- Story purpose:
-- Characters:
-- Location:
-- Props:
-- Wardrobe:
-- Hair / makeup:
-- Set dressing:
-- Sound design:
-- Color / feeling:
-- Blocking:
-- Image prompt needs:
-- Animation prompt needs:
-`;
-    }
-
-    if (stepId === "production") {
-      return `# Production Plan
-
-## Asset Order
-1. Establishing shot:
-2. Character image:
-3. Insert shot:
-4. Environment plate:
-5. Animation pass:
-6. Sound design pass:
-
-## Continuity
-- Character look:
-- Wardrobe:
-- Color palette:
-- Camera language:
-
-## Next Insert Shot Prompt
-Describe one extra insert shot the scene needs.
-`;
-    }
-
-    return `# ${title}
-
-## Core idea
-${logline}
-
-## Why this film matters
-
-## Main character
-
-## Conflict
-
-## Ending promise
-`;
+    return { selectedText, selectionStart, selectionEnd };
   }
 
-  function useStarterTemplate(stepId = activeStepId) {
-    const step = pipelineSteps.find((item) => item.id === stepId) ?? activeStep;
-    setActiveStepId(step.id);
-    setDrafts((current) => ({
-      ...current,
-      [step.docType]: current[step.docType] || buildTemplate(step.id),
-    }));
-    setSaveStatus(`${step.label} template added. Save it when it looks right.`);
+  async function runGeneration(mode: GenerateMode) {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before using StudioBuild AI.");
+      return;
+    }
+
+    const { selectedText, selectionStart, selectionEnd } = selectedTextareaText();
+    setGeneratingMode(mode);
+    setSaveStatus("");
     setSaveError("");
-  }
 
-  function structurePass() {
-    const addition = `
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode,
+          projectId: project.id,
+          docType: activeStep.docType,
+          content: currentDraft,
+          selectedText,
+          selectionStart,
+          selectionEnd,
+          workflow: workflowTools,
+        }),
+      });
+      const result = (await response.json()) as GenerateResponse;
 
----
-## Structure Pass Notes
-- Make the human desire specific.
-- Replace generic AI phrasing with concrete behavior.
-- Add one visual contradiction that makes the scene feel cinematic.
-- Clarify what changes by the end of this beat.
-`;
-    updateDraft(`${currentDraft || buildTemplate(activeStep.id)}${addition}`);
-    setSaveStatus("Structure pass notes added. This is not AI yet; it is a working prep pass.");
+      if (!response.ok || !result.ok || !result.document) {
+        throw new Error(result.message ?? result.error ?? "StudioBuild AI could not complete that pass.");
+      }
+
+      const nextContent = result.content ?? result.document.content;
+      const nextStep = pipelineSteps.find((step) => step.docType === result.document?.doc_type);
+
+      setDrafts((current) => ({
+        ...current,
+        [result.document!.doc_type]: nextContent,
+      }));
+      onDraftChange(nextContent);
+      onDocumentsChange?.(result.documents ?? [result.document]);
+
+      if (nextStep) {
+        setActiveStepId(nextStep.id);
+      }
+
+      setSaveStatus(`${nextStep?.label ?? activeStep.label} generated and saved to Supabase.`);
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "StudioBuild AI could not complete that pass.");
+    } finally {
+      setGeneratingMode(null);
+    }
   }
 
   async function importTextFile(file: File) {
@@ -696,6 +665,7 @@ ${logline}
             <span>{activeStep.projectStage}</span>
           </div>
           <textarea
+            ref={textareaRef}
             className="script-pad"
             value={currentDraft}
             onChange={(event) => updateDraft(event.target.value)}
@@ -720,8 +690,29 @@ ${logline}
             <button className="button" type="button" onClick={saveStageDraft} disabled={isSavingStage}>
               {isSavingStage ? "Saving..." : "Save Stage Draft"}
             </button>
-            <button className="button secondary" type="button" onClick={structurePass}>
-              Structure Pass
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => runGeneration("improve")}
+              disabled={Boolean(generatingMode)}
+            >
+              {generatingMode === "improve" ? "Improving..." : "Improve Selected"}
+            </button>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => runGeneration("dialogue")}
+              disabled={Boolean(generatingMode)}
+            >
+              {generatingMode === "dialogue" ? "Polishing..." : "Dialogue Polish"}
+            </button>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => runGeneration("structure")}
+              disabled={Boolean(generatingMode)}
+            >
+              {generatingMode === "structure" ? "Structuring..." : "Structure Pass"}
             </button>
             <button className="button secondary" type="button" onClick={() => fileInputRef.current?.click()}>
               Import Script
@@ -733,18 +724,32 @@ ${logline}
 
         <aside className="next-actions">
           <h4>Next production moves</h4>
-          <button type="button" onClick={() => useStarterTemplate("treatment")}>
-            Generate treatment
+          <label className="workflow-field">
+            Workflow tools
+            <textarea
+              value={workflowTools}
+              onChange={(event) => setWorkflowTools(event.target.value)}
+              placeholder="Image: Midjourney. Animation: Runway. Sound: ElevenLabs. Edit: Premiere."
+            />
+          </label>
+          <button type="button" onClick={() => runGeneration("treatment")} disabled={Boolean(generatingMode)}>
+            {generatingMode === "treatment" ? "Writing treatment..." : "Write industry treatment"}
           </button>
-          <button type="button" onClick={() => useStarterTemplate("breakdown")}>
-            Build scene breakdown
+          <button type="button" onClick={() => runGeneration("script")} disabled={Boolean(generatingMode)}>
+            {generatingMode === "script" ? "Writing script..." : "Write script pages"}
           </button>
-          <button type="button" onClick={() => useStarterTemplate("production")}>
-            Create production asset prompts
+          <button type="button" onClick={() => runGeneration("breakdown")} disabled={Boolean(generatingMode)}>
+            {generatingMode === "breakdown" ? "Breaking down..." : "Build scene breakdown"}
+          </button>
+          <button type="button" onClick={() => runGeneration("production")} disabled={Boolean(generatingMode)}>
+            {generatingMode === "production" ? "Building prompts..." : "Create production prompt plan"}
+          </button>
+          <button type="button" onClick={() => runGeneration("insert_shot")} disabled={Boolean(generatingMode)}>
+            {generatingMode === "insert_shot" ? "Finding insert..." : "I need another insert shot"}
           </button>
           <p>
-            These are working non-AI starters. They create editable drafts now; later we will connect
-            the same buttons to protected AI routes.
+            These actions now run through protected StudioBuild AI and save their results to this
+            project.
           </p>
         </aside>
       </div>

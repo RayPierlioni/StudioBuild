@@ -567,9 +567,32 @@ textarea:focus {
   color: var(--accent-dark);
 }
 
+.next-actions button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .next-actions p {
   margin: 4px 0 0;
   font-size: 13px;
+}
+
+.workflow-field {
+  display: grid;
+  gap: 7px;
+  color: var(--deep);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workflow-field textarea {
+  min-height: 92px;
+  font-size: 13px;
+  font-weight: 520;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .status {
