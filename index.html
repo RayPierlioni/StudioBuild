@@ -2675,9 +2675,6 @@ async function signInWithGoogle() {
       provider: "google",
       options: {
         redirectTo: getAuthRedirectUrl(),
-        queryParams: {
-          prompt: "select_account",
-        },
       },
     });
 
