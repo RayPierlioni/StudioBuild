@@ -1,3 +1,5 @@
+import { StudioWorkspace } from "./studio-workspace";
+
 const currentDemoUrl = "https://raypierlioni.github.io/StudioBuild/";
 const heroImageUrl = "/cinematic-hero.webp";
 
@@ -63,6 +65,8 @@ export default function Home() {
             </article>
           ))}
         </section>
+
+        <StudioWorkspace />
 
         <article className="panel">
           <h2>Backend checkpoint</h2>

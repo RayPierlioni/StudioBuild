@@ -42,6 +42,7 @@ Never commit real values for:
 - `/api/health` - checks which environment variable groups are configured
 - `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
+- `/api/projects` - authenticated project list/create route backed by Supabase
 - `/api/generate` - reserved backend route for future protected AI generation
 
 ## Deployment Direction
