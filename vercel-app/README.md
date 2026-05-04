@@ -48,6 +48,9 @@ Never commit real values for:
 Successful project saves show the saved Supabase project ID in the browser so the database write can
 be verified immediately.
 
+Saved project cards open into a project command center with the writing room, production pipeline,
+and placeholder action buttons for the AI routes that will be connected next.
+
 ## Deployment Direction
 
 When ready, create a Vercel project connected to the GitHub repository and set the root directory to:

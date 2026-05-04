@@ -36,6 +36,14 @@ const emptyForm: ProjectForm = {
   initialContent: "",
 };
 
+const pipelineSteps = [
+  ["Idea", "Shape the core promise and dramatic engine."],
+  ["Treatment", "Turn the concept into a cinematic story map."],
+  ["Script", "Draft, import, rewrite, and remove the robotic AI voice."],
+  ["Breakdown", "Pull scenes, characters, props, wardrobe, sound, and prompts."],
+  ["Production", "Build the shot plan and pre-production checklist."],
+];
+
 function splitInspirations(value: string) {
   return value
     .split(",")
@@ -47,7 +55,9 @@ export function StudioWorkspace() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [form, setForm] = useState<ProjectForm>(emptyForm);
+  const [draftText, setDraftText] = useState("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,6 +81,7 @@ export function StudioWorkspace() {
       }
 
       setProjects(result.projects ?? []);
+      setSelectedProjectId((current) => current || result.projects?.[0]?.id || "");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load projects.");
     } finally {
@@ -178,8 +189,10 @@ export function StudioWorkspace() {
       }
 
       setProjects((current) => [result.project as Project, ...current]);
+      setSelectedProjectId(result.project.id);
+      setDraftText(form.initialContent);
       setForm(emptyForm);
-      setMessage(`Project saved to Supabase. Database ID: ${result.project.id}`);
+      setMessage(`Project saved to Supabase. Opening workspace. Database ID: ${result.project.id}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save project.");
     } finally {
@@ -188,13 +201,14 @@ export function StudioWorkspace() {
   }
 
   const userEmail = session?.user.email ?? "Signed-in user";
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
 
   return (
     <article className="panel studio-panel">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Live workspace</p>
-          <h2>Save the first real project.</h2>
+          <h2>{selectedProject ? "Project command center." : "Save the first real project."}</h2>
         </div>
         {session ? (
           <button className="button secondary" type="button" onClick={signOut}>
@@ -217,73 +231,86 @@ export function StudioWorkspace() {
         </div>
       ) : (
         <div className="studio-grid">
-          <form className="project-form" onSubmit={saveProject}>
-            <div className="signed-in-line">
-              <span>Signed in as</span>
-              <strong>{userEmail}</strong>
-            </div>
+          {selectedProject ? (
+            <ProjectWorkspace
+              draftText={draftText}
+              project={selectedProject}
+              userEmail={userEmail}
+              onBack={() => {
+                setSelectedProjectId("");
+                setDraftText("");
+              }}
+              onDraftChange={setDraftText}
+            />
+          ) : (
+            <form className="project-form" onSubmit={saveProject}>
+              <div className="signed-in-line">
+                <span>Signed in as</span>
+                <strong>{userEmail}</strong>
+              </div>
 
-            <label>
-              Project title
-              <input
-                required
-                minLength={2}
-                value={form.title}
-                onChange={(event) => updateForm("title", event.target.value)}
-                placeholder="The Last Frame"
-              />
-            </label>
-
-            <div className="field-pair">
               <label>
-                Genre
+                Project title
                 <input
-                  value={form.genre}
-                  onChange={(event) => updateForm("genre", event.target.value)}
-                  placeholder="Sci-fi drama"
+                  required
+                  minLength={2}
+                  value={form.title}
+                  onChange={(event) => updateForm("title", event.target.value)}
+                  placeholder="The Last Frame"
                 />
               </label>
+
+              <div className="field-pair">
+                <label>
+                  Genre
+                  <input
+                    value={form.genre}
+                    onChange={(event) => updateForm("genre", event.target.value)}
+                    placeholder="Sci-fi drama"
+                  />
+                </label>
+                <label>
+                  Tone
+                  <input
+                    value={form.tone}
+                    onChange={(event) => updateForm("tone", event.target.value)}
+                    placeholder="Elegant, tense, intimate"
+                  />
+                </label>
+              </div>
+
               <label>
-                Tone
-                <input
-                  value={form.tone}
-                  onChange={(event) => updateForm("tone", event.target.value)}
-                  placeholder="Elegant, tense, intimate"
+                Logline
+                <textarea
+                  value={form.logline}
+                  onChange={(event) => updateForm("logline", event.target.value)}
+                  placeholder="A filmmaker races to preserve the last human memory before an AI archive rewrites history."
                 />
               </label>
-            </div>
 
-            <label>
-              Logline
-              <textarea
-                value={form.logline}
-                onChange={(event) => updateForm("logline", event.target.value)}
-                placeholder="A filmmaker races to preserve the last human memory before an AI archive rewrites history."
-              />
-            </label>
+              <label>
+                Cinematic references
+                <input
+                  value={form.inspirations}
+                  onChange={(event) => updateForm("inspirations", event.target.value)}
+                  placeholder="Arrival, Children of Men, Ex Machina"
+                />
+              </label>
 
-            <label>
-              Cinematic references
-              <input
-                value={form.inspirations}
-                onChange={(event) => updateForm("inspirations", event.target.value)}
-                placeholder="Arrival, Children of Men, Ex Machina"
-              />
-            </label>
+              <label>
+                Starter idea
+                <textarea
+                  value={form.initialContent}
+                  onChange={(event) => updateForm("initialContent", event.target.value)}
+                  placeholder="Paste the rough idea, opening beat, or script fragment here."
+                />
+              </label>
 
-            <label>
-              Starter idea
-              <textarea
-                value={form.initialContent}
-                onChange={(event) => updateForm("initialContent", event.target.value)}
-                placeholder="Paste the rough idea, opening beat, or script fragment here."
-              />
-            </label>
-
-            <button className="button" type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Project"}
-            </button>
-          </form>
+              <button className="button" type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Project"}
+              </button>
+            </form>
+          )}
 
           <div className="project-list">
             <div className="list-heading">
@@ -295,16 +322,36 @@ export function StudioWorkspace() {
               <p className="empty-state">No saved projects yet.</p>
             ) : (
               projects.map((project) => (
-                <section className="project-item" key={project.id}>
+                <button
+                  className={`project-item ${project.id === selectedProjectId ? "active" : ""}`}
+                  key={project.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProjectId(project.id);
+                    setDraftText("");
+                  }}
+                >
                   <span>{project.active_stage}</span>
                   <h4>{project.title}</h4>
                   <p>{project.logline || "No logline yet."}</p>
                   <small>
                     {[project.genre, project.tone].filter(Boolean).join(" / ") || "Project shell"}
                   </small>
-                </section>
+                  <strong>Open project</strong>
+                </button>
               ))
             )}
+
+            <button
+              className="button secondary full-width"
+              type="button"
+              onClick={() => {
+                setSelectedProjectId("");
+                setDraftText("");
+              }}
+            >
+              New Project
+            </button>
           </div>
         </div>
       )}
@@ -320,5 +367,86 @@ export function StudioWorkspace() {
         </p>
       ) : null}
     </article>
+  );
+}
+
+function ProjectWorkspace({
+  draftText,
+  project,
+  userEmail,
+  onBack,
+  onDraftChange,
+}: {
+  draftText: string;
+  project: Project;
+  userEmail: string;
+  onBack: () => void;
+  onDraftChange: (value: string) => void;
+}) {
+  return (
+    <section className="project-workspace">
+      <div className="project-toolbar">
+        <button className="button secondary" type="button" onClick={onBack}>
+          New Project
+        </button>
+        <span>Opened by {userEmail}</span>
+      </div>
+
+      <div className="project-hero">
+        <p className="eyebrow">Project workspace</p>
+        <h3>{project.title}</h3>
+        <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
+      </div>
+
+      <div className="pipeline-strip" aria-label="StudioBuild pipeline">
+        {pipelineSteps.map(([name, description], index) => (
+          <div className={index === 0 ? "pipeline-step active" : "pipeline-step"} key={name}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{name}</strong>
+            <small>{description}</small>
+          </div>
+        ))}
+      </div>
+
+      <div className="workspace-tools">
+        <section>
+          <div className="tool-heading">
+            <h4>Writing room</h4>
+            <span>{project.active_stage}</span>
+          </div>
+          <textarea
+            className="script-pad"
+            value={draftText}
+            onChange={(event) => onDraftChange(event.target.value)}
+            placeholder="Start writing the idea, scene, dialogue, or script fragment for this project."
+          />
+          <div className="actions">
+            <button className="button" type="button" disabled>
+              Improve Selection
+            </button>
+            <button className="button secondary" type="button" disabled>
+              Import Script
+            </button>
+          </div>
+        </section>
+
+        <aside className="next-actions">
+          <h4>Next production moves</h4>
+          <button type="button" disabled>
+            Generate treatment
+          </button>
+          <button type="button" disabled>
+            Build scene breakdown
+          </button>
+          <button type="button" disabled>
+            Create production asset prompts
+          </button>
+          <p>
+            These buttons are placed now so the app has the correct workflow shape. We will connect
+            them to AI routes one by one.
+          </p>
+        </aside>
+      </div>
+    </section>
   );
 }
