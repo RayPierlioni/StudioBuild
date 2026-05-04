@@ -978,6 +978,11 @@ dialog.paywall-dialog {
 .plan-card p {
   margin: 0;
   line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.plan-card button {
+  width: 100%;
 }
 
 .role-select {
@@ -2371,6 +2376,9 @@ function countScriptStats(script) {
 
 
 const STORAGE_KEY = "studiobuild.static-mvp.v1";
+const SUPABASE_URL = "https://zqzvpvqduvxvbqkijjtc.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zbh_v8o7KNEVznhrpINClQ_PrfkYAbz";
+const SUPABASE_JS_URL = "https://esm.sh/@supabase/supabase-js@2";
 
 const stages = [
   { id: "idea", label: "Idea", doc: "idea" },
@@ -2401,6 +2409,7 @@ const workflowOptions = {
 };
 
 let state = loadState();
+let supabaseClient = null;
 let toastTimer = null;
 let pendingSaveTimer = null;
 let currentView = "landing";
@@ -2582,6 +2591,124 @@ function updateActiveProject(updater) {
   project.updatedAt = new Date().toISOString();
   saveState();
   render();
+}
+
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+async function getSupabaseClient() {
+  if (!supabaseClient) {
+    const { createClient } = await import(SUPABASE_JS_URL);
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+      },
+    });
+  }
+
+  return supabaseClient;
+}
+
+function applyAuthSession(session) {
+  if (!session?.user) {
+    state.auth = null;
+    writeState();
+    return;
+  }
+
+  state.auth = {
+    provider: "google",
+    userId: session.user.id,
+    email: session.user.email || "",
+    name: session.user.user_metadata?.full_name || session.user.email || "Studiobuild Filmmaker",
+    avatarUrl: session.user.user_metadata?.avatar_url || "",
+    signedInAt: new Date().toISOString(),
+  };
+  writeState();
+}
+
+async function initializeAuth() {
+  try {
+    const client = await getSupabaseClient();
+    const { data, error } = await client.auth.getSession();
+
+    if (error) {
+      console.warn("Could not read Supabase session.", error);
+    }
+
+    applyAuthSession(data?.session || null);
+
+    if (data?.session?.user) {
+      currentView = "app";
+      render();
+    }
+
+    client.auth.onAuthStateChange((event, session) => {
+      applyAuthSession(session);
+
+      if (session?.user) {
+        currentView = "app";
+        render();
+        if (event === "SIGNED_IN") {
+          showToast("Signed in with Google.");
+        }
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        currentView = "landing";
+        render();
+      }
+    });
+  } catch (error) {
+    console.warn("Supabase auth is not available yet.", error);
+  }
+}
+
+async function signInWithGoogle() {
+  try {
+    const client = await getSupabaseClient();
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: getAuthRedirectUrl(),
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) {
+      showToast(error.message);
+    }
+  } catch (error) {
+    console.warn("Could not start Google sign-in.", error);
+    showToast("Google sign-in is not ready yet.");
+  }
+}
+
+async function signOut() {
+  try {
+    const client = await getSupabaseClient();
+    const { error } = await client.auth.signOut();
+
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+
+    state.auth = null;
+    writeState();
+    currentView = "landing";
+    render();
+    showToast("Signed out.");
+  } catch (error) {
+    console.warn("Could not sign out.", error);
+    showToast("Sign out is not ready yet.");
+  }
 }
 
 function hasSubscription() {
@@ -2905,6 +3032,16 @@ function renderSidebar(project) {
       </button>
     `)
     .join("");
+  const accountCard = state.auth
+    ? `
+      <div class="plan-card">
+        <span class="plan-label">Signed In</span>
+        <strong>${escapeHtml(state.auth.name || "Google Account")}</strong>
+        <p>${escapeHtml(state.auth.email || "Google authentication is connected.")}</p>
+        <button class="button-dark" data-action="sign-out">Sign Out</button>
+      </div>
+    `
+    : "";
 
   return `
     <aside class="sidebar">
@@ -2926,15 +3063,18 @@ function renderSidebar(project) {
         <div class="project-list">${projects}</div>
       </div>
 
-      <div class="sidebar-footer plan-card">
-        <span class="plan-label">Current Plan</span>
-        <strong>${planLabel()}</strong>
-        <p>${hasSubscription()
-          ? `Full access is active at ${WEEKLY_PRICE}.`
-          : `Free includes project setup and core drafting. Studio Pass unlocks the advanced filmmaking tools.`}</p>
-        ${hasSubscription()
-          ? `<button class="button-dark" disabled>Full Access Active</button>`
-          : `<button class="button-primary" data-action="open-paywall" data-feature="full access">Upgrade - ${WEEKLY_PRICE}</button>`}
+      <div class="sidebar-footer">
+        ${accountCard}
+        <div class="plan-card">
+          <span class="plan-label">Current Plan</span>
+          <strong>${planLabel()}</strong>
+          <p>${hasSubscription()
+            ? `Full access is active at ${WEEKLY_PRICE}.`
+            : `Free includes project setup and core drafting. Studio Pass unlocks the advanced filmmaking tools.`}</p>
+          ${hasSubscription()
+            ? `<button class="button-dark" disabled>Full Access Active</button>`
+            : `<button class="button-primary" data-action="open-paywall" data-feature="full access">Upgrade - ${WEEKLY_PRICE}</button>`}
+        </div>
       </div>
     </aside>
   `;
@@ -3791,15 +3931,12 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "continue-google") {
-    state.auth = {
-      provider: "google",
-      name: "Studiobuild Filmmaker",
-      signedInAt: new Date().toISOString(),
-    };
-    saveState();
-    currentView = "app";
-    render();
-    showToast("Signed in with Google.");
+    signInWithGoogle();
+    return;
+  }
+
+  if (action === "sign-out") {
+    signOut();
     return;
   }
 
@@ -4039,6 +4176,7 @@ document.addEventListener("change", (event) => {
 window.addEventListener("beforeunload", flushScheduledSave);
 
 render();
+initializeAuth();
 
     </script>
   </body>
