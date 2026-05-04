@@ -44,6 +44,7 @@ Never commit real values for:
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
 - `/api/projects` - authenticated project list/create route backed by Supabase
 - `/api/projects/[projectId]` - authenticated single-project loader
+- `/api/projects/[projectId]/documents` - saves editable stage drafts per project
 - `/app/projects/[projectId]` - project command center route
 - `/api/generate` - reserved backend route for future protected AI generation
 
@@ -52,6 +53,9 @@ be verified immediately.
 
 Saved project cards are normal links to a project command center route with the writing room,
 production pipeline, and placeholder action buttons for the AI routes that will be connected next.
+
+Pipeline stages are clickable and save editable stage drafts to Supabase before AI generation is
+connected.
 
 ## Deployment Direction
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
@@ -14,6 +14,17 @@ export type Project = {
   inspirations: string[];
   active_stage: string;
   notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type StageId = "idea" | "treatment" | "script" | "breakdown" | "production";
+type DocType = "idea" | "synopsis" | "treatment" | "story" | "script" | "breakdown_notes";
+
+export type ProjectDocument = {
+  id: string;
+  doc_type: DocType;
+  content: string;
   created_at: string;
   updated_at: string;
 };
@@ -36,12 +47,54 @@ const emptyForm: ProjectForm = {
   initialContent: "",
 };
 
-const pipelineSteps = [
-  ["Idea", "Shape the core promise and dramatic engine."],
-  ["Treatment", "Turn the concept into a cinematic story map."],
-  ["Script", "Draft, import, rewrite, and remove the robotic AI voice."],
-  ["Breakdown", "Pull scenes, characters, props, wardrobe, sound, and prompts."],
-  ["Production", "Build the shot plan and pre-production checklist."],
+const pipelineSteps: Array<{
+  id: StageId;
+  projectStage: string;
+  docType: DocType;
+  label: string;
+  description: string;
+  placeholder: string;
+}> = [
+  {
+    id: "idea",
+    projectStage: "idea",
+    docType: "idea",
+    label: "Idea",
+    description: "Shape the core promise and dramatic engine.",
+    placeholder: "Write the premise, theme, characters, and the reason this film has to exist.",
+  },
+  {
+    id: "treatment",
+    projectStage: "treatment",
+    docType: "treatment",
+    label: "Treatment",
+    description: "Turn the concept into a cinematic story map.",
+    placeholder: "Build a treatment with act structure, emotional turns, and a same-but-different hook.",
+  },
+  {
+    id: "script",
+    projectStage: "script",
+    docType: "script",
+    label: "Script",
+    description: "Draft, import, rewrite, and remove the robotic AI voice.",
+    placeholder: "Draft or paste screenplay pages here.",
+  },
+  {
+    id: "breakdown",
+    projectStage: "breakdown",
+    docType: "breakdown_notes",
+    label: "Breakdown",
+    description: "Pull scenes, characters, props, wardrobe, sound, and prompts.",
+    placeholder: "Break the script into scene needs, props, wardrobe, prompts, and continuity notes.",
+  },
+  {
+    id: "production",
+    projectStage: "story",
+    docType: "story",
+    label: "Production",
+    description: "Build the shot plan and pre-production checklist.",
+    placeholder: "Plan assets, insert shots, prompts, sound design, and production order.",
+  },
 ];
 
 function splitInspirations(value: string) {
@@ -368,18 +421,240 @@ export function StudioWorkspace() {
 }
 
 export function ProjectWorkspace({
+  accessToken,
   draftText,
+  documents = [],
+  onDocumentsChange,
   project,
   userEmail,
   onBack,
   onDraftChange,
 }: {
+  accessToken?: string;
   draftText: string;
+  documents?: ProjectDocument[];
+  onDocumentsChange?: (documents: ProjectDocument[]) => void;
   project: Project;
   userEmail: string;
   onBack: () => void;
   onDraftChange: (value: string) => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const initialStep =
+    pipelineSteps.find((step) => step.projectStage === project.active_stage)?.id ?? "idea";
+  const [activeStepId, setActiveStepId] = useState<StageId>(initialStep);
+  const [drafts, setDrafts] = useState<Record<DocType, string>>({
+    idea: "",
+    synopsis: "",
+    treatment: "",
+    story: "",
+    script: "",
+    breakdown_notes: "",
+  });
+  const [saveStatus, setSaveStatus] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [isSavingStage, setIsSavingStage] = useState(false);
+  const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
+  const currentDraft = drafts[activeStep.docType] ?? "";
+
+  useEffect(() => {
+    setDrafts((current) => {
+      const next = { ...current };
+
+      for (const document of documents) {
+        next[document.doc_type] = document.content;
+      }
+
+      if (draftText && !next.idea) {
+        next.idea = draftText;
+      }
+
+      return next;
+    });
+  }, [documents, draftText]);
+
+  function updateDraft(value: string) {
+    setDrafts((current) => ({ ...current, [activeStep.docType]: value }));
+    onDraftChange(value);
+    setSaveStatus("");
+    setSaveError("");
+  }
+
+  function buildTemplate(stepId: StageId) {
+    const title = project.title || "Untitled Project";
+    const logline = project.logline || "Logline to be refined.";
+    const tone = project.tone || "Define tone.";
+    const genre = project.genre || "Define genre.";
+
+    if (stepId === "treatment") {
+      return `# ${title} Treatment
+
+## Logline
+${logline}
+
+## Tone and Genre
+${genre} / ${tone}
+
+## Act I
+- Opening image:
+- Main character want:
+- Inciting incident:
+
+## Act II
+- Escalation:
+- Midpoint reversal:
+- Lowest point:
+
+## Act III
+- Final choice:
+- Climax:
+- Closing image:
+`;
+    }
+
+    if (stepId === "script") {
+      return `FADE IN:
+
+INT. LOCATION - TIME
+
+Write the opening scene here.
+
+CHARACTER
+Dialogue that sounds human, specific, and cinematic.
+`;
+    }
+
+    if (stepId === "breakdown") {
+      return `# Scene Breakdown
+
+## Scene 1
+- Heading:
+- Story purpose:
+- Characters:
+- Location:
+- Props:
+- Wardrobe:
+- Hair / makeup:
+- Set dressing:
+- Sound design:
+- Color / feeling:
+- Blocking:
+- Image prompt needs:
+- Animation prompt needs:
+`;
+    }
+
+    if (stepId === "production") {
+      return `# Production Plan
+
+## Asset Order
+1. Establishing shot:
+2. Character image:
+3. Insert shot:
+4. Environment plate:
+5. Animation pass:
+6. Sound design pass:
+
+## Continuity
+- Character look:
+- Wardrobe:
+- Color palette:
+- Camera language:
+
+## Next Insert Shot Prompt
+Describe one extra insert shot the scene needs.
+`;
+    }
+
+    return `# ${title}
+
+## Core idea
+${logline}
+
+## Why this film matters
+
+## Main character
+
+## Conflict
+
+## Ending promise
+`;
+  }
+
+  function useStarterTemplate(stepId = activeStepId) {
+    const step = pipelineSteps.find((item) => item.id === stepId) ?? activeStep;
+    setActiveStepId(step.id);
+    setDrafts((current) => ({
+      ...current,
+      [step.docType]: current[step.docType] || buildTemplate(step.id),
+    }));
+    setSaveStatus(`${step.label} template added. Save it when it looks right.`);
+    setSaveError("");
+  }
+
+  function structurePass() {
+    const addition = `
+
+---
+## Structure Pass Notes
+- Make the human desire specific.
+- Replace generic AI phrasing with concrete behavior.
+- Add one visual contradiction that makes the scene feel cinematic.
+- Clarify what changes by the end of this beat.
+`;
+    updateDraft(`${currentDraft || buildTemplate(activeStep.id)}${addition}`);
+    setSaveStatus("Structure pass notes added. This is not AI yet; it is a working prep pass.");
+  }
+
+  async function importTextFile(file: File) {
+    const text = await file.text();
+    updateDraft(text);
+    setSaveStatus(`${file.name} imported into ${activeStep.label}.`);
+  }
+
+  async function saveStageDraft() {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before saving stage drafts.");
+      return;
+    }
+
+    setIsSavingStage(true);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/documents`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          docType: activeStep.docType,
+          content: currentDraft,
+          activeStage: activeStep.projectStage,
+        }),
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        document?: ProjectDocument;
+        documents?: ProjectDocument[];
+        error?: string;
+      };
+
+      if (!response.ok || !result.ok || !result.document) {
+        throw new Error(result.error ?? "Unable to save stage draft.");
+      }
+
+      onDocumentsChange?.(result.documents ?? [result.document]);
+      setSaveStatus(`${activeStep.label} saved to Supabase.`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to save stage draft.");
+    } finally {
+      setIsSavingStage(false);
+    }
+  }
+
   return (
     <section className="project-workspace">
       <div className="project-toolbar">
@@ -396,51 +671,80 @@ export function ProjectWorkspace({
       </div>
 
       <div className="pipeline-strip" aria-label="StudioBuild pipeline">
-        {pipelineSteps.map(([name, description], index) => (
-          <div className={index === 0 ? "pipeline-step active" : "pipeline-step"} key={name}>
+        {pipelineSteps.map((step, index) => (
+          <button
+            className={step.id === activeStepId ? "pipeline-step active" : "pipeline-step"}
+            key={step.id}
+            type="button"
+            onClick={() => {
+              setActiveStepId(step.id);
+              setSaveStatus("");
+              setSaveError("");
+            }}
+          >
             <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{name}</strong>
-            <small>{description}</small>
-          </div>
+            <strong>{step.label}</strong>
+            <small>{step.description}</small>
+          </button>
         ))}
       </div>
 
       <div className="workspace-tools">
         <section>
           <div className="tool-heading">
-            <h4>Writing room</h4>
-            <span>{project.active_stage}</span>
+            <h4>{activeStep.label} room</h4>
+            <span>{activeStep.projectStage}</span>
           </div>
           <textarea
             className="script-pad"
-            value={draftText}
-            onChange={(event) => onDraftChange(event.target.value)}
-            placeholder="Start writing the idea, scene, dialogue, or script fragment for this project."
+            value={currentDraft}
+            onChange={(event) => updateDraft(event.target.value)}
+            placeholder={activeStep.placeholder}
+          />
+          <input
+            ref={fileInputRef}
+            className="hidden-file"
+            type="file"
+            accept=".txt,.fountain,.md,.text"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+
+              if (file) {
+                void importTextFile(file);
+              }
+
+              event.currentTarget.value = "";
+            }}
           />
           <div className="actions">
-            <button className="button" type="button" disabled>
-              Improve Selection
+            <button className="button" type="button" onClick={saveStageDraft} disabled={isSavingStage}>
+              {isSavingStage ? "Saving..." : "Save Stage Draft"}
             </button>
-            <button className="button secondary" type="button" disabled>
+            <button className="button secondary" type="button" onClick={structurePass}>
+              Structure Pass
+            </button>
+            <button className="button secondary" type="button" onClick={() => fileInputRef.current?.click()}>
               Import Script
             </button>
           </div>
+          {saveStatus ? <p className="status success">{saveStatus}</p> : null}
+          {saveError ? <p className="status error">{saveError}</p> : null}
         </section>
 
         <aside className="next-actions">
           <h4>Next production moves</h4>
-          <button type="button" disabled>
+          <button type="button" onClick={() => useStarterTemplate("treatment")}>
             Generate treatment
           </button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => useStarterTemplate("breakdown")}>
             Build scene breakdown
           </button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => useStarterTemplate("production")}>
             Create production asset prompts
           </button>
           <p>
-            These buttons are placed now so the app has the correct workflow shape. We will connect
-            them to AI routes one by one.
+            These are working non-AI starters. They create editable drafts now; later we will connect
+            the same buttons to protected AI routes.
           </p>
         </aside>
       </div>

@@ -4,20 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
-import { ProjectWorkspace, type Project } from "../../../studio-workspace";
-
-type DocumentRecord = {
-  id: string;
-  doc_type: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-};
+import { ProjectWorkspace, type Project, type ProjectDocument } from "../../../studio-workspace";
 
 type ProjectResponse = {
   ok: boolean;
   project?: Project;
-  documents?: DocumentRecord[];
+  documents?: ProjectDocument[];
   error?: string;
 };
 
@@ -25,6 +17,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [draftText, setDraftText] = useState("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
@@ -73,6 +66,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         }
 
         setProject(result.project);
+        setDocuments(result.documents ?? []);
         setDraftText(result.documents?.[0]?.content ?? "");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Unable to open project.");
@@ -127,12 +121,15 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           </div>
         ) : project ? (
           <ProjectWorkspace
+            accessToken={session.access_token}
             draftText={draftText}
+            documents={documents}
             project={project}
             userEmail={session.user.email ?? "Signed-in user"}
             onBack={() => {
               window.location.assign("/");
             }}
+            onDocumentsChange={setDocuments}
             onDraftChange={setDraftText}
           />
         ) : (

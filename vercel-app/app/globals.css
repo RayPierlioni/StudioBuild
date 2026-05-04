@@ -496,6 +496,10 @@ textarea:focus {
   border-radius: 8px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.58);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .pipeline-step.active {
@@ -533,6 +537,10 @@ textarea:focus {
   margin: 12px 0;
 }
 
+.hidden-file {
+  display: none;
+}
+
 .next-actions {
   display: grid;
   align-content: start;
@@ -549,12 +557,14 @@ textarea:focus {
   border-radius: 6px;
   background: white;
   color: var(--deep);
+  cursor: pointer;
   font: inherit;
   font-weight: 760;
 }
 
-.next-actions button:disabled {
-  color: rgba(29, 26, 28, 0.52);
+.next-actions button:hover {
+  border-color: rgba(182, 93, 104, 0.42);
+  color: var(--accent-dark);
 }
 
 .next-actions p {
