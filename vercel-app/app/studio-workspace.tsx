@@ -614,7 +614,9 @@ export function ProjectWorkspace({
   const [isSavingPacket, setIsSavingPacket] = useState(false);
   const [editingSceneId, setEditingSceneId] = useState("");
   const [sceneDrafts, setSceneDrafts] = useState<Record<string, SceneBreakdownDraft>>({});
+  const [buildingShotListSceneId, setBuildingShotListSceneId] = useState("");
   const [creatingAssetSceneId, setCreatingAssetSceneId] = useState("");
+  const [generatingAssetPromptId, setGeneratingAssetPromptId] = useState("");
   const [savingSceneId, setSavingSceneId] = useState("");
   const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
@@ -938,6 +940,7 @@ export function ProjectWorkspace({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          action: "insert_shot",
           sceneBreakdownId: scene.id,
           assetType: "insert_shot",
         }),
@@ -954,6 +957,85 @@ export function ProjectWorkspace({
       setSaveError(caught instanceof Error ? caught.message : "Unable to create insert shot.");
     } finally {
       setCreatingAssetSceneId("");
+    }
+  }
+
+  async function buildDetailedShotList(scene: SceneBreakdown) {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before creating the shot list.");
+      return;
+    }
+
+    setBuildingShotListSceneId(scene.id);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/production-assets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "shot_list",
+          sceneBreakdownId: scene.id,
+        }),
+      });
+      const result = (await response.json()) as ProductionAssetResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Unable to build detailed shot list.");
+      }
+
+      onProductionAssetsChange?.(result.productionAssets ?? []);
+      setSaveStatus(result.message ?? `Detailed shot list saved for scene ${scene.scene_number}.`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to build detailed shot list.");
+    } finally {
+      setBuildingShotListSceneId("");
+    }
+  }
+
+  async function generateAssetPrompt(
+    scene: SceneBreakdown,
+    asset: ProductionAsset,
+    action: "image_prompt" | "animation_prompt",
+  ) {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before generating shot prompts.");
+      return;
+    }
+
+    setGeneratingAssetPromptId(`${action}:${asset.id}`);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/production-assets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          sceneBreakdownId: scene.id,
+          productionAssetId: asset.id,
+        }),
+      });
+      const result = (await response.json()) as ProductionAssetResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Unable to generate shot prompt.");
+      }
+
+      onProductionAssetsChange?.(result.productionAssets ?? []);
+      setSaveStatus(result.message ?? `${asset.name} prompt saved.`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to generate shot prompt.");
+    } finally {
+      setGeneratingAssetPromptId("");
     }
   }
 
@@ -1113,6 +1195,8 @@ export function ProjectWorkspace({
               const isEditing = editingSceneId === scene.id;
               const draft = sceneDrafts[scene.id] ?? sceneToDraft(scene);
               const sceneAssets = assetsBySceneId[scene.id] ?? [];
+              const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
+              const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
 
               return (
                 <article className="scene-packet-card" key={scene.id}>
@@ -1276,6 +1360,108 @@ export function ProjectWorkspace({
                           <dd>{scene.blocking || "Not filled yet"}</dd>
                         </div>
                       </dl>
+                      <div className="shot-list-section">
+                        <div className="asset-heading">
+                          <div>
+                            <strong>Page 2: Detailed shot list</strong>
+                            <p>
+                              Build the coverage first, then generate the image prompt and animation
+                              prompt for each shot.
+                            </p>
+                          </div>
+                          <button
+                            className="button secondary"
+                            type="button"
+                            onClick={() => buildDetailedShotList(scene)}
+                            disabled={buildingShotListSceneId === scene.id}
+                          >
+                            {buildingShotListSceneId === scene.id
+                              ? "Building..."
+                              : shotAssets.length
+                                ? "Regenerate shot list"
+                                : "Build detailed shot list"}
+                          </button>
+                        </div>
+
+                        {shotAssets.length ? (
+                          <div className="shot-list">
+                            {shotAssets.map((asset) => {
+                              const imagePromptKey = `image_prompt:${asset.id}`;
+                              const animationPromptKey = `animation_prompt:${asset.id}`;
+                              const isGeneratingImage = generatingAssetPromptId === imagePromptKey;
+                              const isGeneratingAnimation = generatingAssetPromptId === animationPromptKey;
+
+                              return (
+                                <article className="shot-row" key={asset.id}>
+                                  <div className="shot-row-main">
+                                    <span>{String(asset.order_index).padStart(2, "0")}</span>
+                                    <div>
+                                      <strong>{asset.name}</strong>
+                                      <p>{asset.purpose}</p>
+                                      <small>{asset.visual}</small>
+                                    </div>
+                                  </div>
+                                  <div className="shot-row-actions">
+                                    <button
+                                      className="button secondary"
+                                      type="button"
+                                      onClick={() => generateAssetPrompt(scene, asset, "image_prompt")}
+                                      disabled={Boolean(generatingAssetPromptId)}
+                                    >
+                                      {isGeneratingImage
+                                        ? "Generating..."
+                                        : asset.image_prompt
+                                          ? "Regenerate image prompt"
+                                          : "Generate image prompt"}
+                                    </button>
+                                    {asset.image_prompt ? (
+                                      <button
+                                        className="button secondary"
+                                        type="button"
+                                        onClick={() => generateAssetPrompt(scene, asset, "animation_prompt")}
+                                        disabled={Boolean(generatingAssetPromptId)}
+                                      >
+                                        {isGeneratingAnimation
+                                          ? "Generating..."
+                                          : asset.animation_prompt || asset.sound_prompt
+                                            ? "Regenerate animation + sound/dialogue"
+                                            : "Generate animation + sound/dialogue"}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  {asset.image_prompt || asset.animation_prompt || asset.sound_prompt ? (
+                                    <dl className="shot-prompt-output">
+                                      {asset.image_prompt ? (
+                                        <div>
+                                          <dt>Image prompt</dt>
+                                          <dd>{asset.image_prompt}</dd>
+                                        </div>
+                                      ) : null}
+                                      {asset.animation_prompt ? (
+                                        <div>
+                                          <dt>Animation prompt</dt>
+                                          <dd>{asset.animation_prompt}</dd>
+                                        </div>
+                                      ) : null}
+                                      {asset.sound_prompt ? (
+                                        <div>
+                                          <dt>Sound/dialogue prompt</dt>
+                                          <dd>{asset.sound_prompt}</dd>
+                                        </div>
+                                      ) : null}
+                                    </dl>
+                                  ) : null}
+                                </article>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="asset-empty">
+                            No shot list yet. Build the detailed shot list before creating insert-shot
+                            prompt cards.
+                          </p>
+                        )}
+                      </div>
                       <div className="asset-section">
                         <div className="asset-heading">
                           <strong>Prompt cards</strong>
@@ -1288,13 +1474,35 @@ export function ProjectWorkspace({
                             {creatingAssetSceneId === scene.id ? "Adding..." : "I need another insert shot"}
                           </button>
                         </div>
-                        {sceneAssets.length ? (
+                        {promptAssets.length ? (
                           <div className="asset-card-list">
-                            {sceneAssets.map((asset) => (
+                            {promptAssets.map((asset) => (
                               <article className="asset-card" key={asset.id}>
                                 <div className="asset-card-top">
                                   <span>{asset.asset_type.replaceAll("_", " ")}</span>
                                   <strong>{asset.name}</strong>
+                                </div>
+                                <div className="asset-card-actions">
+                                  <button
+                                    className="button secondary"
+                                    type="button"
+                                    onClick={() => generateAssetPrompt(scene, asset, "image_prompt")}
+                                    disabled={Boolean(generatingAssetPromptId)}
+                                  >
+                                    {generatingAssetPromptId === `image_prompt:${asset.id}`
+                                      ? "Regenerating..."
+                                      : "Regenerate image prompt"}
+                                  </button>
+                                  <button
+                                    className="button secondary"
+                                    type="button"
+                                    onClick={() => generateAssetPrompt(scene, asset, "animation_prompt")}
+                                    disabled={Boolean(generatingAssetPromptId)}
+                                  >
+                                    {generatingAssetPromptId === `animation_prompt:${asset.id}`
+                                      ? "Regenerating..."
+                                      : "Regenerate animation + sound/dialogue"}
+                                  </button>
                                 </div>
                                 <p>{asset.purpose}</p>
                                 <dl>

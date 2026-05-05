@@ -5,8 +5,12 @@ type RouteContext = {
   params: { projectId: string } | Promise<{ projectId: string }>;
 };
 
+type ProductionAssetAction = "insert_shot" | "shot_list" | "image_prompt" | "animation_prompt";
+
 type ProductionAssetPayload = {
+  action?: ProductionAssetAction;
   sceneBreakdownId?: string;
+  productionAssetId?: string;
   assetType?: string;
 };
 
@@ -59,6 +63,10 @@ function joinList(values: string[] | undefined, fallback: string) {
   return values?.length ? values.join(", ") : fallback;
 }
 
+function sceneTone(scene: SceneBreakdownRecord) {
+  return scene.tone || scene.color_palette || "restrained cinematic tension";
+}
+
 async function loadProductionAssets({
   projectId,
   supabase,
@@ -88,7 +96,7 @@ function buildInsertShotAsset(scene: SceneBreakdownRecord, orderIndex: number) {
   const characters = joinList(scene.characters, "the characters");
   const wardrobe = joinList(scene.wardrobe, "current scene wardrobe");
   const setDressing = joinList(scene.set_dressing, scene.location || "the location");
-  const tone = scene.tone || scene.color_palette || "restrained cinematic tension";
+  const tone = sceneTone(scene);
   const shotName = `Insert ${orderIndex}: ${heroProp}`;
   const visual = `A close insert on ${heroProp} inside ${scene.location || "the scene"} that turns the dialogue into a visible decision.`;
 
@@ -106,12 +114,124 @@ function buildInsertShotAsset(scene: SceneBreakdownRecord, orderIndex: number) {
   };
 }
 
+function buildDetailedShotList(scene: SceneBreakdownRecord) {
+  const location = scene.location || "the location";
+  const timeOfDay = scene.time_of_day || "the scene time";
+  const characters = scene.characters?.filter(Boolean) ?? [];
+  const firstCharacter = characters[0] || "the lead character";
+  const secondCharacter = characters[1] || "the opposing character";
+  const heroProp = firstListItem(scene.props, "the key story object");
+  const tone = sceneTone(scene);
+  const blocking = scene.blocking || "Use the scene blocking to track entrances, exits, eyelines, and distance shifts.";
+
+  return [
+    {
+      asset_type: "shot",
+      name: "Shot 1: Establish geography and pressure",
+      purpose: "Orient the viewer before the emotional beat starts.",
+      visual: `Wide or controlled medium-wide of ${location} at ${timeOfDay}, showing the practical light, blocking space, and the pressure around ${firstCharacter}.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: `Shot-list page. Tone: ${tone}. ${blocking}`,
+    },
+    {
+      asset_type: "shot",
+      name: `Shot 2: ${firstCharacter} intention`,
+      purpose: "Make the character want visible before the line lands.",
+      visual: `Medium close coverage on ${firstCharacter}, framed around the object or doorway that matters most to the scene.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: "Generate the image prompt first, then unlock animation, sound design, and dialogue timing.",
+    },
+    {
+      asset_type: "shot",
+      name: `Shot 3: ${secondCharacter} response`,
+      purpose: "Give the edit a clean counter-beat so the scene has pressure instead of exposition.",
+      visual: `Reverse or complementary angle on ${secondCharacter}, with eyeline continuity back to ${firstCharacter} and the central story object.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: "Keep camera language consistent with the previous shot.",
+    },
+    {
+      asset_type: "shot",
+      name: "Shot 4: Distance shift",
+      purpose: "Turn the scene from talking into behavior by showing how the characters move or refuse to move.",
+      visual: `Two-shot or profile angle that shows the distance between ${firstCharacter} and ${secondCharacter}, with ${heroProp} visible when possible.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: "Use this as the bridge into an insert shot when the scene needs a concrete visual beat.",
+    },
+    {
+      asset_type: "shot",
+      name: `Shot 5: Insert on ${heroProp}`,
+      purpose: "Justify the insert-shot workflow by giving the edit one specific object, texture, or action to cut to.",
+      visual: `Close insert of ${heroProp} inside ${location}, designed to externalize the scene conflict without adding explanation.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: "This is the row that naturally connects to the I need another insert shot button.",
+    },
+    {
+      asset_type: "shot",
+      name: "Shot 6: Final emotional beat",
+      purpose: "End the scene with a visual decision, not a purely verbal explanation.",
+      visual: `A held frame after the last line where the blocking, object placement, or character silence shows what changed in the scene.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: "Use dialogue timing only where it supports the final beat.",
+    },
+  ];
+}
+
+function buildImagePrompt(scene: SceneBreakdownRecord, asset: ProductionAsset) {
+  const characters = joinList(scene.characters, "the characters");
+  const wardrobe = joinList(scene.wardrobe, "current scene wardrobe");
+  const props = joinList(scene.props, "story-specific props");
+  const setDressing = joinList(scene.set_dressing, scene.location || "the location");
+  const tone = sceneTone(scene);
+
+  return [
+    `${asset.name}. ${asset.visual}`,
+    `Scene: ${scene.scene_heading}. Location: ${scene.location || "unspecified"} at ${scene.time_of_day || "unspecified time"}.`,
+    `Characters in continuity: ${characters}. Wardrobe: ${wardrobe}. Props: ${props}. Set dressing: ${setDressing}.`,
+    `Color and feel: ${tone}. Cinematic, natural physical texture, motivated lighting, no text, no captions, no extra characters, no distorted hands.`,
+  ].join(" ");
+}
+
+function buildAnimationPrompt(scene: SceneBreakdownRecord, asset: ProductionAsset) {
+  const characters = joinList(scene.characters, "the characters");
+  const sound = scene.sound_notes || "room tone, close physical sounds, and location texture";
+  const blocking = scene.blocking || "follow the scene blocking and preserve eyelines";
+
+  return {
+    animation_prompt: [
+      `${asset.name}. Animate the image as a usable film shot, not a flashy trailer shot.`,
+      `Motion: controlled camera movement, subtle performance behavior, and continuity with ${scene.scene_heading}.`,
+      `Blocking: ${blocking}. Characters: ${characters}.`,
+      "Dialogue timing: preserve the exact script dialogue for this shot when available, keep lip movement restrained and believable, and leave room for natural pauses.",
+      "Do not add new characters, new props, extra story events, subtitles, or music unless the story specifically calls for it.",
+    ].join(" "),
+    sound_prompt: [
+      `Sound design for ${asset.name}: ${sound}.`,
+      "Layer dialogue cleanly over practical room tone. Add specific object sounds, foot movement, cloth movement, breathing, and silence where the beat needs pressure.",
+      "No music unless the scene absolutely requires it.",
+    ].join(" "),
+  };
+}
+
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { user } = await getVerifiedRequestUser(request);
     const { projectId } = await context.params;
     const body = (await request.json()) as ProductionAssetPayload;
     const sceneBreakdownId = cleanText(body.sceneBreakdownId);
+    const productionAssetId = cleanText(body.productionAssetId);
+    const action = body.action ?? (body.assetType === "insert_shot" ? "insert_shot" : "insert_shot");
 
     if (!projectId) {
       return Response.json({ ok: false, error: "Missing project ID." }, { status: 400 });
@@ -149,6 +269,125 @@ export async function POST(request: Request, context: RouteContext) {
         { ok: false, error: sceneError?.message ?? "Scene packet not found." },
         { status: 404 },
       );
+    }
+
+    if (action === "shot_list") {
+      const shotRows = buildDetailedShotList(sceneBreakdown as SceneBreakdownRecord);
+      const { data: existingShots, error: existingShotsError } = await supabase
+        .from("production_assets")
+        .select("id,order_index")
+        .eq("project_id", projectId)
+        .eq("owner_id", user.id)
+        .eq("scene_breakdown_id", sceneBreakdownId)
+        .eq("asset_type", "shot")
+        .order("order_index", { ascending: true });
+
+      if (existingShotsError) {
+        return Response.json({ ok: false, error: existingShotsError.message }, { status: 502 });
+      }
+
+      const existing = existingShots ?? [];
+
+      for (const [index, shot] of shotRows.entries()) {
+        const orderIndex = index + 1;
+        const existingShot = existing[index];
+
+        if (existingShot) {
+          const { error: updateError } = await supabase
+            .from("production_assets")
+            .update({
+              order_index: orderIndex,
+              name: shot.name,
+              purpose: shot.purpose,
+              visual: shot.visual,
+              notes: shot.notes,
+            })
+            .eq("id", existingShot.id)
+            .eq("project_id", projectId)
+            .eq("owner_id", user.id);
+
+          if (updateError) {
+            return Response.json({ ok: false, error: updateError.message }, { status: 502 });
+          }
+        } else {
+          const { error: insertError } = await supabase.from("production_assets").insert({
+            project_id: projectId,
+            scene_breakdown_id: sceneBreakdownId,
+            owner_id: user.id,
+            order_index: orderIndex,
+            ...shot,
+          });
+
+          if (insertError) {
+            return Response.json({ ok: false, error: insertError.message }, { status: 502 });
+          }
+        }
+      }
+
+      const productionAssets = await loadProductionAssets({ projectId, supabase, userId: user.id });
+
+      return Response.json({
+        ok: true,
+        productionAssets,
+        message: `Detailed shot list saved for scene ${(sceneBreakdown as SceneBreakdownRecord).scene_number}.`,
+      });
+    }
+
+    if (action === "image_prompt" || action === "animation_prompt") {
+      if (!productionAssetId) {
+        return Response.json({ ok: false, error: "Missing shot ID." }, { status: 400 });
+      }
+
+      const { data: productionAsset, error: assetError } = await supabase
+        .from("production_assets")
+        .select("id,project_id,scene_breakdown_id,owner_id,order_index,asset_type,name,purpose,visual,image_prompt,animation_prompt,sound_prompt,notes,created_at,updated_at")
+        .eq("id", productionAssetId)
+        .eq("project_id", projectId)
+        .eq("scene_breakdown_id", sceneBreakdownId)
+        .eq("owner_id", user.id)
+        .single();
+
+      if (assetError || !productionAsset) {
+        return Response.json(
+          { ok: false, error: assetError?.message ?? "Shot not found." },
+          { status: 404 },
+        );
+      }
+
+      const updates =
+        action === "image_prompt"
+          ? {
+              image_prompt: buildImagePrompt(
+                sceneBreakdown as SceneBreakdownRecord,
+                productionAsset as ProductionAsset,
+              ),
+            }
+          : buildAnimationPrompt(
+              sceneBreakdown as SceneBreakdownRecord,
+              productionAsset as ProductionAsset,
+            );
+
+      const { error: updateError } = await supabase
+        .from("production_assets")
+        .update(updates)
+        .eq("id", productionAssetId)
+        .eq("project_id", projectId)
+        .eq("owner_id", user.id);
+
+      if (updateError) {
+        return Response.json({ ok: false, error: updateError.message }, { status: 502 });
+      }
+
+      const productionAssets = await loadProductionAssets({ projectId, supabase, userId: user.id });
+
+      return Response.json({
+        ok: true,
+        productionAssets,
+        message:
+          action === "image_prompt"
+            ? `${(productionAsset as ProductionAsset).name} image prompt saved.`
+            : `${(productionAsset as ProductionAsset).name} animation, sound, and dialogue prompt saved.`,
+      });
     }
 
     const { data: existingAssets, error: existingError } = await supabase
