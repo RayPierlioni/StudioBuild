@@ -146,6 +146,40 @@ h1 {
   line-height: 1.44;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.button.ghost {
+  border-color: rgba(255, 250, 241, 0.26);
+  background: rgba(255, 250, 241, 0.1);
+  color: #fffaf1;
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  max-width: 620px;
+}
+
+.hero-chips span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 250, 241, 0.16);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(29, 26, 28, 0.34);
+  color: rgba(255, 250, 241, 0.78);
+  font-size: 12px;
+  font-weight: 760;
+}
+
 .workspace {
   display: grid;
   align-content: start;
@@ -256,6 +290,12 @@ h1 {
   border-color: var(--line);
   background: white;
   color: var(--ink);
+}
+
+.hero .button.secondary.ghost {
+  border-color: rgba(255, 250, 241, 0.26);
+  background: rgba(255, 250, 241, 0.1);
+  color: #fffaf1;
 }
 
 .button:disabled {
@@ -595,6 +635,167 @@ textarea:focus {
   text-transform: none;
 }
 
+.scene-demo {
+  display: grid;
+  gap: 18px;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.82fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.demo-input,
+.demo-output {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.demo-input label {
+  display: grid;
+  gap: 7px;
+  color: var(--deep);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.demo-input textarea {
+  min-height: 230px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.score-card,
+.scene-findings,
+.deliverable-card,
+.phase-card,
+.pricing-card {
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.48)),
+    rgba(237, 241, 240, 0.5);
+}
+
+.score-card {
+  padding: 16px;
+}
+
+.score-card span,
+.metrics-grid span,
+.deliverable-card span,
+.phase-card span,
+.pricing-card span {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.score-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(42px, 5vw, 58px);
+  line-height: 0.92;
+}
+
+.score-card p,
+.scene-findings p {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metrics-grid div {
+  min-height: 86px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.metrics-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.scene-findings {
+  padding: 14px;
+}
+
+.scene-findings h3 {
+  font-size: 18px;
+  line-height: 1.18;
+}
+
+.prompt-compiler {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.prompt-compiler textarea {
+  min-height: 240px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.deliverable-grid,
+.phase-grid,
+.pricing-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.deliverable-grid,
+.pricing-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phase-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.deliverable-card,
+.phase-card,
+.pricing-card {
+  min-height: 124px;
+  padding: 16px;
+}
+
+.deliverable-card strong,
+.phase-card strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 18px;
+  line-height: 1.24;
+}
+
+.pricing-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.pricing-card p {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
 .status {
   border-radius: 6px;
   padding: 11px 12px;
@@ -639,7 +840,11 @@ code {
 
   .studio-grid,
   .field-pair,
-  .workspace-tools {
+  .workspace-tools,
+  .demo-grid,
+  .deliverable-grid,
+  .phase-grid,
+  .pricing-grid {
     grid-template-columns: 1fr;
   }
 
@@ -652,5 +857,13 @@ code {
     border-top: 1px solid var(--line);
     padding-left: 0;
     padding-top: 18px;
+  }
+
+  .hero-actions .button {
+    flex: 1 1 170px;
+  }
+
+  .hero-chips span:nth-child(n + 3) {
+    display: none;
   }
 }

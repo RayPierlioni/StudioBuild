@@ -1,12 +1,25 @@
+import { SceneFixDemo } from "./scene-fix-demo";
 import { StudioWorkspace } from "./studio-workspace";
 
 const heroImageUrl = "/cinematic-hero.webp";
 
-const foundationTiles = [
-  ["01", "Vercel will host the real app shell, routes, and server functions."],
-  ["02", "Supabase will store users, projects, scripts, breakdowns, and admin status."],
-  ["03", "Stripe will enforce the $4.99/week Studio Pass for non-admin users."],
-  ["04", "Protected AI generation writes treatments, scripts, breakdowns, and prompt plans."],
+const deliverables = [
+  ["Rough scene", "rewrite, scene purpose, emotional turn, and production notes"],
+  ["Imported script", "scene count, locations, speaking characters, and readiness gaps"],
+  ["Finished scene", "props, wardrobe, sound, blocking, insert shots, and continuity needs"],
+  ["Production need", "image prompts, animation prompts, sound prompts, and exportable packets"],
+];
+
+const workflowPhases = [
+  ["Develop", "Idea, logline, synopsis, and treatment"],
+  ["Write", "Script import, selected rewrites, dialogue polish, and AI voice removal"],
+  ["Produce", "Scene cards, shot needs, prompt packs, and production packet export"],
+];
+
+const pricingCards = [
+  ["Free", "$0", "Try one scene, parse the production problem, and copy expert prompts."],
+  ["Founder Pro", "$19/mo", "Full workflow, exports, version history, prompt compiler, and hosted AI credits."],
+  ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];
 
 export default function Home() {
@@ -19,60 +32,85 @@ export default function Home() {
           <span>STUDIOBUILD</span>
         </div>
         <div className="hero-copy">
-          <p className="kicker">Vercel foundation</p>
-          <h1>The real app starts here.</h1>
+          <p className="kicker">Pre-production for AI filmmakers</p>
+          <h1>If you want to compete, you need more than prompts.</h1>
           <p>
-            GitHub Pages proved the demo. This Vercel foundation gives StudioBuild the server-side
-            room it needs for saved projects, subscriptions, secure AI, and a real production pipeline.
+            StudioBuild turns rough AI film ideas and scripts into treatments, scene breakdowns,
+            shot plans, and prompt-ready production packets so your film has story logic before you
+            generate a single shot.
           </p>
+          <div className="hero-actions">
+            <a className="button" href="#fix-scene">
+              Fix a Scene Free
+            </a>
+            <a className="button secondary ghost" href="#what-you-get">
+              See Outputs
+            </a>
+          </div>
+          <div className="hero-chips" aria-label="StudioBuild focus">
+            <span>Remove AI voice</span>
+            <span>Build scene logic</span>
+            <span>Map production needs</span>
+            <span>Generate prompt packs</span>
+          </div>
         </div>
       </section>
 
       <section className="workspace">
         <div className="topline">
-          <span className="pill">Live Vercel app</span>
-          <span className="pill">Database-backed saves</span>
+          <span className="pill">Workflow-first</span>
+          <span className="pill">Optional hosted AI</span>
         </div>
 
-        <StudioWorkspace />
+        <SceneFixDemo />
 
-        <article className="panel">
-          <h2>Next build target</h2>
-          <p>
-            This is the live Vercel version of StudioBuild. Use the workspace above for real
-            database-backed saves; the older GitHub Pages demo is now only a visual reference.
-          </p>
-          <div className="actions" style={{ marginTop: 22 }}>
-            <a className="button secondary" href="/api/health">
-              Check API Health
-            </a>
-            <a className="button secondary" href="/api/db-status">
-              Check Database Status
-            </a>
-            <a className="button secondary" href="/api/admin-db-check">
-              Check Admin DB Key
-            </a>
+        <article className="panel" id="what-you-get">
+          <p className="eyebrow">What StudioBuild Gives You</p>
+          <h2>Concrete film outputs, not another blank prompt box.</h2>
+          <div className="deliverable-grid">
+            {deliverables.map(([input, output]) => (
+              <article className="deliverable-card" key={input}>
+                <span>{input}</span>
+                <strong>{output}</strong>
+              </article>
+            ))}
           </div>
         </article>
 
-        <section className="grid" aria-label="Foundation steps">
-          {foundationTiles.map(([number, text]) => (
-            <article className="tile" key={number}>
-              <span>{number}</span>
-              <strong>{text}</strong>
-            </article>
-          ))}
-        </section>
-
         <article className="panel">
-          <h2>Backend checkpoint</h2>
+          <p className="eyebrow">Workflow Path</p>
+          <h2>From rough idea to production packet.</h2>
+          <div className="phase-grid">
+            {workflowPhases.map(([phase, text]) => (
+              <article className="phase-card" key={phase}>
+                <span>{phase}</span>
+                <strong>{text}</strong>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <div id="workspace">
+          <StudioWorkspace />
+        </div>
+
+        <article className="panel pricing-panel">
+          <p className="eyebrow">Pricing Direction</p>
+          <h2>Start with the workflow. Use AI where it counts.</h2>
           <p>
-            The first server route is <code>/api/health</code>. The database handshake route is{" "}
-            <code>/api/db-status</code>. The server-only admin key check is{" "}
-            <code>/api/admin-db-check</code>. The protected generation route is{" "}
-            <code>/api/generate</code>. Once the OpenAI key is connected on Vercel, that route becomes
-            the safe place for professional StudioBuild writing passes.
+            The product should stay valuable even when hosted AI is never clicked. Prompt compiler,
+            parser, readiness score, exports, and production packets become the core paid value;
+            hosted AI credits become the convenience layer.
           </p>
+          <div className="pricing-grid">
+            {pricingCards.map(([name, price, text]) => (
+              <article className="pricing-card" key={name}>
+                <span>{name}</span>
+                <strong>{price}</strong>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
         </article>
       </section>
     </main>

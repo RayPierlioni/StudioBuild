@@ -39,7 +39,7 @@ Never commit real values for:
 
 ## Current Routes
 
-- `/` - Vercel foundation screen
+- `/` - public product landing page with the no-cost Fix a Scene Free parser and Prompt Compiler
 - `/api/health` - checks which environment variable groups are configured
 - `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
@@ -58,6 +58,10 @@ production pipeline, and protected AI action buttons.
 
 Pipeline stages are clickable. AI generation and manual draft saves both write editable stage
 documents back to Supabase.
+
+The public landing page now leads with the workflow-first product model: parse a rough scene, show
+production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
+credit-based convenience path.
 
 ## Deployment Direction
 
