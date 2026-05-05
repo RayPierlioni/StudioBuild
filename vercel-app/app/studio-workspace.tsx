@@ -213,6 +213,26 @@ function joinList(values: string[] | undefined) {
   return values?.length ? values.join(", ") : "";
 }
 
+function markdownValue(value: string | undefined, fallback = "Not filled yet") {
+  return value?.trim() || fallback;
+}
+
+function markdownList(values: string[] | undefined, fallback = "Not filled yet") {
+  const cleaned = values?.map((value) => value.trim()).filter(Boolean) ?? [];
+
+  return cleaned.length ? cleaned.map((value) => `- ${value}`).join("\n") : fallback;
+}
+
+function slugFileName(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "studiobuild-production-packet"
+  );
+}
+
 function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
   return {
     scene_heading: scene.scene_heading,
@@ -1039,6 +1059,147 @@ export function ProjectWorkspace({
     }
   }
 
+  function buildProductionPacketMarkdown() {
+    const docSections: Array<{ label: string; value: string }> = [
+      { label: "Idea", value: drafts.idea },
+      { label: "Treatment", value: drafts.treatment },
+      { label: "Script", value: drafts.script },
+      { label: "Breakdown Notes", value: drafts.breakdown_notes },
+      { label: "Production Notes", value: drafts.story },
+    ];
+
+    const projectSummary = [
+      `# ${markdownValue(project.title, "Untitled StudioBuild Project")}`,
+      "",
+      "## Project",
+      "",
+      `Genre: ${markdownValue(project.genre)}`,
+      `Tone: ${markdownValue(project.tone)}`,
+      `Logline: ${markdownValue(project.logline)}`,
+      "",
+      "Inspirations:",
+      markdownList(project.inspirations),
+      "",
+      `Workflow/tools: ${markdownValue(workflowTools, "Tool stack not specified")}`,
+    ].join("\n");
+
+    const documentBlocks = docSections
+      .filter((section) => section.value.trim())
+      .map((section) => [`## ${section.label}`, "", section.value.trim()].join("\n"))
+      .join("\n\n");
+
+    const sceneBlocks = sceneBreakdowns
+      .map((scene) => {
+        const sceneAssets = assetsBySceneId[scene.id] ?? [];
+        const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
+        const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
+
+        const sceneBlock = [
+          `## Scene ${scene.scene_number}: ${markdownValue(scene.scene_heading, "Unlabeled scene")}`,
+          "",
+          `Summary: ${markdownValue(scene.summary)}`,
+          `Location: ${markdownValue(scene.location)}`,
+          `Time of day: ${markdownValue(scene.time_of_day)}`,
+          `Tone: ${markdownValue(scene.tone || scene.color_palette)}`,
+          "",
+          "Characters:",
+          markdownList(scene.characters),
+          "",
+          "Props:",
+          markdownList(scene.props),
+          "",
+          "Wardrobe:",
+          markdownList(scene.wardrobe),
+          "",
+          "Set dressing:",
+          markdownList(scene.set_dressing),
+          "",
+          `Sound notes: ${markdownValue(scene.sound_notes)}`,
+          `Blocking: ${markdownValue(scene.blocking)}`,
+        ].join("\n");
+
+        const shotBlock = shotAssets.length
+          ? [
+              "### Detailed Shot List",
+              "",
+              ...shotAssets.map((asset) =>
+                [
+                  `#### ${asset.name}`,
+                  "",
+                  `Purpose: ${markdownValue(asset.purpose)}`,
+                  `Visual: ${markdownValue(asset.visual)}`,
+                  "",
+                  `Image prompt: ${markdownValue(asset.image_prompt)}`,
+                  "",
+                  `Animation prompt: ${markdownValue(asset.animation_prompt)}`,
+                  "",
+                  `Sound/dialogue prompt: ${markdownValue(asset.sound_prompt)}`,
+                ].join("\n"),
+              ),
+            ].join("\n\n")
+          : "### Detailed Shot List\n\nNot built yet.";
+
+        const promptBlock = promptAssets.length
+          ? [
+              "### Prompt Cards",
+              "",
+              ...promptAssets.map((asset) =>
+                [
+                  `#### ${asset.name}`,
+                  "",
+                  `Type: ${asset.asset_type.replaceAll("_", " ")}`,
+                  `Purpose: ${markdownValue(asset.purpose)}`,
+                  `Visual: ${markdownValue(asset.visual)}`,
+                  "",
+                  `Image prompt: ${markdownValue(asset.image_prompt)}`,
+                  "",
+                  `Animation prompt: ${markdownValue(asset.animation_prompt)}`,
+                  "",
+                  `Sound prompt: ${markdownValue(asset.sound_prompt)}`,
+                  "",
+                  `Notes: ${markdownValue(asset.notes)}`,
+                ].join("\n"),
+              ),
+            ].join("\n\n")
+          : "### Prompt Cards\n\nNot built yet.";
+
+        return [sceneBlock, shotBlock, promptBlock].join("\n\n");
+      })
+      .join("\n\n");
+
+    return [projectSummary, documentBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  async function copyProductionPacket() {
+    const packet = buildProductionPacketMarkdown();
+
+    try {
+      await navigator.clipboard.writeText(packet);
+      setSaveStatus("Production packet copied.");
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Use Download production packet instead.");
+    }
+  }
+
+  function downloadProductionPacket() {
+    const packet = buildProductionPacketMarkdown();
+    const blob = new Blob([packet], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = `${slugFileName(project.title)}-production-packet.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setSaveStatus("Production packet downloaded.");
+    setSaveError("");
+  }
+
   return (
     <section className="project-workspace">
       <div className="project-toolbar">
@@ -1052,6 +1213,24 @@ export function ProjectWorkspace({
         <p className="eyebrow">Project workspace</p>
         <h3>{project.title}</h3>
         <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
+      </div>
+
+      <div className="export-panel" aria-label="Production packet export">
+        <div>
+          <span>Production packet</span>
+          <strong>
+            {sceneBreakdowns.length} scene{sceneBreakdowns.length === 1 ? "" : "s"} / {productionAssets.length} asset
+            {productionAssets.length === 1 ? "" : "s"}
+          </strong>
+        </div>
+        <div className="export-actions">
+          <button className="button secondary" type="button" onClick={copyProductionPacket}>
+            Copy packet
+          </button>
+          <button className="button" type="button" onClick={downloadProductionPacket}>
+            Download production packet
+          </button>
+        </div>
       </div>
 
       <div className="pipeline-strip" aria-label="StudioBuild pipeline">
