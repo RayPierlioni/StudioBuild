@@ -49,6 +49,19 @@ type GenerateResponse = {
   error?: string;
 };
 
+type ScenePacketResponse = {
+  ok: boolean;
+  sceneBreakdowns?: Array<{
+    id: string;
+    scene_number: number;
+    scene_heading: string;
+  }>;
+  document?: ProjectDocument;
+  documents?: ProjectDocument[];
+  message?: string;
+  error?: string;
+};
+
 type ProjectForm = {
   title: string;
   genre: string;
@@ -476,6 +489,7 @@ export function ProjectWorkspace({
   const [saveStatus, setSaveStatus] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSavingStage, setIsSavingStage] = useState(false);
+  const [isSavingPacket, setIsSavingPacket] = useState(false);
   const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
@@ -624,6 +638,76 @@ export function ProjectWorkspace({
     }
   }
 
+  function scenePacketSource() {
+    const activeDraft = currentDraft.trim();
+
+    if (activeStepId === "breakdown" && drafts.script.trim()) {
+      return drafts.script.trim();
+    }
+
+    return (
+      activeDraft ||
+      drafts.script.trim() ||
+      drafts.idea.trim() ||
+      drafts.treatment.trim() ||
+      drafts.story.trim()
+    );
+  }
+
+  async function saveScenePacket() {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before saving scene packets.");
+      return;
+    }
+
+    const content = scenePacketSource();
+
+    if (!content) {
+      setSaveError("Paste or import a scene/script before saving a scene packet.");
+      return;
+    }
+
+    setIsSavingPacket(true);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/scene-packets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          toolStack: workflowTools,
+        }),
+      });
+      const result = (await response.json()) as ScenePacketResponse;
+
+      if (!response.ok || !result.ok || !result.document) {
+        throw new Error(result.error ?? "Unable to save scene packet.");
+      }
+
+      setDrafts((current) => ({
+        ...current,
+        breakdown_notes: result.document!.content,
+      }));
+      onDraftChange(result.document.content);
+      onDocumentsChange?.(result.documents ?? [result.document]);
+      setActiveStepId("breakdown");
+      setSaveStatus(
+        result.message ??
+          `${result.sceneBreakdowns?.length ?? 0} scene packet row(s) saved to Supabase.`,
+      );
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to save scene packet.");
+    } finally {
+      setIsSavingPacket(false);
+    }
+  }
+
   return (
     <section className="project-workspace">
       <div className="project-toolbar">
@@ -717,6 +801,14 @@ export function ProjectWorkspace({
             <button className="button secondary" type="button" onClick={() => fileInputRef.current?.click()}>
               Import Script
             </button>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={saveScenePacket}
+              disabled={isSavingPacket}
+            >
+              {isSavingPacket ? "Saving packet..." : "Save Scene Packet"}
+            </button>
           </div>
           {saveStatus ? <p className="status success">{saveStatus}</p> : null}
           {saveError ? <p className="status error">{saveError}</p> : null}
@@ -741,6 +833,9 @@ export function ProjectWorkspace({
           <button type="button" onClick={() => runGeneration("breakdown")} disabled={Boolean(generatingMode)}>
             {generatingMode === "breakdown" ? "Breaking down..." : "Build scene breakdown"}
           </button>
+          <button type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
+            {isSavingPacket ? "Saving no-AI packet..." : "Parse + save no-AI scene packet"}
+          </button>
           <button type="button" onClick={() => runGeneration("production")} disabled={Boolean(generatingMode)}>
             {generatingMode === "production" ? "Building prompts..." : "Create production prompt plan"}
           </button>
@@ -748,8 +843,8 @@ export function ProjectWorkspace({
             {generatingMode === "insert_shot" ? "Finding insert..." : "I need another insert shot"}
           </button>
           <p>
-            These actions now run through protected StudioBuild AI and save their results to this
-            project.
+            Use the no-AI scene packet first to create real production data. Hosted AI actions stay
+            available for higher-leverage passes once API credits are ready.
           </p>
         </aside>
       </div>
