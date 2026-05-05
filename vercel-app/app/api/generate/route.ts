@@ -1,6 +1,5 @@
 import { getVerifiedRequestUser } from "../../../lib/auth";
 import { isAdminEmail } from "../../../lib/admin";
-import { envStatus } from "../../../lib/env";
 import { getSupabaseAdminClient } from "../../../lib/supabase/server";
 
 type GenerateMode =
@@ -428,9 +427,8 @@ async function callOpenAI({
     return Response.json(
       {
         ok: false,
-        status: "missing_openai_key",
-        message: "OPENAI_API_KEY is not configured on Vercel yet.",
-        env: envStatus(),
+        status: "generation_unavailable",
+        message: "StudioBuild generation is not available yet. Use the prompt workflow for now, or try again shortly.",
       },
       { status: 503 },
     );
@@ -465,7 +463,7 @@ Output only the finished artifact the user can work with immediately.`,
       {
         ok: false,
         status: "openai_error",
-        message: result.error?.message || "The AI generation request failed.",
+        message: "StudioBuild generation could not finish that request. Try a shorter passage or use the prompt workflow.",
       },
       { status: response.status },
     );
@@ -582,7 +580,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           status: "premium_required",
-          message: "StudioBuild AI generation is included with admin access or the $4.99/week plan.",
+          message: "StudioBuild generation is included with admin access or Founder Pro.",
         },
         { status: 402 },
       );
@@ -664,12 +662,17 @@ export async function POST(request: Request) {
       documents: updatedDocuments,
     });
   } catch (error) {
+    const message =
+      error instanceof Error && error.message.toLowerCase().includes("supabase")
+        ? "Sign in again before using this StudioBuild tool."
+        : "StudioBuild could not complete that request. Please try again shortly.";
+
     return Response.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Unable to generate StudioBuild content.",
+        error: message,
       },
-      { status: 401 },
+      { status: message.startsWith("Sign in") ? 401 : 503 },
     );
   }
 }

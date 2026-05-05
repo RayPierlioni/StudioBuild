@@ -1,4 +1,3 @@
-import { envStatus } from "../../../lib/env";
 import { getSupabaseRuntimeConfig, getSupabaseServerClient } from "../../../lib/supabase/server";
 
 type AuthSettings = {
@@ -8,8 +7,6 @@ type AuthSettings = {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const env = envStatus();
-
   try {
     const { url, publishableKey } = getSupabaseRuntimeConfig();
     getSupabaseServerClient();
@@ -33,22 +30,15 @@ export async function GET() {
     return Response.json(
       {
         ok: response.ok,
-        service: "studiobuild-supabase",
+        service: "studiobuild-database",
         checkedAt: new Date().toISOString(),
-        env,
-        supabaseClientReady: true,
+        databaseClientReady: true,
         auth: {
           reachable: response.ok,
-          status: response.status,
           googleProviderEnabled: Boolean(authSettings.external?.google),
-          anonymousUsersEnabled: Boolean(authSettings.external?.anonymous_users),
         },
         database: {
-          publicTablesProtected: true,
-          serviceRoleConfigured: env.supabaseServiceRoleKey,
-          note: env.supabaseServiceRoleKey
-            ? "Ready for server-side database reads and writes."
-            : "Publishable-key connection is live. User tables stay protected until a signed-in user or server key is used.",
+          ready: true,
         },
       },
       { status: response.ok ? 200 : 502 },
@@ -57,11 +47,10 @@ export async function GET() {
     return Response.json(
       {
         ok: false,
-        service: "studiobuild-supabase",
+        service: "studiobuild-database",
         checkedAt: new Date().toISOString(),
-        env,
-        supabaseClientReady: false,
-        error: error instanceof Error ? error.message : "Unknown Supabase connection error",
+        databaseClientReady: false,
+        error: "StudioBuild database check could not complete.",
       },
       { status: 500 },
     );

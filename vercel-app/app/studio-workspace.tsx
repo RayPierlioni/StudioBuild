@@ -418,9 +418,13 @@ function emptySceneDraft(): SceneBreakdownDraft {
 function ProUnlockPanel({
   entitlement,
   compact = false,
+  isUpgrading = false,
+  onUpgrade,
 }: {
   entitlement: AccessEntitlement;
   compact?: boolean;
+  isUpgrading?: boolean;
+  onUpgrade?: () => void;
 }) {
   if (entitlement.isPro) {
     return (
@@ -457,11 +461,10 @@ function ProUnlockPanel({
       <button
         className="button"
         type="button"
-        onClick={() => {
-          window.location.hash = "pricing";
-        }}
+        onClick={onUpgrade}
+        disabled={isUpgrading || !onUpgrade}
       >
-        Upgrade path coming next
+        {isUpgrading ? "Opening checkout..." : "Upgrade to Founder Pro"}
       </button>
     </section>
   );
@@ -480,6 +483,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -548,6 +552,19 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   }, [supabase]);
 
   useEffect(() => {
+    const checkout = new URLSearchParams(window.location.search).get("checkout");
+
+    if (checkout === "success") {
+      setMessage("Payment complete. Founder Pro access will unlock in a moment.");
+      return;
+    }
+
+    if (checkout === "cancelled") {
+      setMessage("Checkout cancelled. You can upgrade whenever you are ready.");
+    }
+  }, []);
+
+  useEffect(() => {
     if (session?.access_token) {
       void loadProjects(session.access_token);
       return;
@@ -584,6 +601,38 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     setProjects([]);
     setEntitlement(freeEntitlement);
     setUsage(defaultUsage);
+  }
+
+  async function startCheckout() {
+    if (!session?.access_token) {
+      setError("Sign in with Google before upgrading.");
+      setMessage("");
+      return;
+    }
+
+    setIsStartingCheckout(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const result = (await response.json()) as { ok: boolean; url?: string; error?: string };
+
+      if (!response.ok || !result.ok || !result.url) {
+        throw new Error(result.error ?? "Unable to open checkout.");
+      }
+
+      window.location.assign(result.url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to open checkout.");
+    } finally {
+      setIsStartingCheckout(false);
+    }
   }
 
   function updateForm(field: keyof ProjectForm, value: string) {
@@ -679,8 +728,8 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       ) : !session ? (
         <div className="auth-box">
           <p>
-            This is the real Vercel workspace. Sign in with Google here, then save a project to the
-            StudioBuild Supabase database.
+            Sign in with Google to save your film projects, reopen your workspace, and keep your
+            production packets organized.
           </p>
           <button className="button" type="button" onClick={signInWithGoogle}>
             Sign in with Google
@@ -692,6 +741,8 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
             <ProjectWorkspace
               draftText={draftText}
               entitlement={entitlement}
+              isStartingCheckout={isStartingCheckout}
+              onUpgrade={startCheckout}
               project={selectedProject}
               userEmail={userEmail}
               onBack={() => {
@@ -706,7 +757,12 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
                 <span>Signed in as</span>
                 <strong>{userEmail}</strong>
               </div>
-              <ProUnlockPanel entitlement={entitlement} compact />
+              <ProUnlockPanel
+                compact
+                entitlement={entitlement}
+                isUpgrading={isStartingCheckout}
+                onUpgrade={startCheckout}
+              />
 
               <label>
                 Project title
@@ -837,7 +893,9 @@ export function ProjectWorkspace({
   draftText,
   documents = [],
   entitlement = freeEntitlement,
+  isStartingCheckout = false,
   onDocumentsChange,
+  onUpgrade,
   onProductionAssetsChange,
   onSceneBreakdownsChange,
   productionAssets = [],
@@ -851,7 +909,9 @@ export function ProjectWorkspace({
   draftText: string;
   documents?: ProjectDocument[];
   entitlement?: AccessEntitlement;
+  isStartingCheckout?: boolean;
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
+  onUpgrade?: () => void;
   onProductionAssetsChange?: (productionAssets: ProductionAsset[]) => void;
   onSceneBreakdownsChange?: (sceneBreakdowns: SceneBreakdown[]) => void;
   productionAssets?: ProductionAsset[];
@@ -2158,7 +2218,7 @@ export function ProjectWorkspace({
         <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
       </div>
 
-      <ProUnlockPanel entitlement={entitlement} />
+      <ProUnlockPanel entitlement={entitlement} isUpgrading={isStartingCheckout} onUpgrade={onUpgrade} />
 
       <section className="readiness-panel" aria-label="Production readiness score">
         <div className="readiness-score">

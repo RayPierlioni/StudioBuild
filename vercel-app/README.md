@@ -6,7 +6,7 @@ The GitHub Pages demo stays online while this folder becomes the production arch
 
 - Supabase-backed users and projects
 - Admin full-access sign-in
-- Stripe `$4.99/week` subscriptions
+- Stripe `$2.99/week` Founder Pro subscriptions
 - Protected server-side AI generation
 - Multi-page app workflows
 
@@ -40,9 +40,11 @@ Never commit real values for:
 ## Current Routes
 
 - `/` - public product landing page with the no-cost Fix a Scene Free parser and Prompt Compiler
-- `/api/health` - checks which environment variable groups are configured
+- `/api/health` - basic app health check
 - `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
+- `/api/billing/checkout` - opens Founder Pro subscription checkout for signed-in users
+- `/api/billing/webhook` - receives billing events and updates subscription access
 - `/api/projects` - authenticated project list/create route backed by Supabase
 - `/api/projects/[projectId]` - authenticated single-project loader
 - `/api/projects/[projectId]/documents` - saves editable stage drafts per project
