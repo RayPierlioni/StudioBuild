@@ -1,3 +1,4 @@
+import { AuthReturnHandler } from "./auth-handler";
 import { SceneFixDemo } from "./scene-fix-demo";
 
 const heroImageUrl = "/cinematic-hero.webp";
@@ -28,6 +29,7 @@ const pricingCards = [
 export default function Home() {
   return (
     <main className="shell">
+      <AuthReturnHandler quiet />
       <section className="hero">
         <img src={heroImageUrl} alt="" />
         <div className="landing-nav">
