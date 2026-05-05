@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
-import { ProjectWorkspace, type Project, type ProjectDocument } from "../../../studio-workspace";
+import {
+  ProjectWorkspace,
+  type Project,
+  type ProjectDocument,
+  type SceneBreakdown,
+} from "../../../studio-workspace";
 
 type ProjectResponse = {
   ok: boolean;
   project?: Project;
   documents?: ProjectDocument[];
+  sceneBreakdowns?: SceneBreakdown[];
   error?: string;
 };
 
@@ -18,6 +24,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [sceneBreakdowns, setSceneBreakdowns] = useState<SceneBreakdown[]>([]);
   const [draftText, setDraftText] = useState("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
@@ -67,6 +74,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
 
         setProject(result.project);
         setDocuments(result.documents ?? []);
+        setSceneBreakdowns(result.sceneBreakdowns ?? []);
         setDraftText(result.documents?.[0]?.content ?? "");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Unable to open project.");
@@ -125,11 +133,13 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             draftText={draftText}
             documents={documents}
             project={project}
+            sceneBreakdowns={sceneBreakdowns}
             userEmail={session.user.email ?? "Signed-in user"}
             onBack={() => {
               window.location.assign("/");
             }}
             onDocumentsChange={setDocuments}
+            onSceneBreakdownsChange={setSceneBreakdowns}
             onDraftChange={setDraftText}
           />
         ) : (

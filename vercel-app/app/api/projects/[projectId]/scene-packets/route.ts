@@ -11,6 +11,24 @@ type ScenePacketPayload = {
   toolStack?: string;
 };
 
+type ScenePacketUpdatePayload = {
+  sceneBreakdownId?: string;
+  scene_heading?: string;
+  location?: string;
+  time_of_day?: string;
+  summary?: string;
+  characters?: string[] | string;
+  props?: string[] | string;
+  wardrobe?: string[] | string;
+  makeup_hair?: string[] | string;
+  set_dressing?: string[] | string;
+  vehicles?: string[] | string;
+  sound_notes?: string;
+  color_palette?: string;
+  blocking?: string;
+  tone?: string;
+};
+
 type ProjectDocument = {
   id: string;
   doc_type: string;
@@ -29,6 +47,9 @@ type SavedSceneBreakdown = {
   characters: string[];
   props: string[];
   wardrobe: string[];
+  makeup_hair: string[];
+  set_dressing: string[];
+  vehicles: string[];
   sound_notes: string;
   color_palette: string;
   blocking: string;
@@ -41,6 +62,49 @@ export const dynamic = "force-dynamic";
 
 function cleanText(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
+}
+
+function cleanList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 30);
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
+async function loadSceneBreakdowns({
+  projectId,
+  supabase,
+  userId,
+}: {
+  projectId: string;
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  userId: string;
+}) {
+  const { data: sceneBreakdowns, error } = await supabase
+    .from("scene_breakdowns")
+    .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,makeup_hair,set_dressing,vehicles,sound_notes,color_palette,blocking,tone,created_at,updated_at")
+    .eq("project_id", projectId)
+    .eq("owner_id", userId)
+    .order("scene_number", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (sceneBreakdowns ?? []) as SavedSceneBreakdown[];
 }
 
 async function saveBreakdownDocument({
@@ -203,12 +267,12 @@ export async function POST(request: Request, context: RouteContext) {
             .from("scene_breakdowns")
             .update(row)
             .eq("id", existingId)
-            .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,sound_notes,color_palette,blocking,tone,created_at,updated_at")
+            .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,makeup_hair,set_dressing,vehicles,sound_notes,color_palette,blocking,tone,created_at,updated_at")
             .single()
         : await supabase
             .from("scene_breakdowns")
             .insert(row)
-            .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,sound_notes,color_palette,blocking,tone,created_at,updated_at")
+            .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,makeup_hair,set_dressing,vehicles,sound_notes,color_palette,blocking,tone,created_at,updated_at")
             .single();
 
       if (result.error || !result.data) {
@@ -253,6 +317,90 @@ export async function POST(request: Request, context: RouteContext) {
       {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to save scene packet.",
+      },
+      { status: 401 },
+    );
+  }
+}
+
+export async function PATCH(request: Request, context: RouteContext) {
+  try {
+    const { user } = await getVerifiedRequestUser(request);
+    const { projectId } = await context.params;
+    const body = (await request.json()) as ScenePacketUpdatePayload;
+    const sceneBreakdownId = cleanText(body.sceneBreakdownId);
+
+    if (!projectId) {
+      return Response.json({ ok: false, error: "Missing project ID." }, { status: 400 });
+    }
+
+    if (!sceneBreakdownId) {
+      return Response.json({ ok: false, error: "Missing scene packet ID." }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdminClient();
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("owner_id", user.id)
+      .single();
+
+    if (projectError || !project) {
+      return Response.json(
+        { ok: false, error: projectError?.message ?? "Project not found." },
+        { status: 404 },
+      );
+    }
+
+    const now = new Date().toISOString();
+    const updates = {
+      scene_heading: cleanText(body.scene_heading),
+      location: cleanText(body.location),
+      time_of_day: cleanText(body.time_of_day),
+      summary: cleanText(body.summary),
+      characters: cleanList(body.characters),
+      props: cleanList(body.props),
+      wardrobe: cleanList(body.wardrobe),
+      makeup_hair: cleanList(body.makeup_hair),
+      set_dressing: cleanList(body.set_dressing),
+      vehicles: cleanList(body.vehicles),
+      sound_notes: cleanText(body.sound_notes),
+      color_palette: cleanText(body.color_palette),
+      blocking: cleanText(body.blocking),
+      tone: cleanText(body.tone),
+      updated_at: now,
+    };
+
+    const { data: sceneBreakdown, error: updateError } = await supabase
+      .from("scene_breakdowns")
+      .update(updates)
+      .eq("id", sceneBreakdownId)
+      .eq("project_id", projectId)
+      .eq("owner_id", user.id)
+      .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,makeup_hair,set_dressing,vehicles,sound_notes,color_palette,blocking,tone,created_at,updated_at")
+      .single();
+
+    if (updateError || !sceneBreakdown) {
+      return Response.json(
+        { ok: false, error: updateError?.message ?? "Unable to save scene packet edits." },
+        { status: 502 },
+      );
+    }
+
+    const sceneBreakdowns = await loadSceneBreakdowns({ projectId, supabase, userId: user.id });
+
+    return Response.json({
+      ok: true,
+      sceneBreakdown,
+      sceneBreakdowns,
+      message: `Scene ${sceneBreakdown.scene_number} saved.`,
+    });
+  } catch (error) {
+    return Response.json(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to save scene packet edits.",
       },
       { status: 401 },
     );

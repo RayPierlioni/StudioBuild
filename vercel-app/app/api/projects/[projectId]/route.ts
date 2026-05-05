@@ -42,7 +42,23 @@ export async function GET(request: Request, context: RouteContext) {
       return Response.json({ ok: false, error: documentsError.message }, { status: 502 });
     }
 
-    return Response.json({ ok: true, project, documents: documents ?? [] });
+    const { data: sceneBreakdowns, error: sceneBreakdownsError } = await supabase
+      .from("scene_breakdowns")
+      .select("id,scene_number,scene_heading,location,time_of_day,summary,characters,props,wardrobe,makeup_hair,set_dressing,vehicles,sound_notes,color_palette,blocking,tone,created_at,updated_at")
+      .eq("project_id", project.id)
+      .eq("owner_id", user.id)
+      .order("scene_number", { ascending: true });
+
+    if (sceneBreakdownsError) {
+      return Response.json({ ok: false, error: sceneBreakdownsError.message }, { status: 502 });
+    }
+
+    return Response.json({
+      ok: true,
+      project,
+      documents: documents ?? [],
+      sceneBreakdowns: sceneBreakdowns ?? [],
+    });
   } catch (error) {
     return Response.json(
       {

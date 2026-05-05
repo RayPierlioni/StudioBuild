@@ -38,6 +38,27 @@ export type ProjectDocument = {
   updated_at: string;
 };
 
+export type SceneBreakdown = {
+  id: string;
+  scene_number: number;
+  scene_heading: string;
+  location: string;
+  time_of_day: string;
+  summary: string;
+  characters: string[];
+  props: string[];
+  wardrobe: string[];
+  makeup_hair: string[];
+  set_dressing: string[];
+  vehicles: string[];
+  sound_notes: string;
+  color_palette: string;
+  blocking: string;
+  tone: string;
+  created_at: string;
+  updated_at: string;
+};
+
 type GenerateResponse = {
   ok: boolean;
   mode?: GenerateMode;
@@ -51,15 +72,36 @@ type GenerateResponse = {
 
 type ScenePacketResponse = {
   ok: boolean;
-  sceneBreakdowns?: Array<{
-    id: string;
-    scene_number: number;
-    scene_heading: string;
-  }>;
+  sceneBreakdowns?: SceneBreakdown[];
   document?: ProjectDocument;
   documents?: ProjectDocument[];
   message?: string;
   error?: string;
+};
+
+type ScenePacketEditResponse = {
+  ok: boolean;
+  sceneBreakdown?: SceneBreakdown;
+  sceneBreakdowns?: SceneBreakdown[];
+  message?: string;
+  error?: string;
+};
+
+type SceneBreakdownDraft = {
+  scene_heading: string;
+  location: string;
+  time_of_day: string;
+  summary: string;
+  characters: string;
+  props: string;
+  wardrobe: string;
+  makeup_hair: string;
+  set_dressing: string;
+  vehicles: string;
+  sound_notes: string;
+  color_palette: string;
+  blocking: string;
+  tone: string;
 };
 
 type ProjectForm = {
@@ -135,6 +177,52 @@ function splitInspirations(value: string) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function listText(values: string[] | undefined, fallback: string) {
+  return values?.length ? values.join(", ") : fallback;
+}
+
+function joinList(values: string[] | undefined) {
+  return values?.length ? values.join(", ") : "";
+}
+
+function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
+  return {
+    scene_heading: scene.scene_heading,
+    location: scene.location,
+    time_of_day: scene.time_of_day,
+    summary: scene.summary,
+    characters: joinList(scene.characters),
+    props: joinList(scene.props),
+    wardrobe: joinList(scene.wardrobe),
+    makeup_hair: joinList(scene.makeup_hair),
+    set_dressing: joinList(scene.set_dressing),
+    vehicles: joinList(scene.vehicles),
+    sound_notes: scene.sound_notes,
+    color_palette: scene.color_palette,
+    blocking: scene.blocking,
+    tone: scene.tone,
+  };
+}
+
+function emptySceneDraft(): SceneBreakdownDraft {
+  return {
+    scene_heading: "",
+    location: "",
+    time_of_day: "",
+    summary: "",
+    characters: "",
+    props: "",
+    wardrobe: "",
+    makeup_hair: "",
+    set_dressing: "",
+    vehicles: "",
+    sound_notes: "",
+    color_palette: "",
+    blocking: "",
+    tone: "",
+  };
 }
 
 export function StudioWorkspace() {
@@ -458,7 +546,9 @@ export function ProjectWorkspace({
   draftText,
   documents = [],
   onDocumentsChange,
+  onSceneBreakdownsChange,
   project,
+  sceneBreakdowns = [],
   userEmail,
   onBack,
   onDraftChange,
@@ -467,7 +557,9 @@ export function ProjectWorkspace({
   draftText: string;
   documents?: ProjectDocument[];
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
+  onSceneBreakdownsChange?: (sceneBreakdowns: SceneBreakdown[]) => void;
   project: Project;
+  sceneBreakdowns?: SceneBreakdown[];
   userEmail: string;
   onBack: () => void;
   onDraftChange: (value: string) => void;
@@ -490,6 +582,9 @@ export function ProjectWorkspace({
   const [saveError, setSaveError] = useState("");
   const [isSavingStage, setIsSavingStage] = useState(false);
   const [isSavingPacket, setIsSavingPacket] = useState(false);
+  const [editingSceneId, setEditingSceneId] = useState("");
+  const [sceneDrafts, setSceneDrafts] = useState<Record<string, SceneBreakdownDraft>>({});
+  const [savingSceneId, setSavingSceneId] = useState("");
   const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
@@ -695,6 +790,7 @@ export function ProjectWorkspace({
       }));
       onDraftChange(result.document.content);
       onDocumentsChange?.(result.documents ?? [result.document]);
+      onSceneBreakdownsChange?.(result.sceneBreakdowns ?? []);
       setActiveStepId("breakdown");
       setSaveStatus(
         result.message ??
@@ -705,6 +801,84 @@ export function ProjectWorkspace({
       setSaveError(caught instanceof Error ? caught.message : "Unable to save scene packet.");
     } finally {
       setIsSavingPacket(false);
+    }
+  }
+
+  function startEditingScene(scene: SceneBreakdown) {
+    setEditingSceneId(scene.id);
+    setSceneDrafts((current) => ({
+      ...current,
+      [scene.id]: current[scene.id] ?? sceneToDraft(scene),
+    }));
+    setSaveStatus("");
+    setSaveError("");
+  }
+
+  function updateSceneDraft(sceneId: string, field: keyof SceneBreakdownDraft, value: string) {
+    setSceneDrafts((current) => {
+      const sourceScene = sceneBreakdowns.find((scene) => scene.id === sceneId);
+      const currentDraft = current[sceneId] ?? (sourceScene ? sceneToDraft(sourceScene) : emptySceneDraft());
+
+      return {
+        ...current,
+        [sceneId]: {
+          ...currentDraft,
+          [field]: value,
+        },
+      };
+    });
+  }
+
+  function cancelSceneEdit(sceneId: string) {
+    setEditingSceneId("");
+    setSceneDrafts((current) => {
+      const next = { ...current };
+      delete next[sceneId];
+      return next;
+    });
+  }
+
+  async function saveSceneEdit(scene: SceneBreakdown) {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before editing scene packets.");
+      return;
+    }
+
+    const draft = sceneDrafts[scene.id] ?? sceneToDraft(scene);
+    setSavingSceneId(scene.id);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/scene-packets`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sceneBreakdownId: scene.id,
+          ...draft,
+        }),
+      });
+      const result = (await response.json()) as ScenePacketEditResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Unable to save scene packet edits.");
+      }
+
+      onSceneBreakdownsChange?.(result.sceneBreakdowns ?? []);
+      setEditingSceneId("");
+      setSceneDrafts((current) => {
+        const next = { ...current };
+        delete next[scene.id];
+        return next;
+      });
+      setSaveStatus(result.message ?? `Scene ${scene.scene_number} saved.`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to save scene packet edits.");
+    } finally {
+      setSavingSceneId("");
     }
   }
 
@@ -848,6 +1022,192 @@ export function ProjectWorkspace({
           </p>
         </aside>
       </div>
+
+      {sceneBreakdowns.length ? (
+        <section className="scene-packet-board" aria-label="Saved scene packets">
+          <div className="tool-heading">
+            <div>
+              <h4>Saved scene packets</h4>
+              <p>{sceneBreakdowns.length} structured scene breakdown row(s) saved in Supabase.</p>
+            </div>
+            <span>No hosted AI cost</span>
+          </div>
+
+          <div className="scene-packet-grid">
+            {sceneBreakdowns.map((scene) => {
+              const isEditing = editingSceneId === scene.id;
+              const draft = sceneDrafts[scene.id] ?? sceneToDraft(scene);
+
+              return (
+                <article className="scene-packet-card" key={scene.id}>
+                  <div className="packet-card-top">
+                    <div>
+                      <span>{String(scene.scene_number).padStart(2, "0")}</span>
+                      <strong>{scene.scene_heading || "Unlabeled scene"}</strong>
+                    </div>
+                    {isEditing ? (
+                      <div className="packet-card-actions">
+                        <button
+                          className="button"
+                          type="button"
+                          onClick={() => saveSceneEdit(scene)}
+                          disabled={savingSceneId === scene.id}
+                        >
+                          {savingSceneId === scene.id ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          onClick={() => cancelSceneEdit(scene.id)}
+                          disabled={savingSceneId === scene.id}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="button secondary" type="button" onClick={() => startEditingScene(scene)}>
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="packet-edit-grid">
+                      <label>
+                        Scene heading
+                        <input
+                          value={draft.scene_heading}
+                          onChange={(event) => updateSceneDraft(scene.id, "scene_heading", event.target.value)}
+                        />
+                      </label>
+                      <div className="field-pair">
+                        <label>
+                          Location
+                          <input
+                            value={draft.location}
+                            onChange={(event) => updateSceneDraft(scene.id, "location", event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          Time
+                          <input
+                            value={draft.time_of_day}
+                            onChange={(event) => updateSceneDraft(scene.id, "time_of_day", event.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <label>
+                        Summary
+                        <textarea
+                          value={draft.summary}
+                          onChange={(event) => updateSceneDraft(scene.id, "summary", event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Characters
+                        <input
+                          value={draft.characters}
+                          onChange={(event) => updateSceneDraft(scene.id, "characters", event.target.value)}
+                          placeholder="Mara, Jonah"
+                        />
+                      </label>
+                      <label>
+                        Props
+                        <input
+                          value={draft.props}
+                          onChange={(event) => updateSceneDraft(scene.id, "props", event.target.value)}
+                          placeholder="Key, door, folder"
+                        />
+                      </label>
+                      <label>
+                        Wardrobe
+                        <input
+                          value={draft.wardrobe}
+                          onChange={(event) => updateSceneDraft(scene.id, "wardrobe", event.target.value)}
+                          placeholder="Rain coat, work shirt"
+                        />
+                      </label>
+                      <label>
+                        Set dressing
+                        <input
+                          value={draft.set_dressing}
+                          onChange={(event) => updateSceneDraft(scene.id, "set_dressing", event.target.value)}
+                          placeholder="Kitchen, table, practical lamp"
+                        />
+                      </label>
+                      <label>
+                        Sound
+                        <textarea
+                          value={draft.sound_notes}
+                          onChange={(event) => updateSceneDraft(scene.id, "sound_notes", event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Blocking
+                        <textarea
+                          value={draft.blocking}
+                          onChange={(event) => updateSceneDraft(scene.id, "blocking", event.target.value)}
+                        />
+                      </label>
+                      <div className="field-pair">
+                        <label>
+                          Color/feel
+                          <input
+                            value={draft.color_palette}
+                            onChange={(event) => updateSceneDraft(scene.id, "color_palette", event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          Tone
+                          <input
+                            value={draft.tone}
+                            onChange={(event) => updateSceneDraft(scene.id, "tone", event.target.value)}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p>{scene.summary || "Add the scene purpose and emotional turn."}</p>
+                      <div className="packet-meta">
+                        <span>{scene.location || "No location"}</span>
+                        <span>{scene.time_of_day || "No time"}</span>
+                        <span>{scene.tone || "Needs tone"}</span>
+                      </div>
+                      <dl className="packet-list">
+                        <div>
+                          <dt>Characters</dt>
+                          <dd>{listText(scene.characters, "Not filled yet")}</dd>
+                        </div>
+                        <div>
+                          <dt>Props</dt>
+                          <dd>{listText(scene.props, "Not filled yet")}</dd>
+                        </div>
+                        <div>
+                          <dt>Wardrobe</dt>
+                          <dd>{listText(scene.wardrobe, "Not filled yet")}</dd>
+                        </div>
+                        <div>
+                          <dt>Set</dt>
+                          <dd>{listText(scene.set_dressing, "Not filled yet")}</dd>
+                        </div>
+                        <div>
+                          <dt>Sound</dt>
+                          <dd>{scene.sound_notes || "Not filled yet"}</dd>
+                        </div>
+                        <div>
+                          <dt>Blocking</dt>
+                          <dd>{scene.blocking || "Not filled yet"}</dd>
+                        </div>
+                      </dl>
+                    </>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }

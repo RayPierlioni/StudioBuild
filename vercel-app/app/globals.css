@@ -617,6 +617,164 @@ textarea:focus {
   font-size: 13px;
 }
 
+.scene-packet-board {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)),
+    rgba(237, 241, 240, 0.46);
+}
+
+.scene-packet-board .tool-heading {
+  align-items: start;
+}
+
+.scene-packet-board .tool-heading p {
+  margin-top: 5px;
+  max-width: 620px;
+  font-size: 13px;
+}
+
+.scene-packet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scene-packet-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.packet-card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.packet-card-top > div {
+  display: grid;
+  gap: 8px;
+}
+
+.packet-card-top span {
+  color: var(--accent-dark);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.packet-card-top strong {
+  color: var(--deep);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.packet-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.packet-card-actions .button,
+.packet-card-top > .button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.scene-packet-card p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.packet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.packet-meta span {
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 250, 241, 0.72);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.packet-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.packet-list div {
+  display: grid;
+  gap: 3px;
+}
+
+.packet-list dt {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.packet-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.packet-edit-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.packet-edit-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--deep);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.packet-edit-grid input,
+.packet-edit-grid textarea {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.packet-edit-grid textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
 .workflow-field {
   display: grid;
   gap: 7px;
@@ -844,7 +1002,8 @@ code {
   .demo-grid,
   .deliverable-grid,
   .phase-grid,
-  .pricing-grid {
+  .pricing-grid,
+  .scene-packet-grid {
     grid-template-columns: 1fr;
   }
 
