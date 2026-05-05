@@ -524,6 +524,91 @@ textarea:focus {
   margin-top: 12px;
 }
 
+.readiness-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(0, 1.45fr);
+  gap: 12px;
+}
+
+.readiness-score,
+.readiness-next {
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(237, 241, 240, 0.54)),
+    white;
+}
+
+.readiness-score span,
+.readiness-next > span {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.readiness-score strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--deep);
+  font-size: clamp(44px, 7vw, 76px);
+  line-height: 0.88;
+}
+
+.readiness-score p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.readiness-next {
+  display: grid;
+  gap: 10px;
+}
+
+.readiness-next > strong {
+  color: var(--deep);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.readiness-checks {
+  display: grid;
+  gap: 7px;
+}
+
+.readiness-checks small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.readiness-checks small span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(182, 93, 104, 0.24);
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: var(--accent-dark);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.readiness-checks small.complete {
+  color: var(--deep);
+}
+
+.readiness-checks small.complete span {
+  border-color: rgba(102, 127, 118, 0.28);
+  color: #49675d;
+}
+
 .export-panel {
   display: flex;
   flex-wrap: wrap;
@@ -1271,6 +1356,7 @@ code {
 
   .studio-grid,
   .field-pair,
+  .readiness-panel,
   .workspace-tools,
   .demo-grid,
   .deliverable-grid,

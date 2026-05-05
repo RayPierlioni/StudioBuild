@@ -263,6 +263,18 @@ function htmlList(values: string[] | undefined, fallback = "Not filled yet") {
   return `<ul>${cleaned.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul>`;
 }
 
+function hasText(value: string | undefined) {
+  return Boolean(value?.trim());
+}
+
+function hasList(values: string[] | undefined) {
+  return Boolean(values?.some((value) => value.trim()));
+}
+
+function completionLine(label: string, isComplete: boolean) {
+  return { label, isComplete };
+}
+
 function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
   return {
     scene_heading: scene.scene_heading,
@@ -678,6 +690,51 @@ export function ProjectWorkspace({
       return grouped;
     }, {});
   }, [productionAssets]);
+  const readiness = useMemo(() => {
+    const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
+    const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
+    const imagePromptCount = productionAssets.filter((asset) => hasText(asset.image_prompt)).length;
+    const animationPromptCount = productionAssets.filter(
+      (asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+    ).length;
+    const sceneCompleteness = sceneBreakdowns.length
+      ? sceneBreakdowns.filter(
+          (scene) =>
+            hasText(scene.summary) &&
+            hasList(scene.characters) &&
+            hasList(scene.props) &&
+            hasText(scene.sound_notes) &&
+            hasText(scene.blocking),
+        ).length / sceneBreakdowns.length
+      : 0;
+
+    const checks = [
+      completionLine(
+        "Project has title, genre, tone, and logline",
+        hasText(project.title) && hasText(project.genre) && hasText(project.tone) && hasText(project.logline),
+      ),
+      completionLine("Idea or script draft saved", hasText(drafts.idea) || hasText(drafts.script)),
+      completionLine("Treatment or story notes started", hasText(drafts.treatment) || hasText(drafts.story)),
+      completionLine("At least one scene packet saved", sceneBreakdowns.length > 0),
+      completionLine("Scene packets include core production fields", sceneCompleteness >= 0.75),
+      completionLine("Detailed shot list built", shotAssets.length > 0),
+      completionLine("Image prompts generated", imagePromptCount > 0),
+      completionLine("Animation plus sound prompts generated", animationPromptCount > 0),
+      completionLine("Insert or prompt cards created", promptAssets.length > 0),
+      completionLine("Production packet ready to export", sceneBreakdowns.length > 0 && productionAssets.length > 0),
+    ];
+    const completedCount = checks.filter((check) => check.isComplete).length;
+    const score = Math.round((completedCount / checks.length) * 100);
+    const next = checks.find((check) => !check.isComplete)?.label ?? "Export the premium production packet";
+
+    return {
+      checks,
+      completedCount,
+      next,
+      score,
+      total: checks.length,
+    };
+  }, [drafts, productionAssets, project, sceneBreakdowns]);
 
   useEffect(() => {
     setDrafts((current) => {
@@ -1635,6 +1692,28 @@ export function ProjectWorkspace({
         <h3>{project.title}</h3>
         <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
       </div>
+
+      <section className="readiness-panel" aria-label="Production readiness score">
+        <div className="readiness-score">
+          <span>Production readiness</span>
+          <strong>{readiness.score}%</strong>
+          <p>
+            {readiness.completedCount} of {readiness.total} production checks complete.
+          </p>
+        </div>
+        <div className="readiness-next">
+          <span>Next best action</span>
+          <strong>{readiness.next}</strong>
+          <div className="readiness-checks">
+            {readiness.checks.slice(0, 5).map((check) => (
+              <small className={check.isComplete ? "complete" : ""} key={check.label}>
+                <span>{check.isComplete ? "Done" : "Next"}</span>
+                {check.label}
+              </small>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <div className="export-panel" aria-label="Production packet export">
         <div>
