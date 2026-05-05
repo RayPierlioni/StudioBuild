@@ -8,6 +8,7 @@ import {
   ProjectWorkspace,
   type Project,
   type ProjectDocument,
+  type ProductionAsset,
   type SceneBreakdown,
 } from "../../../studio-workspace";
 
@@ -16,6 +17,7 @@ type ProjectResponse = {
   project?: Project;
   documents?: ProjectDocument[];
   sceneBreakdowns?: SceneBreakdown[];
+  productionAssets?: ProductionAsset[];
   error?: string;
 };
 
@@ -25,6 +27,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [sceneBreakdowns, setSceneBreakdowns] = useState<SceneBreakdown[]>([]);
+  const [productionAssets, setProductionAssets] = useState<ProductionAsset[]>([]);
   const [draftText, setDraftText] = useState("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
@@ -75,6 +78,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         setProject(result.project);
         setDocuments(result.documents ?? []);
         setSceneBreakdowns(result.sceneBreakdowns ?? []);
+        setProductionAssets(result.productionAssets ?? []);
         setDraftText(result.documents?.[0]?.content ?? "");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Unable to open project.");
@@ -132,6 +136,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             accessToken={session.access_token}
             draftText={draftText}
             documents={documents}
+            productionAssets={productionAssets}
             project={project}
             sceneBreakdowns={sceneBreakdowns}
             userEmail={session.user.email ?? "Signed-in user"}
@@ -139,6 +144,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
               window.location.assign("/");
             }}
             onDocumentsChange={setDocuments}
+            onProductionAssetsChange={setProductionAssets}
             onSceneBreakdownsChange={setSceneBreakdowns}
             onDraftChange={setDraftText}
           />

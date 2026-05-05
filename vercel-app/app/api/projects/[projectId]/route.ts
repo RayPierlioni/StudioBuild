@@ -53,11 +53,24 @@ export async function GET(request: Request, context: RouteContext) {
       return Response.json({ ok: false, error: sceneBreakdownsError.message }, { status: 502 });
     }
 
+    const { data: productionAssets, error: productionAssetsError } = await supabase
+      .from("production_assets")
+      .select("id,project_id,scene_breakdown_id,owner_id,order_index,asset_type,name,purpose,visual,image_prompt,animation_prompt,sound_prompt,notes,created_at,updated_at")
+      .eq("project_id", project.id)
+      .eq("owner_id", user.id)
+      .order("scene_breakdown_id", { ascending: true })
+      .order("order_index", { ascending: true });
+
+    if (productionAssetsError) {
+      return Response.json({ ok: false, error: productionAssetsError.message }, { status: 502 });
+    }
+
     return Response.json({
       ok: true,
       project,
       documents: documents ?? [],
       sceneBreakdowns: sceneBreakdowns ?? [],
+      productionAssets: productionAssets ?? [],
     });
   } catch (error) {
     return Response.json(

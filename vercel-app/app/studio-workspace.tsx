@@ -59,6 +59,24 @@ export type SceneBreakdown = {
   updated_at: string;
 };
 
+export type ProductionAsset = {
+  id: string;
+  project_id: string;
+  scene_breakdown_id: string;
+  owner_id: string;
+  order_index: number;
+  asset_type: string;
+  name: string;
+  purpose: string;
+  visual: string;
+  image_prompt: string;
+  animation_prompt: string;
+  sound_prompt: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
 type GenerateResponse = {
   ok: boolean;
   mode?: GenerateMode;
@@ -83,6 +101,14 @@ type ScenePacketEditResponse = {
   ok: boolean;
   sceneBreakdown?: SceneBreakdown;
   sceneBreakdowns?: SceneBreakdown[];
+  message?: string;
+  error?: string;
+};
+
+type ProductionAssetResponse = {
+  ok: boolean;
+  productionAsset?: ProductionAsset;
+  productionAssets?: ProductionAsset[];
   message?: string;
   error?: string;
 };
@@ -546,7 +572,9 @@ export function ProjectWorkspace({
   draftText,
   documents = [],
   onDocumentsChange,
+  onProductionAssetsChange,
   onSceneBreakdownsChange,
+  productionAssets = [],
   project,
   sceneBreakdowns = [],
   userEmail,
@@ -557,7 +585,9 @@ export function ProjectWorkspace({
   draftText: string;
   documents?: ProjectDocument[];
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
+  onProductionAssetsChange?: (productionAssets: ProductionAsset[]) => void;
   onSceneBreakdownsChange?: (sceneBreakdowns: SceneBreakdown[]) => void;
+  productionAssets?: ProductionAsset[];
   project: Project;
   sceneBreakdowns?: SceneBreakdown[];
   userEmail: string;
@@ -584,10 +614,18 @@ export function ProjectWorkspace({
   const [isSavingPacket, setIsSavingPacket] = useState(false);
   const [editingSceneId, setEditingSceneId] = useState("");
   const [sceneDrafts, setSceneDrafts] = useState<Record<string, SceneBreakdownDraft>>({});
+  const [creatingAssetSceneId, setCreatingAssetSceneId] = useState("");
   const [savingSceneId, setSavingSceneId] = useState("");
   const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
+  const assetsBySceneId = useMemo(() => {
+    return productionAssets.reduce<Record<string, ProductionAsset[]>>((grouped, asset) => {
+      const key = asset.scene_breakdown_id;
+      grouped[key] = [...(grouped[key] ?? []), asset];
+      return grouped;
+    }, {});
+  }, [productionAssets]);
 
   useEffect(() => {
     setDrafts((current) => {
@@ -882,6 +920,43 @@ export function ProjectWorkspace({
     }
   }
 
+  async function createInsertShot(scene: SceneBreakdown) {
+    if (!accessToken) {
+      setSaveError("Open this project from its project page before creating production assets.");
+      return;
+    }
+
+    setCreatingAssetSceneId(scene.id);
+    setSaveStatus("");
+    setSaveError("");
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}/production-assets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sceneBreakdownId: scene.id,
+          assetType: "insert_shot",
+        }),
+      });
+      const result = (await response.json()) as ProductionAssetResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Unable to create insert shot.");
+      }
+
+      onProductionAssetsChange?.(result.productionAssets ?? []);
+      setSaveStatus(result.message ?? `Insert shot saved for scene ${scene.scene_number}.`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Unable to create insert shot.");
+    } finally {
+      setCreatingAssetSceneId("");
+    }
+  }
+
   return (
     <section className="project-workspace">
       <div className="project-toolbar">
@@ -1037,6 +1112,7 @@ export function ProjectWorkspace({
             {sceneBreakdowns.map((scene) => {
               const isEditing = editingSceneId === scene.id;
               const draft = sceneDrafts[scene.id] ?? sceneToDraft(scene);
+              const sceneAssets = assetsBySceneId[scene.id] ?? [];
 
               return (
                 <article className="scene-packet-card" key={scene.id}>
@@ -1200,6 +1276,52 @@ export function ProjectWorkspace({
                           <dd>{scene.blocking || "Not filled yet"}</dd>
                         </div>
                       </dl>
+                      <div className="asset-section">
+                        <div className="asset-heading">
+                          <strong>Prompt cards</strong>
+                          <button
+                            className="button secondary"
+                            type="button"
+                            onClick={() => createInsertShot(scene)}
+                            disabled={creatingAssetSceneId === scene.id}
+                          >
+                            {creatingAssetSceneId === scene.id ? "Adding..." : "I need another insert shot"}
+                          </button>
+                        </div>
+                        {sceneAssets.length ? (
+                          <div className="asset-card-list">
+                            {sceneAssets.map((asset) => (
+                              <article className="asset-card" key={asset.id}>
+                                <div className="asset-card-top">
+                                  <span>{asset.asset_type.replaceAll("_", " ")}</span>
+                                  <strong>{asset.name}</strong>
+                                </div>
+                                <p>{asset.purpose}</p>
+                                <dl>
+                                  <div>
+                                    <dt>Visual</dt>
+                                    <dd>{asset.visual}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Image prompt</dt>
+                                    <dd>{asset.image_prompt}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Animation prompt</dt>
+                                    <dd>{asset.animation_prompt}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Sound prompt</dt>
+                                    <dd>{asset.sound_prompt}</dd>
+                                  </div>
+                                </dl>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="asset-empty">No prompt cards yet.</p>
+                        )}
+                      </div>
                     </>
                   )}
                 </article>
