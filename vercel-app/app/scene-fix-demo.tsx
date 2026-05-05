@@ -128,7 +128,7 @@ export function SceneFixDemo() {
           <button className="button" type="button" onClick={copyPrompt}>
             Copy Expert Prompt
           </button>
-          <a className="button secondary" href="#workspace">
+          <a className="button secondary" href="/app">
             Open StudioBuild Workspace
           </a>
         </div>

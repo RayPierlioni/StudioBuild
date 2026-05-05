@@ -69,6 +69,198 @@ a {
   margin: 0 auto;
 }
 
+.app-shell {
+  min-height: 100vh;
+  padding: clamp(18px, 4vw, 44px);
+}
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1180px, 100%);
+  margin: 0 auto 18px;
+}
+
+.app-topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-topbar nav a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--deep);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.app-guide,
+.app-workspace {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.app-guide {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: clamp(18px, 4vw, 42px);
+  align-items: center;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: clamp(20px, 4vw, 42px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(237, 241, 240, 0.7)),
+    white;
+  box-shadow: var(--shadow);
+}
+
+.guide-character {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 300px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(182, 93, 104, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(29, 26, 28, 0.92), rgba(63, 49, 50, 0.88));
+  overflow: hidden;
+}
+
+.guide-character::after {
+  position: absolute;
+  right: -24px;
+  bottom: -28px;
+  width: 150px;
+  height: 92px;
+  border-radius: 999px;
+  background: rgba(182, 93, 104, 0.32);
+  content: "";
+}
+
+.guide-antenna {
+  width: 2px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.86);
+}
+
+.guide-antenna::before {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: -8px 0 0 -5px;
+  border-radius: 999px;
+  background: #fffaf1;
+  content: "";
+}
+
+.guide-head {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 112px;
+  height: 88px;
+  border: 1px solid rgba(255, 250, 241, 0.18);
+  border-radius: 24px;
+  padding-top: 34px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(237, 241, 240, 0.72)),
+    #edf1f0;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+}
+
+.guide-head span {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--accent-dark);
+}
+
+.guide-body {
+  position: relative;
+  width: 136px;
+  height: 116px;
+  margin-top: 14px;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.94), rgba(239, 229, 220, 0.84)),
+    #fffaf1;
+}
+
+.guide-book {
+  position: absolute;
+  left: 26px;
+  bottom: 24px;
+  width: 84px;
+  height: 44px;
+  border: 1px solid rgba(135, 63, 75, 0.28);
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, rgba(182, 93, 104, 0.14) 49%, rgba(135, 63, 75, 0.28) 50%, rgba(237, 241, 240, 0.86) 51%),
+    #fff;
+}
+
+.guide-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.guide-copy h1 {
+  max-width: 760px;
+  color: var(--deep);
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: 0.98;
+}
+
+.guide-copy > p:not(.eyebrow) {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(17px, 1.7vw, 21px);
+  line-height: 1.45;
+}
+
+.guide-paths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guide-paths a {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  border: 1px solid rgba(52, 47, 45, 0.11);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 250, 241, 0.58);
+}
+
+.guide-paths strong {
+  color: var(--deep);
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.guide-paths span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.app-workspace {
+  margin-top: 18px;
+}
+
 .hero {
   position: relative;
   min-height: clamp(640px, 86vh, 840px);
@@ -1782,10 +1974,17 @@ code {
     flex-direction: column;
   }
 
+  .app-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
 
+  .app-guide,
+  .guide-paths,
   .studio-grid,
   .field-pair,
   .readiness-panel,
@@ -1803,6 +2002,10 @@ code {
 
   .pipeline-strip {
     grid-template-columns: 1fr;
+  }
+
+  .guide-character {
+    min-height: 220px;
   }
 
   .asset-heading,

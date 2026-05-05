@@ -1,5 +1,4 @@
 import { SceneFixDemo } from "./scene-fix-demo";
-import { StudioWorkspace } from "./studio-workspace";
 
 const heroImageUrl = "/cinematic-hero.webp";
 
@@ -39,7 +38,7 @@ export default function Home() {
           <nav aria-label="StudioBuild sections">
             <a href="#fix-scene">Demo</a>
             <a href="#pricing">Pricing</a>
-            <a href="#workspace">Open App</a>
+            <a href="/app">Open App</a>
           </nav>
         </div>
         <div className="hero-copy">
@@ -54,7 +53,7 @@ export default function Home() {
             <a className="button" href="#fix-scene">
               Fix a Scene Free
             </a>
-            <a className="button secondary ghost" href="#workspace">
+            <a className="button secondary ghost" href="/app">
               Open App
             </a>
           </div>
@@ -71,10 +70,6 @@ export default function Home() {
         <div className="topline">
           <span className="pill">Workflow-first</span>
           <span className="pill">Production-ready packets</span>
-        </div>
-
-        <div id="workspace">
-          <StudioWorkspace />
         </div>
 
         <SceneFixDemo />
