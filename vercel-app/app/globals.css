@@ -1294,6 +1294,32 @@ textarea:focus {
   text-transform: none;
 }
 
+.ai-off-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(102, 127, 118, 0.18);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(237, 241, 240, 0.82), rgba(255, 255, 255, 0.66)),
+    white;
+}
+
+.ai-off-note strong {
+  color: #415f57;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-off-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .scene-demo {
   display: grid;
   gap: 18px;

@@ -12,13 +12,13 @@ const deliverables = [
 
 const workflowPhases = [
   ["Develop", "Idea, logline, synopsis, and treatment"],
-  ["Write", "Script import, selected rewrites, dialogue polish, and AI voice removal"],
+  ["Write", "Script import, rewrite prompts, dialogue rubrics, and AI voice removal"],
   ["Produce", "Scene cards, shot needs, prompt packs, and production packet export"],
 ];
 
 const pricingCards = [
   ["Free", "$0", "Try one scene, parse the production problem, and copy expert prompts."],
-  ["Founder Pro", "$19/mo", "Full workflow, exports, version history, prompt compiler, and hosted AI credits."],
+  ["Founder Pro", "$19/mo", "Full workflow, exports, production board, readiness score, and prompt compiler."],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];
 
@@ -59,7 +59,7 @@ export default function Home() {
       <section className="workspace">
         <div className="topline">
           <span className="pill">Workflow-first</span>
-          <span className="pill">Optional hosted AI</span>
+          <span className="pill">Bring-your-own-AI prompts</span>
         </div>
 
         <SceneFixDemo />
@@ -98,9 +98,10 @@ export default function Home() {
           <p className="eyebrow">Pricing Direction</p>
           <h2>Start with the workflow. Use AI where it counts.</h2>
           <p>
-            The product should stay valuable even when hosted AI is never clicked. Prompt compiler,
-            parser, readiness score, exports, and production packets become the core paid value;
-            hosted AI credits become the convenience layer.
+            The product stays valuable without hosted API calls. Prompt compiler, parser,
+            readiness score, production board, exports, and production packets become the core
+            paid value. Hosted AI can be introduced later as a convenience layer after demand is
+            proven.
           </p>
           <div className="pricing-grid">
             {pricingCards.map(([name, price, text]) => (

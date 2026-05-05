@@ -47,7 +47,7 @@ export function SceneFixDemo() {
           <p className="eyebrow">Fix a Scene Free</p>
           <h2>Paste a rough scene. Leave with a production plan.</h2>
           <p>
-            StudioBuild can create value before hosted AI fires: parse the scene, map the
+            StudioBuild creates value without hosted API calls: parse the scene, map the
             production problem, and compile the exact expert prompt for your own AI workflow.
           </p>
         </div>
@@ -129,7 +129,7 @@ export function SceneFixDemo() {
             Copy Expert Prompt
           </button>
           <a className="button secondary" href="#workspace">
-            Use StudioBuild AI - 3 credits
+            Open StudioBuild Workspace
           </a>
         </div>
         {copyStatus ? <p className="status success">{copyStatus}</p> : null}

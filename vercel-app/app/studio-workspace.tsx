@@ -77,17 +77,6 @@ export type ProductionAsset = {
   updated_at: string;
 };
 
-type GenerateResponse = {
-  ok: boolean;
-  mode?: GenerateMode;
-  generatedText?: string;
-  content?: string;
-  document?: ProjectDocument;
-  documents?: ProjectDocument[];
-  message?: string;
-  error?: string;
-};
-
 type ScenePacketResponse = {
   ok: boolean;
   sceneBreakdowns?: SceneBreakdown[];
@@ -684,7 +673,6 @@ export function ProjectWorkspace({
   const [creatingAssetSceneId, setCreatingAssetSceneId] = useState("");
   const [generatingAssetPromptId, setGeneratingAssetPromptId] = useState("");
   const [savingSceneId, setSavingSceneId] = useState("");
-  const [generatingMode, setGeneratingMode] = useState<GenerateMode | null>(null);
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
   const assetsBySceneId = useMemo(() => {
@@ -872,61 +860,70 @@ export function ProjectWorkspace({
     return { selectedText, selectionStart, selectionEnd };
   }
 
-  async function runGeneration(mode: GenerateMode) {
-    if (!accessToken) {
-      setSaveError("Open this project from its project page before using StudioBuild AI.");
-      return;
-    }
+  function buildExpertPrompt(mode: GenerateMode) {
+    const { selectedText } = selectedTextareaText();
+    const source = selectedText || currentDraft || scenePacketSource() || project.logline || project.title;
+    const projectContext = [
+      `Project title: ${project.title || "Untitled"}`,
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Cinematic references: ${project.inspirations?.length ? project.inspirations.join(", ") : "Not specified"}`,
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      `Current StudioBuild stage: ${activeStep.label}`,
+    ].join("\n");
+    const sharedRules = [
+      "Do not sound generic or robotic.",
+      "Make every note practical for an AI filmmaker preparing production assets.",
+      "Favor visual behavior, subtext, blocking, continuity, and production logic over vague advice.",
+      "Do not add music unless the story specifically requires it.",
+      "Return organized headings and concrete next actions.",
+    ].join("\n");
+    const instructions: Record<GenerateMode, string> = {
+      treatment:
+        "Write an industry-level treatment with cinematic prose, act movement, emotional turns, character wants, stakes, ending shape, and a same-but-different hook.",
+      script:
+        "Turn the material into screenplay-style pages with visual action, subtext, clean dialogue, playable beats, and no obvious AI voice.",
+      breakdown:
+        "Create a scene breakdown with scene purpose, emotional turn, characters, props, wardrobe, location, lighting, blocking, sound, insert shots, image prompts, animation prompts, continuity risks, and next production action.",
+      production:
+        "Create a production prompt plan with shot priorities, image prompts, animation prompts, sound design, dialogue timing, continuity notes, tool-specific adaptation notes, and export-ready prompt cards.",
+      improve:
+        "Improve the selected text while preserving the author's intent. Remove AI voice, add specificity, visual action, subtext, stronger rhythm, and a more cinematic emotional turn.",
+      dialogue:
+        "Polish the dialogue so it feels human, playable, compressed, character-specific, and full of subtext. Remove exposition and make the emotion live under the line.",
+      insert_shot:
+        "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
+      structure:
+        "Diagnose the structure. Identify missing beats, weak turns, unclear wants, low stakes, repeated information, and the next best rewrite action.",
+    };
 
-    const { selectedText, selectionStart, selectionEnd } = selectedTextareaText();
-    setGeneratingMode(mode);
-    setSaveStatus("");
-    setSaveError("");
+    return [
+      "You are a professional script supervisor, story editor, and AI film pre-production coordinator.",
+      "",
+      "PROJECT CONTEXT",
+      projectContext,
+      "",
+      "TASK",
+      instructions[mode],
+      "",
+      "RULES",
+      sharedRules,
+      "",
+      "SOURCE MATERIAL",
+      source,
+    ].join("\n");
+  }
+
+  async function copyExpertPrompt(mode: GenerateMode) {
+    const prompt = buildExpertPrompt(mode);
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode,
-          projectId: project.id,
-          docType: activeStep.docType,
-          content: currentDraft,
-          selectedText,
-          selectionStart,
-          selectionEnd,
-          workflow: workflowTools,
-        }),
-      });
-      const result = (await response.json()) as GenerateResponse;
-
-      if (!response.ok || !result.ok || !result.document) {
-        throw new Error(result.message ?? result.error ?? "StudioBuild AI could not complete that pass.");
-      }
-
-      const nextContent = result.content ?? result.document.content;
-      const nextStep = pipelineSteps.find((step) => step.docType === result.document?.doc_type);
-
-      setDrafts((current) => ({
-        ...current,
-        [result.document!.doc_type]: nextContent,
-      }));
-      onDraftChange(nextContent);
-      onDocumentsChange?.(result.documents ?? [result.document]);
-
-      if (nextStep) {
-        setActiveStepId(nextStep.id);
-      }
-
-      setSaveStatus(`${nextStep?.label ?? activeStep.label} generated and saved to Supabase.`);
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
-    } catch (caught) {
-      setSaveError(caught instanceof Error ? caught.message : "StudioBuild AI could not complete that pass.");
-    } finally {
-      setGeneratingMode(null);
+      await navigator.clipboard.writeText(prompt);
+      setSaveStatus("Expert prompt copied. Paste it into the AI tool you already use, then bring the result back into StudioBuild.");
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Select the text in the editor and copy it manually.");
     }
   }
 
@@ -1938,26 +1935,23 @@ export function ProjectWorkspace({
             <button
               className="button secondary"
               type="button"
-              onClick={() => runGeneration("improve")}
-              disabled={Boolean(generatingMode)}
+              onClick={() => copyExpertPrompt("improve")}
             >
-              {generatingMode === "improve" ? "Improving..." : "Improve Selected"}
+              Copy improve prompt
             </button>
             <button
               className="button secondary"
               type="button"
-              onClick={() => runGeneration("dialogue")}
-              disabled={Boolean(generatingMode)}
+              onClick={() => copyExpertPrompt("dialogue")}
             >
-              {generatingMode === "dialogue" ? "Polishing..." : "Dialogue Polish"}
+              Copy dialogue prompt
             </button>
             <button
               className="button secondary"
               type="button"
-              onClick={() => runGeneration("structure")}
-              disabled={Boolean(generatingMode)}
+              onClick={() => copyExpertPrompt("structure")}
             >
-              {generatingMode === "structure" ? "Structuring..." : "Structure Pass"}
+              Copy structure prompt
             </button>
             <button className="button secondary" type="button" onClick={() => fileInputRef.current?.click()}>
               Import Script
@@ -1985,27 +1979,34 @@ export function ProjectWorkspace({
               placeholder="Image: Midjourney. Animation: Runway. Sound: ElevenLabs. Edit: Premiere."
             />
           </label>
-          <button type="button" onClick={() => runGeneration("treatment")} disabled={Boolean(generatingMode)}>
-            {generatingMode === "treatment" ? "Writing treatment..." : "Write industry treatment"}
+          <div className="ai-off-note">
+            <strong>Founder beta: no hosted AI calls</strong>
+            <p>
+              StudioBuild gives you expert prompts to use in your own AI tools, then you save the
+              results back into the workflow.
+            </p>
+          </div>
+          <button type="button" onClick={() => copyExpertPrompt("treatment")}>
+            Copy treatment prompt
           </button>
-          <button type="button" onClick={() => runGeneration("script")} disabled={Boolean(generatingMode)}>
-            {generatingMode === "script" ? "Writing script..." : "Write script pages"}
+          <button type="button" onClick={() => copyExpertPrompt("script")}>
+            Copy script prompt
           </button>
-          <button type="button" onClick={() => runGeneration("breakdown")} disabled={Boolean(generatingMode)}>
-            {generatingMode === "breakdown" ? "Breaking down..." : "Build scene breakdown"}
+          <button type="button" onClick={() => copyExpertPrompt("breakdown")}>
+            Copy breakdown prompt
           </button>
           <button type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
             {isSavingPacket ? "Saving no-AI packet..." : "Parse + save no-AI scene packet"}
           </button>
-          <button type="button" onClick={() => runGeneration("production")} disabled={Boolean(generatingMode)}>
-            {generatingMode === "production" ? "Building prompts..." : "Create production prompt plan"}
+          <button type="button" onClick={() => copyExpertPrompt("production")}>
+            Copy production prompt plan
           </button>
-          <button type="button" onClick={() => runGeneration("insert_shot")} disabled={Boolean(generatingMode)}>
-            {generatingMode === "insert_shot" ? "Finding insert..." : "I need another insert shot"}
+          <button type="button" onClick={() => copyExpertPrompt("insert_shot")}>
+            Copy insert-shot prompt
           </button>
           <p>
-            Use the no-AI scene packet first to create real production data. Hosted AI actions stay
-            available for higher-leverage passes once API credits are ready.
+            The paid value is the workflow, parser, production board, prompt compiler, readiness
+            score, and export system. Hosted AI can be introduced later after signups prove demand.
           </p>
         </aside>
       </div>
