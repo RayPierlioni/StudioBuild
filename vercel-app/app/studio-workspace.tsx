@@ -233,6 +233,36 @@ function slugFileName(value: string) {
   );
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function htmlValue(value: string | undefined, fallback = "Not filled yet") {
+  return escapeHtml(markdownValue(value, fallback));
+}
+
+function htmlParagraphs(value: string | undefined, fallback = "Not filled yet") {
+  return markdownValue(value, fallback)
+    .split(/\n{2,}/)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+function htmlList(values: string[] | undefined, fallback = "Not filled yet") {
+  const cleaned = values?.map((value) => value.trim()).filter(Boolean) ?? [];
+
+  if (!cleaned.length) {
+    return `<p>${escapeHtml(fallback)}</p>`;
+  }
+
+  return `<ul>${cleaned.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul>`;
+}
+
 function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
   return {
     scene_heading: scene.scene_heading,
@@ -1172,6 +1202,373 @@ export function ProjectWorkspace({
       .join("\n\n");
   }
 
+  function buildPremiumPacketHtml() {
+    const docSections: Array<{ label: string; value: string }> = [
+      { label: "Idea", value: drafts.idea },
+      { label: "Treatment", value: drafts.treatment },
+      { label: "Script", value: drafts.script },
+      { label: "Breakdown Notes", value: drafts.breakdown_notes },
+      { label: "Production Notes", value: drafts.story },
+    ].filter((section) => section.value.trim());
+
+    const sceneSections = sceneBreakdowns
+      .map((scene) => {
+        const sceneAssets = assetsBySceneId[scene.id] ?? [];
+        const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
+        const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
+
+        const shotRows = shotAssets.length
+          ? shotAssets
+              .map(
+                (asset) => `
+                  <article class="shot">
+                    <div class="shot-number">${String(asset.order_index).padStart(2, "0")}</div>
+                    <div>
+                      <h4>${htmlValue(asset.name, "Untitled shot")}</h4>
+                      <p class="purpose">${htmlValue(asset.purpose)}</p>
+                      <p>${htmlValue(asset.visual)}</p>
+                      <div class="prompt-grid">
+                        <section><b>Image Prompt</b>${htmlParagraphs(asset.image_prompt)}</section>
+                        <section><b>Animation Prompt</b>${htmlParagraphs(asset.animation_prompt)}</section>
+                        <section><b>Sound / Dialogue</b>${htmlParagraphs(asset.sound_prompt)}</section>
+                      </div>
+                    </div>
+                  </article>
+                `,
+              )
+              .join("")
+          : `<p class="empty">Shot list not built yet.</p>`;
+
+        const promptCards = promptAssets.length
+          ? promptAssets
+              .map(
+                (asset) => `
+                  <article class="prompt-card">
+                    <span>${htmlValue(asset.asset_type.replaceAll("_", " "), "prompt card")}</span>
+                    <h4>${htmlValue(asset.name, "Untitled prompt card")}</h4>
+                    <p class="purpose">${htmlValue(asset.purpose)}</p>
+                    <p>${htmlValue(asset.visual)}</p>
+                    <div class="prompt-grid">
+                      <section><b>Image Prompt</b>${htmlParagraphs(asset.image_prompt)}</section>
+                      <section><b>Animation Prompt</b>${htmlParagraphs(asset.animation_prompt)}</section>
+                      <section><b>Sound Prompt</b>${htmlParagraphs(asset.sound_prompt)}</section>
+                    </div>
+                  </article>
+                `,
+              )
+              .join("")
+          : `<p class="empty">Prompt cards not built yet.</p>`;
+
+        return `
+          <section class="packet-section scene-page">
+            <div class="section-kicker">Scene ${scene.scene_number}</div>
+            <h2>${htmlValue(scene.scene_heading, "Unlabeled scene")}</h2>
+            <p class="lede">${htmlValue(scene.summary)}</p>
+            <div class="meta-grid">
+              <div><b>Location</b><span>${htmlValue(scene.location)}</span></div>
+              <div><b>Time</b><span>${htmlValue(scene.time_of_day)}</span></div>
+              <div><b>Tone</b><span>${htmlValue(scene.tone || scene.color_palette)}</span></div>
+            </div>
+            <div class="details-grid">
+              <section><h3>Characters</h3>${htmlList(scene.characters)}</section>
+              <section><h3>Props</h3>${htmlList(scene.props)}</section>
+              <section><h3>Wardrobe</h3>${htmlList(scene.wardrobe)}</section>
+              <section><h3>Set Dressing</h3>${htmlList(scene.set_dressing)}</section>
+              <section><h3>Sound Notes</h3>${htmlParagraphs(scene.sound_notes)}</section>
+              <section><h3>Blocking</h3>${htmlParagraphs(scene.blocking)}</section>
+            </div>
+          </section>
+          <section class="packet-section">
+            <div class="section-kicker">Page 2</div>
+            <h2>Detailed Shot List</h2>
+            ${shotRows}
+          </section>
+          <section class="packet-section">
+            <div class="section-kicker">Prompt Cards</div>
+            <h2>Image, Animation, Sound</h2>
+            ${promptCards}
+          </section>
+        `;
+      })
+      .join("");
+
+    const documentSections = docSections
+      .map(
+        (section) => `
+          <section class="packet-section">
+            <div class="section-kicker">${htmlValue(section.label)}</div>
+            <h2>${htmlValue(section.label)}</h2>
+            <div class="document-body">${htmlParagraphs(section.value)}</div>
+          </section>
+        `,
+      )
+      .join("");
+
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${htmlValue(project.title, "StudioBuild Production Packet")}</title>
+    <style>
+      :root {
+        --paper: #fbfaf7;
+        --ink: #151515;
+        --muted: #70665f;
+        --line: #ded6cd;
+        --accent: #9d4853;
+        --soft: #f0e7de;
+        --sage: #dfe7e2;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #e7e2dc;
+        color: var(--ink);
+        font-family: "Aptos", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.55;
+        letter-spacing: 0;
+      }
+      .print-bar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 18px;
+        background: rgba(21, 21, 21, 0.92);
+        color: white;
+      }
+      .print-bar button {
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        background: white;
+        color: #151515;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .packet {
+        width: min(980px, calc(100% - 32px));
+        margin: 24px auto;
+        box-shadow: 0 30px 100px rgba(28, 23, 20, 0.18);
+      }
+      .cover,
+      .packet-section {
+        break-after: page;
+        min-height: 980px;
+        padding: 56px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(240, 231, 222, 0.68)),
+          var(--paper);
+      }
+      .cover {
+        display: grid;
+        align-content: space-between;
+        min-height: 1100px;
+        color: white;
+        background:
+          linear-gradient(135deg, rgba(18, 18, 18, 0.92), rgba(73, 58, 52, 0.72)),
+          linear-gradient(90deg, rgba(157, 72, 83, 0.34), transparent 44%, rgba(223, 231, 226, 0.18)),
+          #171717;
+      }
+      .brand {
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+      .cover h1 {
+        max-width: 760px;
+        margin: 120px 0 18px;
+        font-size: 72px;
+        line-height: 0.96;
+        letter-spacing: 0;
+      }
+      .cover .subtitle {
+        max-width: 650px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 20px;
+      }
+      .cover-grid,
+      .meta-grid,
+      .details-grid,
+      .prompt-grid {
+        display: grid;
+        gap: 12px;
+      }
+      .cover-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .cover-grid div,
+      .meta-grid div,
+      .details-grid section,
+      .prompt-grid section {
+        border: 1px solid rgba(21, 21, 21, 0.12);
+        border-radius: 8px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.58);
+      }
+      .cover-grid div {
+        border-color: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+      }
+      b,
+      .section-kicker,
+      .prompt-card span {
+        display: block;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+      .cover-grid b {
+        color: rgba(255, 255, 255, 0.68);
+      }
+      .cover-grid span {
+        display: block;
+        margin-top: 8px;
+        color: white;
+        font-weight: 760;
+      }
+      .packet-section h2 {
+        margin: 10px 0 18px;
+        font-size: 42px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+      .packet-section h3,
+      .packet-section h4 {
+        margin: 0 0 8px;
+        line-height: 1.18;
+        letter-spacing: 0;
+      }
+      .lede {
+        max-width: 760px;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .meta-grid {
+        grid-template-columns: repeat(3, 1fr);
+        margin: 24px 0;
+      }
+      .meta-grid span {
+        display: block;
+        margin-top: 6px;
+        font-weight: 760;
+      }
+      .details-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .details-grid ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .shot,
+      .prompt-card {
+        display: grid;
+        gap: 14px;
+        border-top: 1px solid var(--line);
+        padding: 18px 0;
+        break-inside: avoid;
+      }
+      .shot {
+        grid-template-columns: 44px minmax(0, 1fr);
+      }
+      .shot-number {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: white;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .purpose {
+        color: var(--muted);
+        font-weight: 760;
+      }
+      .prompt-grid {
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 12px;
+      }
+      .prompt-grid p,
+      .document-body p {
+        margin: 8px 0 0;
+      }
+      .empty {
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        color: var(--muted);
+      }
+      @page {
+        size: Letter;
+        margin: 0.35in;
+      }
+      @media print {
+        body { background: white; }
+        .print-bar { display: none; }
+        .packet {
+          width: 100%;
+          margin: 0;
+          box-shadow: none;
+        }
+        .cover,
+        .packet-section {
+          min-height: 10.35in;
+          padding: 0.55in;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="print-bar">
+      <strong>StudioBuild premium packet preview</strong>
+      <button onclick="window.print()">Save as PDF</button>
+    </div>
+    <main class="packet">
+      <section class="cover">
+        <div class="brand">StudioBuild Production Packet</div>
+        <div>
+          <h1>${htmlValue(project.title, "Untitled Project")}</h1>
+          <p class="subtitle">${htmlValue(project.logline, "A production-ready packet built for AI filmmaking workflow.")}</p>
+        </div>
+        <div class="cover-grid">
+          <div><b>Genre</b><span>${htmlValue(project.genre)}</span></div>
+          <div><b>Tone</b><span>${htmlValue(project.tone)}</span></div>
+          <div><b>Scenes / Assets</b><span>${sceneBreakdowns.length} / ${productionAssets.length}</span></div>
+        </div>
+      </section>
+      <section class="packet-section">
+        <div class="section-kicker">Project Overview</div>
+        <h2>Production Roadmap</h2>
+        <p class="lede">${htmlValue(project.logline, "No logline entered yet.")}</p>
+        <div class="details-grid">
+          <section><h3>Inspirations</h3>${htmlList(project.inspirations)}</section>
+          <section><h3>Workflow / Tools</h3>${htmlParagraphs(workflowTools, "Tool stack not specified.")}</section>
+        </div>
+      </section>
+      ${documentSections}
+      ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
+    </main>
+    <script>
+      window.addEventListener("load", function () {
+        window.setTimeout(function () {
+          window.print();
+        }, 500);
+      });
+    </script>
+  </body>
+</html>`;
+  }
+
   async function copyProductionPacket() {
     const packet = buildProductionPacketMarkdown();
 
@@ -1180,7 +1577,7 @@ export function ProjectWorkspace({
       setSaveStatus("Production packet copied.");
       setSaveError("");
     } catch {
-      setSaveError("Your browser blocked copy. Use Download production packet instead.");
+      setSaveError("Your browser blocked copy. Use Download Markdown or Premium PDF preview instead.");
     }
   }
 
@@ -1196,8 +1593,32 @@ export function ProjectWorkspace({
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-    setSaveStatus("Production packet downloaded.");
+    setSaveStatus("Markdown production packet downloaded.");
     setSaveError("");
+  }
+
+  function openPremiumPacketPreview() {
+    const html = buildPremiumPacketHtml();
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const opened = window.open(url, "_blank");
+
+    if (!opened) {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${slugFileName(project.title)}-premium-packet.html`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setSaveStatus("Premium packet layout downloaded. Open it, then choose Print or Save as PDF.");
+      setSaveError("");
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+      return;
+    }
+
+    setSaveStatus("Premium PDF preview opened. Choose Save as PDF in the print window.");
+    setSaveError("");
+    window.setTimeout(() => URL.revokeObjectURL(url), 12000);
   }
 
   return (
@@ -1228,7 +1649,10 @@ export function ProjectWorkspace({
             Copy packet
           </button>
           <button className="button" type="button" onClick={downloadProductionPacket}>
-            Download production packet
+            Download Markdown
+          </button>
+          <button className="button" type="button" onClick={openPremiumPacketPreview}>
+            Premium PDF preview
           </button>
         </div>
       </div>
