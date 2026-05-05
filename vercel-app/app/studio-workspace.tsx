@@ -275,6 +275,10 @@ function completionLine(label: string, isComplete: boolean) {
   return { label, isComplete };
 }
 
+function sceneBoardLabel(scene: SceneBreakdown) {
+  return `Scene ${scene.scene_number}: ${scene.scene_heading || "Unlabeled scene"}`;
+}
+
 function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
   return {
     scene_heading: scene.scene_heading,
@@ -735,6 +739,82 @@ export function ProjectWorkspace({
       total: checks.length,
     };
   }, [drafts, productionAssets, project, sceneBreakdowns]);
+  const productionBoard = useMemo(() => {
+    const sceneById = new Map(sceneBreakdowns.map((scene) => [scene.id, scene]));
+    const sceneItems = (field: "props" | "wardrobe" | "set_dressing") =>
+      sceneBreakdowns.flatMap((scene) =>
+        (scene[field] ?? [])
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .map((value) => ({
+            detail: sceneBoardLabel(scene),
+            id: `${field}:${scene.id}:${value}`,
+            label: value,
+            sceneId: scene.id,
+          })),
+      );
+    const locationItems = sceneBreakdowns
+      .filter((scene) => hasText(scene.location))
+      .map((scene) => ({
+        detail: `${scene.time_of_day || "No time"} / ${sceneBoardLabel(scene)}`,
+        id: `location:${scene.id}`,
+        label: scene.location,
+        sceneId: scene.id,
+      }));
+    const soundItems = sceneBreakdowns
+      .filter((scene) => hasText(scene.sound_notes))
+      .map((scene) => ({
+        detail: scene.sound_notes,
+        id: `sound:${scene.id}`,
+        label: sceneBoardLabel(scene),
+        sceneId: scene.id,
+      }));
+    const shotItems = productionAssets
+      .filter((asset) => asset.asset_type === "shot")
+      .map((asset) => {
+        const scene = sceneById.get(asset.scene_breakdown_id);
+
+        return {
+          detail: asset.visual || (scene ? sceneBoardLabel(scene) : "No scene source"),
+          id: `shot:${asset.id}`,
+          label: asset.name,
+          sceneId: asset.scene_breakdown_id,
+        };
+      });
+    const insertItems = productionAssets
+      .filter((asset) => asset.asset_type !== "shot")
+      .map((asset) => ({
+        detail: asset.purpose || asset.visual,
+        id: `insert:${asset.id}`,
+        label: asset.name,
+        sceneId: asset.scene_breakdown_id,
+      }));
+    const promptItems = productionAssets
+      .filter((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt))
+      .map((asset) => ({
+        detail: [
+          hasText(asset.image_prompt) ? "image" : "",
+          hasText(asset.animation_prompt) ? "animation" : "",
+          hasText(asset.sound_prompt) ? "sound/dialogue" : "",
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        id: `prompt:${asset.id}`,
+        label: asset.name,
+        sceneId: asset.scene_breakdown_id,
+      }));
+
+    return [
+      { id: "props", label: "Props", items: sceneItems("props") },
+      { id: "wardrobe", label: "Wardrobe", items: sceneItems("wardrobe") },
+      { id: "locations", label: "Locations", items: locationItems },
+      { id: "sound", label: "Sound", items: soundItems },
+      { id: "insert-shots", label: "Insert Shots", items: insertItems },
+      { id: "prompt-readiness", label: "Prompt Readiness", items: promptItems },
+      { id: "shot-list", label: "Shot List", items: shotItems },
+      { id: "set-dressing", label: "Set Dressing", items: sceneItems("set_dressing") },
+    ];
+  }, [productionAssets, sceneBreakdowns]);
 
   useEffect(() => {
     setDrafts((current) => {
@@ -751,6 +831,25 @@ export function ProjectWorkspace({
       return next;
     });
   }, [documents, draftText]);
+
+  function openBoardScene(sceneId: string) {
+    const scene = sceneBreakdowns.find((candidate) => candidate.id === sceneId);
+
+    if (!scene) {
+      setSaveError("That production board item is missing its source scene.");
+      return;
+    }
+
+    setActiveStepId("breakdown");
+    startEditingScene(scene);
+    setSaveStatus(`Editing ${sceneBoardLabel(scene)} from the production board.`);
+    window.setTimeout(() => {
+      document.getElementById(`scene-${scene.id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 0);
+  }
 
   function updateDraft(value: string) {
     setDrafts((current) => ({ ...current, [activeStep.docType]: value }));
@@ -1736,6 +1835,55 @@ export function ProjectWorkspace({
         </div>
       </div>
 
+      <section className="production-board" aria-label="Manual production board">
+        <div className="board-heading">
+          <div>
+            <span>Manual production board</span>
+            <h4>All production needs in one place.</h4>
+            <p>
+              Scan props, wardrobe, locations, sound, prompt cards, and shot-list coverage across
+              the whole project.
+            </p>
+          </div>
+          <strong>
+            {productionBoard.reduce((total, category) => total + category.items.length, 0)} item
+            {productionBoard.reduce((total, category) => total + category.items.length, 0) === 1 ? "" : "s"}
+          </strong>
+        </div>
+        <div className="production-board-grid">
+          {productionBoard.map((category) => (
+            <article className="production-board-card" key={category.id}>
+              <div className="production-board-card-top">
+                <strong>{category.label}</strong>
+                <span>{category.items.length}</span>
+              </div>
+              {category.items.length ? (
+                <div className="production-board-list">
+                  {category.items.slice(0, 8).map((item) => (
+                    <div className="production-board-item" key={item.id}>
+                      <div>
+                        <strong>{item.label}</strong>
+                        <small>{item.detail}</small>
+                      </div>
+                      <button type="button" onClick={() => openBoardScene(item.sceneId)}>
+                        Edit source
+                      </button>
+                    </div>
+                  ))}
+                  {category.items.length > 8 ? (
+                    <p className="production-board-more">
+                      {category.items.length - 8} more included in the exported packet.
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="asset-empty">Not filled yet.</p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className="pipeline-strip" aria-label="StudioBuild pipeline">
         {pipelineSteps.map((step, index) => (
           <button
@@ -1881,7 +2029,7 @@ export function ProjectWorkspace({
               const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
 
               return (
-                <article className="scene-packet-card" key={scene.id}>
+                <article className="scene-packet-card" id={`scene-${scene.id}`} key={scene.id}>
                   <div className="packet-card-top">
                     <div>
                       <span>{String(scene.scene_number).padStart(2, "0")}</span>
