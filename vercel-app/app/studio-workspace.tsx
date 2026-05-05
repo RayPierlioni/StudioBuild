@@ -2379,10 +2379,10 @@ export function ProjectWorkspace({
             />
           </label>
           <div className="ai-off-note">
-            <strong>Founder beta: no hosted AI calls</strong>
+            <strong>Production guidance</strong>
             <p>
-              StudioBuild gives you expert prompts to use in your own AI tools, then you save the
-              results back into the workflow.
+              Use these tools to shape treatments, strengthen scenes, build breakdowns, and keep
+              every production decision connected to the film you are making.
             </p>
           </div>
           <button type="button" onClick={() => copyExpertPrompt("treatment")}>
@@ -2404,8 +2404,8 @@ export function ProjectWorkspace({
             Copy insert-shot prompt
           </button>
           <p>
-            The paid value is the workflow, parser, production board, prompt compiler, readiness
-            score, and export system. Hosted AI can be introduced later after signups prove demand.
+            StudioBuild keeps the next move clear: develop the idea, strengthen the writing, map the
+            production needs, and export a packet you can actually work from.
           </p>
         </aside>
       </div>
@@ -2417,7 +2417,7 @@ export function ProjectWorkspace({
               <h4>Saved scene packets</h4>
               <p>{sceneBreakdowns.length} structured scene breakdown row(s) saved in Supabase.</p>
             </div>
-            <span>No hosted AI cost</span>
+            <span>Production-ready</span>
           </div>
 
           <div className="scene-packet-grid">

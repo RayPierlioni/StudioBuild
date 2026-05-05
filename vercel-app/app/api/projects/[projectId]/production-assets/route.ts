@@ -111,7 +111,7 @@ function buildInsertShotAsset(scene: SceneBreakdownRecord, orderIndex: number) {
     animation_prompt: `Animate ${heroProp} as a controlled insert shot: slow push-in or subtle handheld tension, motivated by the scene blocking. Keep continuity with ${scene.scene_heading}. No new story information beyond the visual beat.`,
     sound_prompt: `Close, specific sound for ${heroProp} and the surrounding room tone. Use ${scene.sound_notes || "natural location sound"}. No music unless the story requires it.`,
     notes:
-      "Generated without hosted AI. Edit this prompt card to match the exact image, animation, and sound tools you use.",
+      "Edit this prompt card to match the exact image, animation, and sound tools you use.",
   };
 }
 

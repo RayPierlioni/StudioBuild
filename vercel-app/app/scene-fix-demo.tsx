@@ -34,7 +34,7 @@ export function SceneFixDemo() {
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(compiledPrompt);
-      setCopyStatus("Prompt copied. Paste it into ChatGPT, Claude, Gemini, or your preferred model.");
+      setCopyStatus("Expert scene plan copied.");
     } catch {
       setCopyStatus("Copy failed. Select the prompt text and copy it manually.");
     }
@@ -47,8 +47,8 @@ export function SceneFixDemo() {
           <p className="eyebrow">Fix a Scene Free</p>
           <h2>Paste a rough scene. Leave with a production plan.</h2>
           <p>
-            StudioBuild creates value without hosted API calls: parse the scene, map the
-            production problem, and compile the exact expert prompt for your own AI workflow.
+            StudioBuild reads the scene like a production-minded script supervisor: it finds what is
+            missing, maps the production problem, and turns the next step into a usable scene plan.
           </p>
         </div>
       </div>
@@ -121,7 +121,7 @@ export function SceneFixDemo() {
       <div className="prompt-compiler">
         <div className="tool-heading">
           <h3>Prompt Compiler</h3>
-          <span>No hosted AI cost</span>
+          <span>Scene-to-production guidance</span>
         </div>
         <textarea readOnly value={compiledPrompt} />
         <div className="actions">

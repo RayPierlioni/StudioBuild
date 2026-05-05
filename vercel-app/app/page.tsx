@@ -70,7 +70,7 @@ export default function Home() {
       <section className="workspace">
         <div className="topline">
           <span className="pill">Workflow-first</span>
-          <span className="pill">Bring-your-own-AI prompts</span>
+          <span className="pill">Production-ready packets</span>
         </div>
 
         <div id="workspace">
@@ -109,9 +109,9 @@ export default function Home() {
           <p className="eyebrow">Pricing Direction</p>
           <h2>Start free. Upgrade when the workflow saves real time.</h2>
           <p>
-            StudioBuild stays useful without hosted API calls. Free users get a real taste of the
-            system, while Founder Pro unlocks the complete pre-production workflow that can support
-            the goal of reaching 1,000 subscribers quickly.
+            Start with one project and a scene-packet preview. Upgrade when you want the complete
+            pre-production system: full-script parsing, production boards, shot lists, prompt cards,
+            version history, and premium production packets.
           </p>
           <div className="pricing-grid">
             {pricingCards.map(([name, price, text]) => (
