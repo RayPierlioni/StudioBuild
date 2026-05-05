@@ -132,7 +132,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         <a className="brand-link" href="/">
           STUDIOBUILD
         </a>
-        <a className="button secondary" href="/">
+        <a className="button secondary" href="/app">
           All Projects
         </a>
       </div>
@@ -158,7 +158,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             sceneBreakdowns={sceneBreakdowns}
             userEmail={session.user.email ?? "Signed-in user"}
             onBack={() => {
-              window.location.assign("/");
+              window.location.assign("/app");
             }}
             onDocumentsChange={setDocuments}
             onProductionAssetsChange={setProductionAssets}

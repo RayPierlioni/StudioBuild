@@ -2,14 +2,17 @@ import { StudioWorkspace } from "../studio-workspace";
 
 const guidePaths = [
   {
+    href: "/app/start/idea",
     label: "Have an idea for a film?",
     text: "Start with a project shell. Shape the premise, genre, tone, logline, and first story beat before anything gets messy.",
   },
   {
+    href: "/app/start/script",
     label: "Already have a script?",
     text: "Paste or import pages, then move into scene packets, breakdowns, shot lists, prompt cards, and production notes.",
   },
   {
+    href: "/app/start/breakdown",
     label: "Need a breakdown?",
     text: "Use the pipeline to organize characters, props, wardrobe, sound, locations, inserts, and export-ready production packets.",
   },
@@ -30,6 +33,7 @@ export default function AppHome() {
 
       <section className="app-guide" aria-label="StudioBuild guide">
         <div className="guide-character" aria-hidden="true">
+          <div className="guide-speech">Have an idea, script, or scene? Start here.</div>
           <div className="guide-antenna" />
           <div className="guide-head">
             <span />
@@ -48,7 +52,7 @@ export default function AppHome() {
           </p>
           <div className="guide-paths">
             {guidePaths.map((path) => (
-              <a href="#workspace-dashboard" key={path.label}>
+              <a href={path.href} key={path.label}>
                 <strong>{path.label}</strong>
                 <span>{path.text}</span>
               </a>

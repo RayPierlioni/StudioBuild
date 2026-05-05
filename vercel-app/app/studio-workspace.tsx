@@ -20,6 +20,7 @@ export type Project = {
 
 type StageId = "idea" | "treatment" | "script" | "breakdown" | "production";
 type DocType = "idea" | "synopsis" | "treatment" | "story" | "script" | "breakdown_notes";
+export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
 type GenerateMode =
   | "treatment"
   | "script"
@@ -171,6 +172,51 @@ const proFeatureList = [
   "Image, animation, sound prompts",
   "Premium PDF packet export",
 ];
+
+const startModeCopy: Record<
+  StartMode,
+  {
+    eyebrow: string;
+    heading: string;
+    helper: string;
+    starterLabel: string;
+    starterPlaceholder: string;
+    submitLabel: string;
+  }
+> = {
+  dashboard: {
+    eyebrow: "Live workspace",
+    heading: "Your StudioBuild dashboard.",
+    helper: "Create a project, open a saved film, or move into the production pipeline.",
+    starterLabel: "Starter idea",
+    starterPlaceholder: "Paste the rough idea, opening beat, or script fragment here.",
+    submitLabel: "Save Project",
+  },
+  idea: {
+    eyebrow: "Idea start",
+    heading: "Start from the first spark.",
+    helper: "Begin with a premise, tone, genre, and logline. StudioBuild will help turn it into a workable film path.",
+    starterLabel: "Idea seed",
+    starterPlaceholder: "Describe the film idea, central character, world, conflict, or first image you cannot stop thinking about.",
+    submitLabel: "Create Idea Project",
+  },
+  script: {
+    eyebrow: "Script intake",
+    heading: "Bring in pages you already have.",
+    helper: "Create a project shell first, then paste or import your script pages so StudioBuild can organize the next production steps.",
+    starterLabel: "Script fragment",
+    starterPlaceholder: "Paste the opening scene, rough pages, or script section you want to improve and break down.",
+    submitLabel: "Create Script Project",
+  },
+  breakdown: {
+    eyebrow: "Breakdown builder",
+    heading: "Turn scenes into production needs.",
+    helper: "Create the project first, then use scene packets to map characters, props, wardrobe, sound, inserts, and shot-list work.",
+    starterLabel: "Scene to break down",
+    starterPlaceholder: "Paste a scene that needs a breakdown, including slugline, action, and dialogue if you have it.",
+    submitLabel: "Create Breakdown Project",
+  },
+};
 
 const emptyForm: ProjectForm = {
   title: "",
@@ -421,8 +467,9 @@ function ProUnlockPanel({
   );
 }
 
-export function StudioWorkspace() {
+export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: StartMode } = {}) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const modeCopy = startModeCopy[startMode] ?? startModeCopy.dashboard;
   const [session, setSession] = useState<Session | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [entitlement, setEntitlement] = useState<AccessEntitlement>(freeEntitlement);
@@ -608,8 +655,9 @@ export function StudioWorkspace() {
     <article className="panel studio-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Live workspace</p>
-          <h2>{selectedProject ? "Project command center." : "Your StudioBuild dashboard."}</h2>
+          <p className="eyebrow">{selectedProject ? "Live workspace" : modeCopy.eyebrow}</p>
+          <h2>{selectedProject ? "Project command center." : modeCopy.heading}</h2>
+          {!selectedProject ? <p className="workspace-helper">{modeCopy.helper}</p> : null}
           {session ? (
             <p className="workspace-account">
               Signed in as <strong>{userEmail}</strong>
@@ -709,11 +757,11 @@ export function StudioWorkspace() {
               </label>
 
               <label>
-                Starter idea
+                {modeCopy.starterLabel}
                 <textarea
                   value={form.initialContent}
                   onChange={(event) => updateForm("initialContent", event.target.value)}
-                  placeholder="Paste the rough idea, opening beat, or script fragment here."
+                  placeholder={modeCopy.starterPlaceholder}
                 />
               </label>
 
@@ -725,7 +773,7 @@ export function StudioWorkspace() {
               ) : null}
 
               <button className="button" type="submit" disabled={isSaving || hasReachedFreeProjectLimit}>
-                {isSaving ? "Saving..." : hasReachedFreeProjectLimit ? "Pro unlocks more projects" : "Save Project"}
+                {isSaving ? "Saving..." : hasReachedFreeProjectLimit ? "Pro unlocks more projects" : modeCopy.submitLabel}
               </button>
             </form>
           )}
