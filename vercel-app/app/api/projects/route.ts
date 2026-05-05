@@ -1,4 +1,5 @@
 import { getVerifiedRequestUser } from "../../../lib/auth";
+import { getUserEntitlement } from "../../../lib/entitlements";
 import { getSupabaseAdminClient } from "../../../lib/supabase/server";
 
 type ProjectPayload = {
@@ -29,23 +30,52 @@ function cleanInspirations(value: unknown) {
 
 export const dynamic = "force-dynamic";
 
+async function countUserProjects({
+  supabase,
+  userId,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  userId: string;
+}) {
+  const { count, error } = await supabase
+    .from("projects")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
 export async function GET(request: Request) {
   try {
     const { user } = await getVerifiedRequestUser(request);
     const supabase = getSupabaseAdminClient();
+    const entitlement = await getUserEntitlement(user);
 
+    const projectLimit = entitlement.isPro ? 30 : 1;
     const { data: projects, error } = await supabase
       .from("projects")
       .select("id,title,genre,tone,logline,inspirations,active_stage,notes,created_at,updated_at")
       .eq("owner_id", user.id)
       .order("updated_at", { ascending: false })
-      .limit(30);
+      .limit(projectLimit);
 
     if (error) {
       return Response.json({ ok: false, error: error.message }, { status: 502 });
     }
 
-    return Response.json({ ok: true, projects: projects ?? [] });
+    return Response.json({
+      ok: true,
+      entitlement,
+      projects: projects ?? [],
+      usage: {
+        projectCount: projects?.length ?? 0,
+        freeProjectLimit: 1,
+      },
+    });
   } catch (error) {
     return Response.json(
       {
@@ -68,6 +98,24 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
+    const entitlement = await getUserEntitlement(user);
+
+    if (!entitlement.isPro) {
+      const projectCount = await countUserProjects({ supabase, userId: user.id });
+
+      if (projectCount >= 1) {
+        return Response.json(
+          {
+            ok: false,
+            entitlement,
+            error:
+              "Free StudioBuild includes 1 project. Founder Pro unlocks multiple projects, production boards, premium exports, shot lists, prompt cards, and version history.",
+          },
+          { status: 402 },
+        );
+      }
+    }
+
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .insert({
@@ -119,7 +167,7 @@ export async function POST(request: Request) {
       document = savedDocument;
     }
 
-    return Response.json({ ok: true, project, document }, { status: 201 });
+    return Response.json({ ok: true, entitlement, project, document }, { status: 201 });
   } catch (error) {
     return Response.json(
       {

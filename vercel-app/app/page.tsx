@@ -17,8 +17,12 @@ const workflowPhases = [
 ];
 
 const pricingCards = [
-  ["Free", "$0", "Try one scene, parse the production problem, and copy expert prompts."],
-  ["Founder Pro", "$19/mo", "Full workflow, exports, production board, readiness score, and prompt compiler."],
+  ["Free", "$0", "One project, one scene-packet preview, basic prompt copying, and Markdown export."],
+  [
+    "Founder Pro",
+    "$2.99/wk",
+    "Multiple projects, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
+  ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];
 
@@ -94,14 +98,13 @@ export default function Home() {
           <StudioWorkspace />
         </div>
 
-        <article className="panel pricing-panel">
+        <article className="panel pricing-panel" id="pricing">
           <p className="eyebrow">Pricing Direction</p>
-          <h2>Start with the workflow. Use AI where it counts.</h2>
+          <h2>Start free. Upgrade when the workflow saves real time.</h2>
           <p>
-            The product stays valuable without hosted API calls. Prompt compiler, parser,
-            readiness score, production board, exports, and production packets become the core
-            paid value. Hosted AI can be introduced later as a convenience layer after demand is
-            proven.
+            StudioBuild stays useful without hosted API calls. Free users get a real taste of the
+            system, while Founder Pro unlocks the complete pre-production workflow that can support
+            the goal of reaching 1,000 subscribers quickly.
           </p>
           <div className="pricing-grid">
             {pricingCards.map(([name, price, text]) => (

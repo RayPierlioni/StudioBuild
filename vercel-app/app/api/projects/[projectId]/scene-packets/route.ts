@@ -1,4 +1,5 @@
 import { getVerifiedRequestUser } from "../../../../../lib/auth";
+import { getUserEntitlement } from "../../../../../lib/entitlements";
 import { buildScenePacket, buildScenePacketDocument, parseScript } from "../../../../../lib/script-parser";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase/server";
 
@@ -216,7 +217,34 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const parsed = parseScript(content);
-    const packets = parsed.scenes.map((scene, index) =>
+    const entitlement = await getUserEntitlement(user);
+
+    if (!entitlement.isPro) {
+      const { count: existingSceneCount, error: sceneCountError } = await supabase
+        .from("scene_breakdowns")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("owner_id", user.id);
+
+      if (sceneCountError) {
+        return Response.json({ ok: false, error: sceneCountError.message }, { status: 502 });
+      }
+
+      if ((existingSceneCount ?? 0) >= 1) {
+        return Response.json(
+          {
+            ok: false,
+            entitlement,
+            error:
+              "Free StudioBuild includes 1 saved scene-packet preview. Founder Pro unlocks full-script parsing, complete scene breakdowns, shot lists, prompt cards, and premium packet export.",
+          },
+          { status: 402 },
+        );
+      }
+    }
+
+    const sourceScenes = entitlement.isPro ? parsed.scenes : parsed.scenes.slice(0, 1);
+    const packets = sourceScenes.map((scene, index) =>
       buildScenePacket(scene, index + 1, {
         projectTone: typeof project.tone === "string" ? project.tone : "",
         toolStack,
@@ -308,9 +336,12 @@ export async function POST(request: Request, context: RouteContext) {
       ok: true,
       parsed,
       sceneBreakdowns: savedBreakdowns,
+      entitlement,
       document,
       documents,
-      message: `${savedBreakdowns.length} scene packet${savedBreakdowns.length === 1 ? "" : "s"} saved.`,
+      message: `${savedBreakdowns.length} scene packet${savedBreakdowns.length === 1 ? "" : "s"} saved${
+        entitlement.isPro ? "" : " as your free preview"
+      }.`,
     });
   } catch (error) {
     return Response.json(

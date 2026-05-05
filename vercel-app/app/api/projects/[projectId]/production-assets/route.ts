@@ -1,4 +1,5 @@
 import { getVerifiedRequestUser } from "../../../../../lib/auth";
+import { getUserEntitlement } from "../../../../../lib/entitlements";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase/server";
 
 type RouteContext = {
@@ -242,6 +243,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const supabase = getSupabaseAdminClient();
+    const entitlement = await getUserEntitlement(user);
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("id")
@@ -253,6 +255,18 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json(
         { ok: false, error: projectError?.message ?? "Project not found." },
         { status: 404 },
+      );
+    }
+
+    if (!entitlement.isPro) {
+      return Response.json(
+        {
+          ok: false,
+          entitlement,
+          error:
+            "Production assets are a Founder Pro feature. Upgrade to unlock detailed shot lists, insert shots, image prompts, animation prompts, sound prompts, and premium packet export.",
+        },
+        { status: 402 },
       );
     }
 
@@ -328,6 +342,7 @@ export async function POST(request: Request, context: RouteContext) {
 
       return Response.json({
         ok: true,
+        entitlement,
         productionAssets,
         message: `Detailed shot list saved for scene ${(sceneBreakdown as SceneBreakdownRecord).scene_number}.`,
       });
@@ -382,6 +397,7 @@ export async function POST(request: Request, context: RouteContext) {
 
       return Response.json({
         ok: true,
+        entitlement,
         productionAssets,
         message:
           action === "image_prompt"
@@ -429,6 +445,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     return Response.json({
       ok: true,
+      entitlement,
       productionAsset,
       productionAssets,
       message: `${productionAsset.name} saved.`,

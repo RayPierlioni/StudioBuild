@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
 import {
   ProjectWorkspace,
+  type AccessEntitlement,
   type Project,
   type ProjectDocument,
   type ProductionAsset,
@@ -16,6 +17,7 @@ type ProjectResponse = {
   ok: boolean;
   project?: Project;
   documents?: ProjectDocument[];
+  entitlement?: AccessEntitlement;
   sceneBreakdowns?: SceneBreakdown[];
   productionAssets?: ProductionAsset[];
   error?: string;
@@ -26,6 +28,12 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [entitlement, setEntitlement] = useState<AccessEntitlement>({
+    isAdmin: false,
+    isPro: false,
+    planLabel: "Free",
+    status: "free",
+  });
   const [sceneBreakdowns, setSceneBreakdowns] = useState<SceneBreakdown[]>([]);
   const [productionAssets, setProductionAssets] = useState<ProductionAsset[]>([]);
   const [draftText, setDraftText] = useState("");
@@ -77,6 +85,14 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
 
         setProject(result.project);
         setDocuments(result.documents ?? []);
+        setEntitlement(
+          result.entitlement ?? {
+            isAdmin: false,
+            isPro: false,
+            planLabel: "Free",
+            status: "free",
+          },
+        );
         setSceneBreakdowns(result.sceneBreakdowns ?? []);
         setProductionAssets(result.productionAssets ?? []);
         setDraftText(result.documents?.[0]?.content ?? "");
@@ -136,6 +152,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             accessToken={session.access_token}
             draftText={draftText}
             documents={documents}
+            entitlement={entitlement}
             productionAssets={productionAssets}
             project={project}
             sceneBreakdowns={sceneBreakdowns}

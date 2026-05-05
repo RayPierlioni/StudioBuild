@@ -137,6 +137,41 @@ type LocalVersion = {
   createdAt: string;
 };
 
+export type AccessEntitlement = {
+  isAdmin: boolean;
+  isPro: boolean;
+  planLabel: "Admin" | "Founder Pro" | "Free";
+  status: string;
+};
+
+type ProjectUsage = {
+  projectCount: number;
+  freeProjectLimit: number;
+};
+
+const freeEntitlement: AccessEntitlement = {
+  isAdmin: false,
+  isPro: false,
+  planLabel: "Free",
+  status: "free",
+};
+
+const defaultUsage: ProjectUsage = {
+  projectCount: 0,
+  freeProjectLimit: 1,
+};
+
+const proFeatureList = [
+  "Multiple projects",
+  "Full-script scene parsing",
+  "Production board",
+  "Local version history",
+  "Detailed shot lists",
+  "Insert-shot prompt cards",
+  "Image, animation, sound prompts",
+  "Premium PDF packet export",
+];
+
 const emptyForm: ProjectForm = {
   title: "",
   genre: "",
@@ -334,10 +369,64 @@ function emptySceneDraft(): SceneBreakdownDraft {
   };
 }
 
+function ProUnlockPanel({
+  entitlement,
+  compact = false,
+}: {
+  entitlement: AccessEntitlement;
+  compact?: boolean;
+}) {
+  if (entitlement.isPro) {
+    return (
+      <section className={compact ? "pro-panel compact active" : "pro-panel active"}>
+        <div>
+          <span>{entitlement.planLabel} access</span>
+          <strong>Full StudioBuild workflow unlocked.</strong>
+          <p>
+            Admin and subscribed users can use the production board, shot lists, prompt cards,
+            version history, premium exports, and multiple projects.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={compact ? "pro-panel compact" : "pro-panel"}>
+      <div>
+        <span>Free plan</span>
+        <strong>Founder Pro unlocks the full pre-production system.</strong>
+        <p>
+          Free users can build one project, save one scene-packet preview, copy expert prompts, and
+          download a basic packet. The deeper production workflow is paid.
+        </p>
+      </div>
+      {!compact ? (
+        <ul>
+          {proFeatureList.map((feature) => (
+            <li key={feature}>{feature}</li>
+          ))}
+        </ul>
+      ) : null}
+      <button
+        className="button"
+        type="button"
+        onClick={() => {
+          window.location.hash = "pricing";
+        }}
+      >
+        Upgrade path coming next
+      </button>
+    </section>
+  );
+}
+
 export function StudioWorkspace() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [entitlement, setEntitlement] = useState<AccessEntitlement>(freeEntitlement);
+  const [usage, setUsage] = useState<ProjectUsage>(defaultUsage);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [form, setForm] = useState<ProjectForm>(emptyForm);
   const [draftText, setDraftText] = useState("");
@@ -357,13 +446,24 @@ export function StudioWorkspace() {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      const result = (await response.json()) as { ok: boolean; projects?: Project[]; error?: string };
+      const result = (await response.json()) as {
+        ok: boolean;
+        entitlement?: AccessEntitlement;
+        projects?: Project[];
+        usage?: ProjectUsage;
+        error?: string;
+      };
 
       if (!response.ok || !result.ok) {
         throw new Error(result.error ?? "Unable to load projects.");
       }
 
       setProjects(result.projects ?? []);
+      setEntitlement(result.entitlement ?? freeEntitlement);
+      setUsage(result.usage ?? {
+        ...defaultUsage,
+        projectCount: result.projects?.length ?? 0,
+      });
       setSelectedProjectId((current) => current || result.projects?.[0]?.id || "");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load projects.");
@@ -405,6 +505,8 @@ export function StudioWorkspace() {
     }
 
     setProjects([]);
+    setEntitlement(freeEntitlement);
+    setUsage(defaultUsage);
   }, [session?.access_token]);
 
   async function signInWithGoogle() {
@@ -431,6 +533,8 @@ export function StudioWorkspace() {
     setMessage("");
     await supabase.auth.signOut();
     setProjects([]);
+    setEntitlement(freeEntitlement);
+    setUsage(defaultUsage);
   }
 
   function updateForm(field: keyof ProjectForm, value: string) {
@@ -465,13 +569,23 @@ export function StudioWorkspace() {
           initialContent: form.initialContent,
         }),
       });
-      const result = (await response.json()) as { ok: boolean; project?: Project; error?: string };
+      const result = (await response.json()) as {
+        ok: boolean;
+        entitlement?: AccessEntitlement;
+        project?: Project;
+        error?: string;
+      };
 
       if (!response.ok || !result.ok || !result.project) {
         throw new Error(result.error ?? "Unable to save project.");
       }
 
       setProjects((current) => [result.project as Project, ...current]);
+      setEntitlement(result.entitlement ?? entitlement);
+      setUsage((current) => ({
+        ...current,
+        projectCount: current.projectCount + 1,
+      }));
       setSelectedProjectId(result.project.id);
       setDraftText(form.initialContent);
       setForm(emptyForm);
@@ -486,6 +600,7 @@ export function StudioWorkspace() {
 
   const userEmail = session?.user.email ?? "Signed-in user";
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
+  const hasReachedFreeProjectLimit = !entitlement.isPro && usage.projectCount >= usage.freeProjectLimit;
 
   return (
     <article className="panel studio-panel">
@@ -518,6 +633,7 @@ export function StudioWorkspace() {
           {selectedProject ? (
             <ProjectWorkspace
               draftText={draftText}
+              entitlement={entitlement}
               project={selectedProject}
               userEmail={userEmail}
               onBack={() => {
@@ -532,6 +648,7 @@ export function StudioWorkspace() {
                 <span>Signed in as</span>
                 <strong>{userEmail}</strong>
               </div>
+              <ProUnlockPanel entitlement={entitlement} compact />
 
               <label>
                 Project title
@@ -590,8 +707,15 @@ export function StudioWorkspace() {
                 />
               </label>
 
-              <button className="button" type="submit" disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save Project"}
+              {hasReachedFreeProjectLimit ? (
+                <p className="status error">
+                  Free StudioBuild includes 1 project. Founder Pro unlocks multiple films and the
+                  full production workflow.
+                </p>
+              ) : null}
+
+              <button className="button" type="submit" disabled={isSaving || hasReachedFreeProjectLimit}>
+                {isSaving ? "Saving..." : hasReachedFreeProjectLimit ? "Pro unlocks more projects" : "Save Project"}
               </button>
             </form>
           )}
@@ -654,6 +778,7 @@ export function ProjectWorkspace({
   accessToken,
   draftText,
   documents = [],
+  entitlement = freeEntitlement,
   onDocumentsChange,
   onProductionAssetsChange,
   onSceneBreakdownsChange,
@@ -667,6 +792,7 @@ export function ProjectWorkspace({
   accessToken?: string;
   draftText: string;
   documents?: ProjectDocument[];
+  entitlement?: AccessEntitlement;
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
   onProductionAssetsChange?: (productionAssets: ProductionAsset[]) => void;
   onSceneBreakdownsChange?: (sceneBreakdowns: SceneBreakdown[]) => void;
@@ -873,7 +999,23 @@ export function ProjectWorkspace({
     }
   }
 
+  function requirePro(feature: string) {
+    if (entitlement.isPro) {
+      return true;
+    }
+
+    setSaveStatus("");
+    setSaveError(
+      `${feature} is a Founder Pro feature. Free users get one project, one scene-packet preview, basic prompt copying, and Markdown export.`,
+    );
+    return false;
+  }
+
   function saveLocalVersion() {
+    if (!requirePro("Local version history")) {
+      return;
+    }
+
     const content = currentDraft.trim();
 
     if (!content) {
@@ -904,6 +1046,10 @@ export function ProjectWorkspace({
   }
 
   function restoreLocalVersion(version: LocalVersion) {
+    if (!requirePro("Restoring saved passes")) {
+      return;
+    }
+
     setActiveStepId(pipelineSteps.find((step) => step.docType === version.docType)?.id ?? activeStepId);
     setDrafts((current) => ({ ...current, [version.docType]: version.content }));
     onDraftChange(version.content);
@@ -913,6 +1059,10 @@ export function ProjectWorkspace({
   }
 
   function deleteLocalVersion(versionId: string) {
+    if (!requirePro("Managing saved passes")) {
+      return;
+    }
+
     const nextVersions = versions.filter((version) => version.id !== versionId);
 
     const didSave = writeVersions(nextVersions);
@@ -1231,6 +1381,10 @@ export function ProjectWorkspace({
   }
 
   async function createInsertShot(scene: SceneBreakdown) {
+    if (!requirePro("Insert-shot prompt cards")) {
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before creating production assets.");
       return;
@@ -1269,6 +1423,10 @@ export function ProjectWorkspace({
   }
 
   async function buildDetailedShotList(scene: SceneBreakdown) {
+    if (!requirePro("Detailed shot lists")) {
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before creating the shot list.");
       return;
@@ -1310,6 +1468,10 @@ export function ProjectWorkspace({
     asset: ProductionAsset,
     action: "image_prompt" | "animation_prompt",
   ) {
+    if (!requirePro(action === "image_prompt" ? "Image prompts" : "Animation, sound, and dialogue prompts")) {
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before generating shot prompts.");
       return;
@@ -1375,7 +1537,7 @@ export function ProjectWorkspace({
       .filter((section) => section.value.trim())
       .map((section) => [`## ${section.label}`, "", section.value.trim()].join("\n"))
       .join("\n\n");
-    const versionBlocks = versions.length
+    const versionBlocks = entitlement.isPro && versions.length
       ? [
           "## Saved Passes",
           "",
@@ -1394,7 +1556,7 @@ export function ProjectWorkspace({
 
     const sceneBlocks = sceneBreakdowns
       .map((scene) => {
-        const sceneAssets = assetsBySceneId[scene.id] ?? [];
+        const sceneAssets = entitlement.isPro ? assetsBySceneId[scene.id] ?? [] : [];
         const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
         const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
 
@@ -1893,6 +2055,10 @@ export function ProjectWorkspace({
   }
 
   function openPremiumPacketPreview() {
+    if (!requirePro("Premium PDF packet export")) {
+      return;
+    }
+
     const html = buildPremiumPacketHtml();
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1923,6 +2089,9 @@ export function ProjectWorkspace({
           New Project
         </button>
         <span>Opened by {userEmail}</span>
+        <strong className={entitlement.isPro ? "plan-badge active" : "plan-badge"}>
+          {entitlement.planLabel}
+        </strong>
       </div>
 
       <div className="project-hero">
@@ -1930,6 +2099,8 @@ export function ProjectWorkspace({
         <h3>{project.title}</h3>
         <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
       </div>
+
+      <ProUnlockPanel entitlement={entitlement} />
 
       <section className="readiness-panel" aria-label="Production readiness score">
         <div className="readiness-score">
@@ -1969,11 +2140,12 @@ export function ProjectWorkspace({
             Download Markdown
           </button>
           <button className="button" type="button" onClick={openPremiumPacketPreview}>
-            Premium PDF preview
+            {entitlement.isPro ? "Premium PDF preview" : "Pro: Premium PDF preview"}
           </button>
         </div>
       </div>
 
+      {entitlement.isPro ? (
       <section className="production-board" aria-label="Manual production board">
         <div className="board-heading">
           <div>
@@ -2022,6 +2194,27 @@ export function ProjectWorkspace({
           ))}
         </div>
       </section>
+      ) : (
+        <section className="production-board locked-board" aria-label="Locked production board">
+          <div className="board-heading">
+            <div>
+              <span>Pro production board</span>
+              <h4>Upgrade to see every production need across the film.</h4>
+              <p>
+                The free plan lets you save one scene-packet preview. Founder Pro turns the whole
+                project into a board of props, wardrobe, locations, sound, shot lists, prompt cards,
+                and continuity needs.
+              </p>
+            </div>
+            <strong>Locked</strong>
+          </div>
+          <ul className="locked-feature-grid">
+            {proFeatureList.slice(2).map((feature) => (
+              <li key={feature}>{feature}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="pipeline-strip" aria-label="StudioBuild pipeline">
         {pipelineSteps.map((step, index) => (
@@ -2107,47 +2300,58 @@ export function ProjectWorkspace({
               {isSavingPacket ? "Saving packet..." : "Save Scene Packet"}
             </button>
           </div>
-          <div className="version-panel" aria-label="Local version history">
+          <div className={entitlement.isPro ? "version-panel" : "version-panel locked-version"} aria-label="Local version history">
             <div className="version-heading">
               <div>
                 <span>Local version history</span>
-                <strong>Save passes before you rewrite.</strong>
+                <strong>
+                  {entitlement.isPro ? "Save passes before you rewrite." : "Version history is a Pro workflow."}
+                </strong>
               </div>
               <small>{versions.length} saved</small>
             </div>
-            <div className="version-save-row">
-              <input
-                value={versionLabel}
-                onChange={(event) => setVersionLabel(event.target.value)}
-                placeholder={`${activeStep.label} pass label`}
-              />
-              <button className="button secondary" type="button" onClick={saveLocalVersion}>
-                Save version
-              </button>
-            </div>
-            {versions.length ? (
-              <div className="version-list">
-                {versions.slice(0, 6).map((version) => (
-                  <article className="version-item" key={version.id}>
-                    <div>
-                      <strong>{version.label}</strong>
-                      <small>
-                        {version.stageLabel} / {formatVersionDate(version.createdAt)}
-                      </small>
-                    </div>
-                    <div className="version-actions">
-                      <button type="button" onClick={() => restoreLocalVersion(version)}>
-                        Restore
-                      </button>
-                      <button type="button" onClick={() => deleteLocalVersion(version.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+            {entitlement.isPro ? (
+              <>
+                <div className="version-save-row">
+                  <input
+                    value={versionLabel}
+                    onChange={(event) => setVersionLabel(event.target.value)}
+                    placeholder={`${activeStep.label} pass label`}
+                  />
+                  <button className="button secondary" type="button" onClick={saveLocalVersion}>
+                    Save version
+                  </button>
+                </div>
+                {versions.length ? (
+                  <div className="version-list">
+                    {versions.slice(0, 6).map((version) => (
+                      <article className="version-item" key={version.id}>
+                        <div>
+                          <strong>{version.label}</strong>
+                          <small>
+                            {version.stageLabel} / {formatVersionDate(version.createdAt)}
+                          </small>
+                        </div>
+                        <div className="version-actions">
+                          <button type="button" onClick={() => restoreLocalVersion(version)}>
+                            Restore
+                          </button>
+                          <button type="button" onClick={() => deleteLocalVersion(version.id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="asset-empty">No saved passes yet.</p>
+                )}
+              </>
             ) : (
-              <p className="asset-empty">No saved passes yet.</p>
+              <p className="asset-empty">
+                Founder Pro keeps rewrite passes available inside the project and includes them in
+                the premium packet.
+              </p>
             )}
           </div>
           {saveStatus ? <p className="status success">{saveStatus}</p> : null}
@@ -2210,7 +2414,7 @@ export function ProjectWorkspace({
             {sceneBreakdowns.map((scene) => {
               const isEditing = editingSceneId === scene.id;
               const draft = sceneDrafts[scene.id] ?? sceneToDraft(scene);
-              const sceneAssets = assetsBySceneId[scene.id] ?? [];
+              const sceneAssets = entitlement.isPro ? assetsBySceneId[scene.id] ?? [] : [];
               const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
               const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
 
@@ -2391,7 +2595,9 @@ export function ProjectWorkspace({
                             onClick={() => buildDetailedShotList(scene)}
                             disabled={buildingShotListSceneId === scene.id}
                           >
-                            {buildingShotListSceneId === scene.id
+                            {!entitlement.isPro
+                              ? "Pro: Build detailed shot list"
+                              : buildingShotListSceneId === scene.id
                               ? "Building..."
                               : shotAssets.length
                                 ? "Regenerate shot list"
@@ -2426,7 +2632,9 @@ export function ProjectWorkspace({
                                     >
                                       {isGeneratingImage
                                         ? "Generating..."
-                                        : asset.image_prompt
+                                        : !entitlement.isPro
+                                          ? "Pro: image prompt"
+                                          : asset.image_prompt
                                           ? "Regenerate image prompt"
                                           : "Generate image prompt"}
                                     </button>
@@ -2439,7 +2647,9 @@ export function ProjectWorkspace({
                                       >
                                         {isGeneratingAnimation
                                           ? "Generating..."
-                                          : asset.animation_prompt || asset.sound_prompt
+                                          : !entitlement.isPro
+                                            ? "Pro: animation + sound"
+                                            : asset.animation_prompt || asset.sound_prompt
                                             ? "Regenerate animation + sound/dialogue"
                                             : "Generate animation + sound/dialogue"}
                                       </button>
@@ -2487,7 +2697,11 @@ export function ProjectWorkspace({
                             onClick={() => createInsertShot(scene)}
                             disabled={creatingAssetSceneId === scene.id}
                           >
-                            {creatingAssetSceneId === scene.id ? "Adding..." : "I need another insert shot"}
+                            {creatingAssetSceneId === scene.id
+                              ? "Adding..."
+                              : entitlement.isPro
+                                ? "I need another insert shot"
+                                : "Pro: another insert shot"}
                           </button>
                         </div>
                         {promptAssets.length ? (
@@ -2507,7 +2721,9 @@ export function ProjectWorkspace({
                                   >
                                     {generatingAssetPromptId === `image_prompt:${asset.id}`
                                       ? "Regenerating..."
-                                      : "Regenerate image prompt"}
+                                      : entitlement.isPro
+                                        ? "Regenerate image prompt"
+                                        : "Pro: image prompt"}
                                   </button>
                                   <button
                                     className="button secondary"
@@ -2517,7 +2733,9 @@ export function ProjectWorkspace({
                                   >
                                     {generatingAssetPromptId === `animation_prompt:${asset.id}`
                                       ? "Regenerating..."
-                                      : "Regenerate animation + sound/dialogue"}
+                                      : entitlement.isPro
+                                        ? "Regenerate animation + sound/dialogue"
+                                        : "Pro: animation + sound"}
                                   </button>
                                 </div>
                                 <p>{asset.purpose}</p>
