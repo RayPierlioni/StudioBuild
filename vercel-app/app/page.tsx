@@ -31,9 +31,16 @@ export default function Home() {
     <main className="shell">
       <section className="hero">
         <img src={heroImageUrl} alt="" />
-        <div className="brand">
-          <img className="mark" src="/favicon.svg" alt="" />
-          <span>STUDIOBUILD</span>
+        <div className="landing-nav">
+          <div className="brand">
+            <img className="mark" src="/favicon.svg" alt="" />
+            <span>STUDIOBUILD</span>
+          </div>
+          <nav aria-label="StudioBuild sections">
+            <a href="#fix-scene">Demo</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#workspace">Open App</a>
+          </nav>
         </div>
         <div className="hero-copy">
           <p className="kicker">Pre-production for AI filmmakers</p>
@@ -47,8 +54,8 @@ export default function Home() {
             <a className="button" href="#fix-scene">
               Fix a Scene Free
             </a>
-            <a className="button secondary ghost" href="#what-you-get">
-              See Outputs
+            <a className="button secondary ghost" href="#workspace">
+              Open App
             </a>
           </div>
           <div className="hero-chips" aria-label="StudioBuild focus">
@@ -64,6 +71,10 @@ export default function Home() {
         <div className="topline">
           <span className="pill">Workflow-first</span>
           <span className="pill">Bring-your-own-AI prompts</span>
+        </div>
+
+        <div id="workspace">
+          <StudioWorkspace />
         </div>
 
         <SceneFixDemo />
@@ -93,10 +104,6 @@ export default function Home() {
             ))}
           </div>
         </article>
-
-        <div id="workspace">
-          <StudioWorkspace />
-        </div>
 
         <article className="panel pricing-panel" id="pricing">
           <p className="eyebrow">Pricing Direction</p>

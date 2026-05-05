@@ -40,8 +40,7 @@ a {
 
 .shell {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1fr);
+  display: block;
 }
 
 .detail-shell {
@@ -72,7 +71,9 @@ a {
 
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: clamp(640px, 86vh, 840px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   isolation: isolate;
   padding: clamp(24px, 4vw, 52px);
@@ -99,6 +100,36 @@ a {
     linear-gradient(90deg, rgba(29, 26, 28, 0.88), rgba(29, 26, 28, 0.36));
 }
 
+.landing-nav {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.landing-nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.landing-nav nav a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 250, 241, 0.16);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(29, 26, 28, 0.28);
+  color: rgba(255, 250, 241, 0.82);
+  font-size: 12px;
+  font-weight: 760;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -114,10 +145,10 @@ a {
 }
 
 .hero-copy {
-  position: absolute;
-  left: clamp(24px, 4vw, 52px);
-  right: clamp(24px, 4vw, 52px);
-  bottom: clamp(34px, 8vh, 88px);
+  position: relative;
+  z-index: 1;
+  width: min(1180px, 100%);
+  margin: auto auto 0;
 }
 
 .kicker {
@@ -130,16 +161,16 @@ a {
 }
 
 h1 {
-  max-width: 760px;
+  max-width: 940px;
   margin: 0;
   color: #fffaf1;
-  font-size: clamp(46px, 6vw, 82px);
+  font-size: clamp(44px, 7vw, 92px);
   font-weight: 760;
   line-height: 0.95;
 }
 
 .hero-copy p {
-  max-width: 620px;
+  max-width: 740px;
   margin: 24px 0 0;
   color: rgba(255, 250, 241, 0.76);
   font-size: clamp(17px, 1.8vw, 23px);
@@ -184,7 +215,16 @@ h1 {
   display: grid;
   align-content: start;
   gap: 18px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
   padding: clamp(24px, 4vw, 52px);
+}
+
+#workspace,
+#fix-scene,
+#pricing,
+#what-you-get {
+  scroll-margin-top: 20px;
 }
 
 .topline {
@@ -313,6 +353,21 @@ h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
+}
+
+.workspace-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.workspace-account strong {
+  color: var(--deep);
 }
 
 .eyebrow {
@@ -1711,7 +1766,7 @@ code {
 
 @media (max-width: 920px) {
   .shell {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .hero {
@@ -1719,11 +1774,12 @@ code {
   }
 
   .hero-copy {
-    position: relative;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    margin-top: 32vh;
+    margin-top: clamp(86px, 18vh, 140px);
+  }
+
+  .landing-nav {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .grid {

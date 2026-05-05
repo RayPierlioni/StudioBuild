@@ -464,7 +464,9 @@ export function StudioWorkspace() {
         ...defaultUsage,
         projectCount: result.projects?.length ?? 0,
       });
-      setSelectedProjectId((current) => current || result.projects?.[0]?.id || "");
+      setSelectedProjectId((current) =>
+        current && result.projects?.some((project) => project.id === current) ? current : "",
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load projects.");
     } finally {
@@ -607,7 +609,15 @@ export function StudioWorkspace() {
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Live workspace</p>
-          <h2>{selectedProject ? "Project command center." : "Save the first real project."}</h2>
+          <h2>{selectedProject ? "Project command center." : "Your StudioBuild dashboard."}</h2>
+          {session ? (
+            <p className="workspace-account">
+              Signed in as <strong>{userEmail}</strong>
+              <span className={entitlement.isPro ? "plan-badge active" : "plan-badge"}>
+                {entitlement.planLabel}
+              </span>
+            </p>
+          ) : null}
         </div>
         {session ? (
           <button className="button secondary" type="button" onClick={signOut}>
