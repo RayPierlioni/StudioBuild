@@ -854,6 +854,95 @@ textarea:focus {
   display: none;
 }
 
+.version-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 250, 241, 0.58)),
+    white;
+}
+
+.version-heading,
+.version-save-row,
+.version-item,
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.version-heading,
+.version-item {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.version-heading > div,
+.version-item > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.version-heading span {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.version-heading strong,
+.version-item strong {
+  color: var(--deep);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.version-heading small,
+.version-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.version-save-row input {
+  flex: 1 1 220px;
+  min-height: 38px;
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.version-save-row .button {
+  min-height: 38px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.version-list {
+  display: grid;
+  gap: 8px;
+}
+
+.version-item {
+  border-top: 1px solid rgba(52, 47, 45, 0.08);
+  padding-top: 8px;
+}
+
+.version-actions button {
+  min-height: 28px;
+  border: 1px solid rgba(182, 93, 104, 0.2);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: white;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .next-actions {
   display: grid;
   align-content: start;
@@ -1556,6 +1645,16 @@ code {
   }
 
   .export-actions {
+    width: 100%;
+  }
+
+  .version-save-row,
+  .version-actions {
+    flex-direction: column;
+  }
+
+  .version-save-row .button,
+  .version-actions button {
     width: 100%;
   }
 

@@ -128,6 +128,15 @@ type ProjectForm = {
   initialContent: string;
 };
 
+type LocalVersion = {
+  id: string;
+  label: string;
+  docType: DocType;
+  stageLabel: string;
+  content: string;
+  createdAt: string;
+};
+
 const emptyForm: ProjectForm = {
   title: "",
   genre: "",
@@ -266,6 +275,25 @@ function completionLine(label: string, isComplete: boolean) {
 
 function sceneBoardLabel(scene: SceneBreakdown) {
   return `Scene ${scene.scene_number}: ${scene.scene_heading || "Unlabeled scene"}`;
+}
+
+function versionStorageKey(projectId: string) {
+  return `studiobuild:versions:${projectId}`;
+}
+
+function createVersionId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `version-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function formatVersionDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function sceneToDraft(scene: SceneBreakdown): SceneBreakdownDraft {
@@ -663,6 +691,8 @@ export function ProjectWorkspace({
     breakdown_notes: "",
   });
   const [workflowTools, setWorkflowTools] = useState("");
+  const [versionLabel, setVersionLabel] = useState("");
+  const [versions, setVersions] = useState<LocalVersion[]>([]);
   const [saveStatus, setSaveStatus] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSavingStage, setIsSavingStage] = useState(false);
@@ -819,6 +849,81 @@ export function ProjectWorkspace({
       return next;
     });
   }, [documents, draftText]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(versionStorageKey(project.id));
+      const parsed = stored ? (JSON.parse(stored) as LocalVersion[]) : [];
+
+      setVersions(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setVersions([]);
+    }
+  }, [project.id]);
+
+  function writeVersions(nextVersions: LocalVersion[]) {
+    setVersions(nextVersions);
+
+    try {
+      window.localStorage.setItem(versionStorageKey(project.id), JSON.stringify(nextVersions));
+      return true;
+    } catch {
+      setSaveError("Your browser blocked local version storage.");
+      return false;
+    }
+  }
+
+  function saveLocalVersion() {
+    const content = currentDraft.trim();
+
+    if (!content) {
+      setSaveError("Write or paste something before saving a version.");
+      setSaveStatus("");
+      return;
+    }
+
+    const nextVersion: LocalVersion = {
+      id: createVersionId(),
+      label: versionLabel.trim() || `${activeStep.label} pass`,
+      docType: activeStep.docType,
+      stageLabel: activeStep.label,
+      content: currentDraft,
+      createdAt: new Date().toISOString(),
+    };
+    const nextVersions = [nextVersion, ...versions].slice(0, 24);
+
+    const didSave = writeVersions(nextVersions);
+
+    if (!didSave) {
+      return;
+    }
+
+    setVersionLabel("");
+    setSaveStatus(`${nextVersion.label} saved to local version history.`);
+    setSaveError("");
+  }
+
+  function restoreLocalVersion(version: LocalVersion) {
+    setActiveStepId(pipelineSteps.find((step) => step.docType === version.docType)?.id ?? activeStepId);
+    setDrafts((current) => ({ ...current, [version.docType]: version.content }));
+    onDraftChange(version.content);
+    setSaveStatus(`${version.label} restored into the editor. Click Save Stage Draft to make it active.`);
+    setSaveError("");
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+  }
+
+  function deleteLocalVersion(versionId: string) {
+    const nextVersions = versions.filter((version) => version.id !== versionId);
+
+    const didSave = writeVersions(nextVersions);
+
+    if (!didSave) {
+      return;
+    }
+
+    setSaveStatus("Version deleted.");
+    setSaveError("");
+  }
 
   function openBoardScene(sceneId: string) {
     const scene = sceneBreakdowns.find((candidate) => candidate.id === sceneId);
@@ -1270,6 +1375,22 @@ export function ProjectWorkspace({
       .filter((section) => section.value.trim())
       .map((section) => [`## ${section.label}`, "", section.value.trim()].join("\n"))
       .join("\n\n");
+    const versionBlocks = versions.length
+      ? [
+          "## Saved Passes",
+          "",
+          ...versions.map((version) =>
+            [
+              `### ${version.label}`,
+              "",
+              `Stage: ${version.stageLabel}`,
+              `Saved: ${formatVersionDate(version.createdAt)}`,
+              "",
+              version.content.trim(),
+            ].join("\n"),
+          ),
+        ].join("\n\n")
+      : "";
 
     const sceneBlocks = sceneBreakdowns
       .map((scene) => {
@@ -1350,7 +1471,7 @@ export function ProjectWorkspace({
       })
       .join("\n\n");
 
-    return [projectSummary, documentBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
+    return [projectSummary, documentBlocks, versionBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
       .filter(Boolean)
       .join("\n\n");
   }
@@ -1456,6 +1577,26 @@ export function ProjectWorkspace({
         `,
       )
       .join("");
+    const versionSections = versions.length
+      ? `
+          <section class="packet-section">
+            <div class="section-kicker">Saved Passes</div>
+            <h2>Version History</h2>
+            ${versions
+              .map(
+                (version) => `
+                  <article class="prompt-card">
+                    <span>${htmlValue(version.stageLabel)}</span>
+                    <h4>${htmlValue(version.label)}</h4>
+                    <p class="purpose">Saved ${htmlValue(formatVersionDate(version.createdAt))}</p>
+                    <div class="document-body">${htmlParagraphs(version.content)}</div>
+                  </article>
+                `,
+              )
+              .join("")}
+          </section>
+        `
+      : "";
 
     return `<!doctype html>
 <html>
@@ -1709,6 +1850,7 @@ export function ProjectWorkspace({
         </div>
       </section>
       ${documentSections}
+      ${versionSections}
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
     </main>
     <script>
@@ -1964,6 +2106,49 @@ export function ProjectWorkspace({
             >
               {isSavingPacket ? "Saving packet..." : "Save Scene Packet"}
             </button>
+          </div>
+          <div className="version-panel" aria-label="Local version history">
+            <div className="version-heading">
+              <div>
+                <span>Local version history</span>
+                <strong>Save passes before you rewrite.</strong>
+              </div>
+              <small>{versions.length} saved</small>
+            </div>
+            <div className="version-save-row">
+              <input
+                value={versionLabel}
+                onChange={(event) => setVersionLabel(event.target.value)}
+                placeholder={`${activeStep.label} pass label`}
+              />
+              <button className="button secondary" type="button" onClick={saveLocalVersion}>
+                Save version
+              </button>
+            </div>
+            {versions.length ? (
+              <div className="version-list">
+                {versions.slice(0, 6).map((version) => (
+                  <article className="version-item" key={version.id}>
+                    <div>
+                      <strong>{version.label}</strong>
+                      <small>
+                        {version.stageLabel} / {formatVersionDate(version.createdAt)}
+                      </small>
+                    </div>
+                    <div className="version-actions">
+                      <button type="button" onClick={() => restoreLocalVersion(version)}>
+                        Restore
+                      </button>
+                      <button type="button" onClick={() => deleteLocalVersion(version.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="asset-empty">No saved passes yet.</p>
+            )}
           </div>
           {saveStatus ? <p className="status success">{saveStatus}</p> : null}
           {saveError ? <p className="status error">{saveError}</p> : null}
