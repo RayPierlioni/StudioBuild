@@ -464,7 +464,7 @@ function ProUnlockPanel({
         <strong>Founder Pro unlocks the full pre-production system.</strong>
         <p>
           Free users can build one project, save one scene-packet preview, copy expert prompts, and
-          download a basic packet. The deeper production workflow is paid.
+          download a basic packet. The deeper production workflow is $12.99/month.
         </p>
       </div>
       {!compact ? (
@@ -780,12 +780,12 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       </div>
 
       {isLoadingSession ? (
-        <p className="subtle">Checking sign-in status...</p>
+        <p className="subtle">Opening secure StudioBuild workspace...</p>
       ) : !session ? (
         <div className="auth-box">
           <p>
-            Sign in with Google to save your film projects, reopen your workspace, and keep your
-            production packets organized.
+            Sign in with Google to save your film projects, reopen the command center, and keep
+            your production packets organized.
           </p>
           <button className="button" type="button" onClick={signInWithGoogle}>
             Sign in with Google
@@ -884,7 +884,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
               {hasReachedFreeProjectLimit ? (
                 <p className="status error">
                   Free StudioBuild includes 1 project. Founder Pro unlocks multiple films and the
-                  full production workflow.
+                  full production workflow for $12.99/month.
                 </p>
               ) : null}
 

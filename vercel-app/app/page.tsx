@@ -20,7 +20,7 @@ const pricingCards = [
   ["Free", "$0", "One project, one scene-packet preview, basic prompt copying, and Markdown export."],
   [
     "Founder Pro",
-    "$2.99/wk",
+    "$12.99/mo",
     "Multiple projects, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
   ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
@@ -45,7 +45,7 @@ export default function Home() {
         </div>
         <div className="hero-copy">
           <p className="kicker">Pre-production for AI filmmakers</p>
-          <h1>If you want to compete, you need more than prompts.</h1>
+          <h1>Make AI scripts stop sounding like AI.</h1>
           <p>
             StudioBuild turns rough AI film ideas and scripts into treatments, scene breakdowns,
             shot plans, and prompt-ready production packets so your film has story logic before you

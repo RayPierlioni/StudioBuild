@@ -14,13 +14,13 @@ function getBaseUrl(request: Request) {
 export async function POST(request: Request) {
   try {
     const { user } = await getVerifiedRequestUser(request);
-    const priceId = process.env.STRIPE_FOUNDER_PRO_PRICE_ID;
+    const priceId = process.env.STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID;
 
     if (!priceId) {
       return Response.json(
         {
           ok: false,
-          error: "Founder Pro checkout is not available yet. Please try again shortly.",
+          error: "Founder Pro monthly checkout is not available yet. Please try again shortly.",
         },
         { status: 503 },
       );

@@ -17,7 +17,7 @@ export function envStatus() {
     openaiModel: process.env.OPENAI_MODEL || "gpt-5.5",
     stripeSecretKey: Boolean(process.env.STRIPE_SECRET_KEY),
     stripeWebhookSecret: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
-    stripeFounderProPriceId: Boolean(process.env.STRIPE_FOUNDER_PRO_PRICE_ID),
+    stripeFounderProMonthlyPriceId: Boolean(process.env.STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID),
     adminEmails: Boolean(process.env.ADMIN_EMAILS),
   };
 }

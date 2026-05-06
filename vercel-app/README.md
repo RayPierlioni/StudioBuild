@@ -6,7 +6,7 @@ The GitHub Pages demo stays online while this folder becomes the production arch
 
 - Supabase-backed users and projects
 - Admin full-access sign-in
-- Stripe `$2.99/week` Founder Pro subscriptions
+- Stripe `$12.99/month` Founder Pro subscriptions
 - Protected server-side AI generation
 - Multi-page app workflows
 
@@ -64,6 +64,9 @@ documents back to Supabase.
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.
+
+Founder Pro pricing is now positioned as `$12.99/month`. Set
+`STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID` to a monthly Stripe Price ID before enabling checkout.
 
 ## Deployment Direction
 

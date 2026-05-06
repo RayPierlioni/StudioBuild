@@ -102,6 +102,171 @@ a {
   font-weight: 760;
 }
 
+.command-app-shell {
+  padding: 18px;
+}
+
+.command-topbar {
+  width: min(1560px, 100%);
+  min-height: 54px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 14px 40px rgba(46, 36, 29, 0.08);
+}
+
+.command-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr) 300px;
+  gap: 14px;
+  width: min(1560px, 100%);
+  margin: 0 auto;
+  align-items: start;
+}
+
+.command-sidebar,
+.command-guide-panel,
+.command-main {
+  min-width: 0;
+}
+
+.command-sidebar,
+.command-guide-panel {
+  position: sticky;
+  top: 14px;
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+}
+
+.sidebar-brand-block,
+.guide-stage-card,
+.command-main-head {
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(237, 241, 240, 0.64)),
+    white;
+  box-shadow: 0 12px 36px rgba(46, 36, 29, 0.07);
+}
+
+.sidebar-brand-block,
+.guide-stage-card {
+  padding: 14px;
+}
+
+.sidebar-brand-block span,
+.guide-stage-card span {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sidebar-brand-block strong,
+.guide-stage-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--deep);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.sidebar-brand-block p,
+.guide-stage-card p,
+.command-main-head p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pipeline-nav,
+.guide-route-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pipeline-nav a,
+.guide-route-list a {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.pipeline-nav a:hover,
+.guide-route-list a:hover {
+  border-color: rgba(182, 93, 104, 0.38);
+  box-shadow: 0 14px 36px rgba(46, 36, 29, 0.09);
+  transform: translateY(-1px);
+}
+
+.pipeline-nav a span {
+  color: var(--accent-dark);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.pipeline-nav a strong,
+.guide-route-list a strong {
+  color: var(--deep);
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.pipeline-nav a small,
+.guide-route-list a span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.command-main {
+  display: grid;
+  gap: 14px;
+}
+
+.command-main-head {
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.command-main-head h1 {
+  max-width: 780px;
+  margin: 0;
+  color: var(--deep);
+  font-size: clamp(34px, 4.5vw, 56px);
+  line-height: 0.98;
+}
+
+.command-main .app-workspace,
+.command-main .studio-panel {
+  width: 100%;
+}
+
+.command-main .studio-panel {
+  box-shadow: 0 14px 44px rgba(46, 36, 29, 0.09);
+}
+
+.command-guide-panel .guide-character.small {
+  min-height: 250px;
+}
+
+.command-guide-panel .guide-speech {
+  font-size: 12px;
+}
+
 .app-guide,
 .app-workspace {
   width: min(1180px, 100%);
@@ -2115,9 +2280,31 @@ code {
     flex-direction: column;
   }
 
+  .command-app-shell {
+    padding: 12px;
+  }
+
   .app-topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .command-topbar {
+    width: 100%;
+  }
+
+  .command-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .command-sidebar,
+  .command-guide-panel {
+    position: static;
+    max-height: none;
+  }
+
+  .pipeline-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .grid {
@@ -2230,5 +2417,15 @@ code {
 
   .hero-chips span:nth-child(n + 3) {
     display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .pipeline-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .command-main-head h1 {
+    font-size: 34px;
   }
 }
