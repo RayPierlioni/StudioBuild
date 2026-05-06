@@ -97,7 +97,11 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         );
         setSceneBreakdowns(result.sceneBreakdowns ?? []);
         setProductionAssets(result.productionAssets ?? []);
-        setDraftText(result.documents?.[0]?.content ?? "");
+        setDraftText(
+          result.documents?.find((document) => document.doc_type === "idea")?.content ??
+            result.documents?.find((document) => document.doc_type === "script")?.content ??
+            "",
+        );
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Unable to open project.");
       } finally {

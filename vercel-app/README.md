@@ -61,6 +61,14 @@ production pipeline, and protected AI action buttons.
 Pipeline stages are clickable. AI generation and manual draft saves both write editable stage
 documents back to Supabase.
 
+The project command center now includes Character Bible and Location Bible stages. Founder Pro and
+admin users can generate starter bibles from saved scene packets, then edit and save them as
+project documents.
+
+The project command center now includes a Dialogue / AI Voice Scanner stage. The scanner runs
+without hosted AI calls, creates a dialogue discipline score, flags robotic or expositional patterns,
+writes a rewrite rubric, and saves the report as a project document.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.

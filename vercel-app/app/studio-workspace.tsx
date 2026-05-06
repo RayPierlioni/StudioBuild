@@ -18,8 +18,25 @@ export type Project = {
   updated_at: string;
 };
 
-type StageId = "idea" | "treatment" | "script" | "breakdown" | "production";
-type DocType = "idea" | "synopsis" | "treatment" | "story" | "script" | "breakdown_notes";
+type StageId =
+  | "idea"
+  | "treatment"
+  | "characters"
+  | "locations"
+  | "script"
+  | "dialogue"
+  | "breakdown"
+  | "production";
+type DocType =
+  | "idea"
+  | "synopsis"
+  | "treatment"
+  | "character_bible"
+  | "location_bible"
+  | "story"
+  | "script"
+  | "dialogue_notes"
+  | "breakdown_notes";
 export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
 type GenerateMode =
   | "treatment"
@@ -138,6 +155,26 @@ type LocalVersion = {
   createdAt: string;
 };
 
+type DialogueFlag = {
+  evidence: string;
+  fix: string;
+  label: string;
+  severity: "High" | "Medium" | "Low";
+};
+
+type DialogueScan = {
+  averageWordsPerLine: number;
+  characterCount: number;
+  dialogueLineCount: number;
+  flags: DialogueFlag[];
+  prompt: string;
+  rubric: string[];
+  score: number;
+  sourceExcerpt: string;
+  strengths: string[];
+  wordCount: number;
+};
+
 export type AccessEntitlement = {
   isAdmin: boolean;
   isPro: boolean;
@@ -165,8 +202,11 @@ const defaultUsage: ProjectUsage = {
 const proFeatureList = [
   "Multiple projects",
   "Full-script scene parsing",
+  "Character Bible",
+  "Location Bible",
   "Production board",
   "Local version history",
+  "AI voice scanner",
   "Detailed shot lists",
   "Insert-shot prompt cards",
   "Image, animation, sound prompts",
@@ -252,12 +292,39 @@ const pipelineSteps: Array<{
     placeholder: "Build a treatment with act structure, emotional turns, and a same-but-different hook.",
   },
   {
+    id: "characters",
+    projectStage: "characters",
+    docType: "character_bible",
+    label: "Characters",
+    description: "Lock character look, voice, wardrobe, props, and continuity.",
+    placeholder:
+      "Build character bibles with visual continuity, wardrobe, speech patterns, carried props, relationships, and scene-to-scene state changes.",
+  },
+  {
+    id: "locations",
+    projectStage: "locations",
+    docType: "location_bible",
+    label: "Locations",
+    description: "Lock location layout, dressing, light, color, and continuity.",
+    placeholder:
+      "Build location bibles with layout, time-of-day needs, color palette, dressing, lighting, ambient sound, and continuity risks.",
+  },
+  {
     id: "script",
     projectStage: "script",
     docType: "script",
     label: "Script",
     description: "Draft, import, rewrite, and remove the robotic AI voice.",
     placeholder: "Draft or paste screenplay pages here.",
+  },
+  {
+    id: "dialogue",
+    projectStage: "dialogue",
+    docType: "dialogue_notes",
+    label: "Dialogue",
+    description: "Scan for AI voice, exposition, subtext, and playable speech.",
+    placeholder:
+      "Run the AI Voice Scanner from your script pages, then keep the diagnosis, rewrite checklist, and external AI prompt here.",
   },
   {
     id: "breakdown",
@@ -350,6 +417,287 @@ function hasList(values: string[] | undefined) {
   return Boolean(values?.some((value) => value.trim()));
 }
 
+function uniqueSorted(values: Array<string | undefined>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+}
+
+const dialogueFlagRules: Array<{
+  fix: string;
+  label: string;
+  pattern: RegExp;
+  severity: DialogueFlag["severity"];
+}> = [
+  {
+    label: "Emotion is stated instead of played",
+    severity: "High",
+    pattern:
+      /\b(i feel|i am scared|i'm scared|i am angry|i'm angry|i am sad|i'm sad|i am confused|i'm confused|this hurts|it hurts me)\b/i,
+    fix: "Replace the named emotion with a physical choice, object, silence, interruption, or contradiction.",
+  },
+  {
+    label: "Exposition is too visible",
+    severity: "High",
+    pattern: /\b(as you know|remember when|the reason is|let me explain|what this means|because we need|you have to understand)\b/i,
+    fix: "Move information into conflict, behavior, set dressing, or what one character refuses to say directly.",
+  },
+  {
+    label: "Line sounds like thesis copy",
+    severity: "Medium",
+    pattern: /\b(this is about|what matters is|the truth is|in the end|our journey|we must learn|it represents)\b/i,
+    fix: "Make the line character-specific. Let the theme show through pressure, not explanation.",
+  },
+  {
+    label: "Generic urgency",
+    severity: "Medium",
+    pattern: /\b(we have to go|there is no time|we need to move|we need to hurry|everything depends on this)\b/i,
+    fix: "Name the specific cost, obstacle, or immediate physical action that makes the urgency real.",
+  },
+  {
+    label: "Flat agreement or response",
+    severity: "Low",
+    pattern: /\b(you're right|i know|okay|fine|sure|i understand)\b/i,
+    fix: "Add friction, subtext, status change, or a behavior that changes the rhythm of the exchange.",
+  },
+];
+
+function isLikelyCharacterCue(line: string) {
+  const trimmed = line.trim();
+
+  return (
+    /^[A-Z0-9 .'\-()]{2,36}$/.test(trimmed) &&
+    !/^(INT\.|EXT\.|EST\.|I\/E\.|CUT TO|FADE|DISSOLVE|SMASH CUT)/.test(trimmed) &&
+    /[A-Z]/.test(trimmed)
+  );
+}
+
+function extractDialogueLines(source: string) {
+  const lines = source.split(/\r?\n/).map((line) => line.trim());
+  const dialogueLines: string[] = [];
+  const characters = new Set<string>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (!isLikelyCharacterCue(line)) {
+      continue;
+    }
+
+    characters.add(line.replace(/\s*\(.*\)\s*$/, "").trim());
+
+    for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
+      const nextLine = lines[nextIndex];
+
+      if (!nextLine || isLikelyCharacterCue(nextLine) || /^(INT\.|EXT\.|EST\.|I\/E\.)/i.test(nextLine)) {
+        break;
+      }
+
+      if (!/^\(.+\)$/.test(nextLine)) {
+        dialogueLines.push(nextLine);
+      }
+    }
+  }
+
+  return {
+    characters: Array.from(characters).filter(Boolean),
+    dialogueLines,
+    lines,
+  };
+}
+
+function firstEvidence(lines: string[], pattern: RegExp) {
+  return lines.find((line) => pattern.test(line)) ?? "";
+}
+
+function flagPenalty(flag: DialogueFlag) {
+  if (flag.severity === "High") {
+    return 17;
+  }
+
+  if (flag.severity === "Medium") {
+    return 11;
+  }
+
+  return 6;
+}
+
+function analyzeDialogueSource({
+  project,
+  source,
+  workflowTools,
+}: {
+  project: Project;
+  source: string;
+  workflowTools: string;
+}): DialogueScan {
+  const cleanSource = source.trim();
+  const { characters, dialogueLines, lines } = extractDialogueLines(cleanSource);
+  const words = cleanSource.match(/\b[\w']+\b/g) ?? [];
+  const dialogueWords = dialogueLines.join(" ").match(/\b[\w']+\b/g) ?? [];
+  const averageWordsPerLine = dialogueLines.length
+    ? Math.round(dialogueWords.length / dialogueLines.length)
+    : 0;
+  const flags: DialogueFlag[] = [];
+
+  for (const rule of dialogueFlagRules) {
+    const evidence = firstEvidence(lines, rule.pattern);
+
+    if (evidence) {
+      flags.push({
+        evidence,
+        fix: rule.fix,
+        label: rule.label,
+        severity: rule.severity,
+      });
+    }
+  }
+
+  const physicalActionPattern =
+    /\b(picks up|sets down|turns|looks|opens|closes|touches|holds|drops|steps|backs away|waits|listens|breathes|reaches|pulls|pushes|stares|glances|crosses|sits|stands)\b/i;
+
+  if (!physicalActionPattern.test(cleanSource)) {
+    flags.push({
+      evidence: "No clear physical behavior detected in the scanned passage.",
+      fix: "Add one playable action that changes the scene: a held object, distance shift, silence, interruption, or refusal.",
+      label: "Missing visual behavior",
+      severity: "High",
+    });
+  }
+
+  if (dialogueLines.length === 0) {
+    flags.push({
+      evidence: "No screenplay-style dialogue blocks were detected.",
+      fix: "Use character cues and dialogue blocks, or scan a smaller scene section with character lines.",
+      label: "No dialogue blocks detected",
+      severity: "Medium",
+    });
+  }
+
+  if (averageWordsPerLine > 16) {
+    flags.push({
+      evidence: `Average dialogue line length is ${averageWordsPerLine} words.`,
+      fix: "Cut explanation. Give each line one job: pressure, dodge, reveal, attack, retreat, or decision.",
+      label: "Dialogue lines may be over-explaining",
+      severity: "Medium",
+    });
+  }
+
+  const repeatedStarterCount = dialogueLines.filter((line) => /^(i|you|we|they|this|that)\b/i.test(line)).length;
+
+  if (dialogueLines.length >= 4 && repeatedStarterCount / dialogueLines.length >= 0.55) {
+    flags.push({
+      evidence: `${repeatedStarterCount} of ${dialogueLines.length} dialogue lines start with a pronoun or abstract pointer.`,
+      fix: "Vary rhythm with interruption, fragment, object reference, silence, or a line that starts from the character's tactic.",
+      label: "Line rhythm is too similar",
+      severity: "Low",
+    });
+  }
+
+  const strengths = [
+    characters.length ? `${characters.length} speaking character${characters.length === 1 ? "" : "s"} detected.` : "",
+    /^(INT\.|EXT\.|EST\.|I\/E\.)/im.test(cleanSource) ? "Scene heading detected." : "",
+    physicalActionPattern.test(cleanSource) ? "Some visual behavior is already present." : "",
+    dialogueLines.length > 0 && averageWordsPerLine <= 16 ? "Dialogue line length is workable." : "",
+  ].filter(Boolean);
+  const score = Math.max(0, Math.min(100, 100 - flags.reduce((total, flag) => total + flagPenalty(flag), 0)));
+  const rubric = [
+    "Each character wants something specific in the moment.",
+    "The line says less than the character means.",
+    "Emotion is carried by behavior, object, blocking, or silence.",
+    "Exposition is hidden inside conflict or decision.",
+    "The scene has at least one visual turn the camera can hold.",
+    "Dialogue rhythm changes between attack, dodge, interruption, and retreat.",
+    "Every rewritten beat preserves the author's intent and the project's tone.",
+  ];
+  const flagSummary = flags.length
+    ? flags.map((flag) => `- ${flag.severity}: ${flag.label}. Fix: ${flag.fix}`).join("\n")
+    : "- No major AI-voice patterns were detected. Tighten for specificity and subtext.";
+  const prompt = [
+    "You are a professional dialogue editor and script supervisor for AI filmmakers.",
+    "",
+    "PROJECT CONTEXT",
+    `Title: ${project.title || "Untitled"}`,
+    `Genre: ${project.genre || "Not specified"}`,
+    `Tone: ${project.tone || "Not specified"}`,
+    `Logline: ${project.logline || "Not specified"}`,
+    `Workflow/tools: ${workflowTools || "Not specified"}`,
+    "",
+    "DIAGNOSIS TO ADDRESS",
+    flagSummary,
+    "",
+    "REWRITE RULES",
+    ...rubric.map((item) => `- ${item}`),
+    "",
+    "TASK",
+    "Rewrite the dialogue so it feels human, playable, specific, compressed, and full of subtext. Do not add a generic inspirational speech. Preserve the story intent and make the emotion visible through behavior.",
+    "",
+    "SOURCE",
+    cleanSource,
+  ].join("\n");
+
+  return {
+    averageWordsPerLine,
+    characterCount: characters.length,
+    dialogueLineCount: dialogueLines.length,
+    flags,
+    prompt,
+    rubric,
+    score,
+    sourceExcerpt: cleanSource.slice(0, 1200),
+    strengths,
+    wordCount: words.length,
+  };
+}
+
+function buildDialogueReportMarkdown(scan: DialogueScan) {
+  const flags = scan.flags.length
+    ? scan.flags
+        .map((flag) =>
+          [
+            `### ${flag.severity}: ${flag.label}`,
+            "",
+            `Evidence: ${flag.evidence}`,
+            "",
+            `Fix: ${flag.fix}`,
+          ].join("\n"),
+        )
+        .join("\n\n")
+    : "No major AI-voice patterns were detected. Tighten for specificity, conflict, and subtext.";
+
+  return [
+    "# Dialogue / AI Voice Scan",
+    "",
+    `Dialogue discipline score: ${scan.score}%`,
+    `Words scanned: ${scan.wordCount}`,
+    `Dialogue lines detected: ${scan.dialogueLineCount}`,
+    `Speaking characters detected: ${scan.characterCount}`,
+    `Average words per dialogue line: ${scan.averageWordsPerLine || "Not available"}`,
+    "",
+    "## Strengths",
+    "",
+    scan.strengths.length ? scan.strengths.map((strength) => `- ${strength}`).join("\n") : "- Needs a smaller screenplay-formatted scene sample.",
+    "",
+    "## Flags",
+    "",
+    flags,
+    "",
+    "## Rewrite Rubric",
+    "",
+    scan.rubric.map((item) => `- ${item}`).join("\n"),
+    "",
+    "## Expert Rewrite Prompt",
+    "",
+    "```text",
+    scan.prompt,
+    "```",
+  ].join("\n");
+}
+
 function completionLine(label: string, isComplete: boolean) {
   return { label, isComplete };
 }
@@ -439,8 +787,8 @@ function ProUnlockPanel({
           <span>{entitlement.planLabel} access</span>
           <strong>Full StudioBuild workflow unlocked.</strong>
           <p>
-            Admin and subscribed users can use the production board, shot lists, prompt cards,
-            version history, premium exports, and multiple projects.
+            Admin and subscribed users can use character bibles, location bibles, the production
+            board, shot lists, prompt cards, version history, premium exports, and multiple projects.
           </p>
         </div>
         {canManageBilling ? (
@@ -482,6 +830,61 @@ function ProUnlockPanel({
       >
         {isUpgrading ? "Opening checkout..." : "Upgrade to Founder Pro"}
       </button>
+    </section>
+  );
+}
+
+function DialogueScanPanel({
+  onCopyPrompt,
+  onRunAgain,
+  scan,
+}: {
+  onCopyPrompt: () => void;
+  onRunAgain: () => void;
+  scan: DialogueScan;
+}) {
+  const topFlags = scan.flags.slice(0, 4);
+
+  return (
+    <section className="dialogue-scan-panel" aria-label="AI voice scanner report">
+      <div className="dialogue-scan-head">
+        <div>
+          <span>AI voice scanner</span>
+          <strong>{scan.score}% dialogue discipline score</strong>
+          <p>
+            {scan.dialogueLineCount} dialogue line{scan.dialogueLineCount === 1 ? "" : "s"} /{" "}
+            {scan.characterCount} speaking character{scan.characterCount === 1 ? "" : "s"} detected.
+          </p>
+        </div>
+        <div className="dialogue-score-ring">{scan.score}%</div>
+      </div>
+      {topFlags.length ? (
+        <div className="dialogue-flag-grid">
+          {topFlags.map((flag) => (
+            <article className="dialogue-flag-card" key={`${flag.label}-${flag.evidence}`}>
+              <span>{flag.severity}</span>
+              <strong>{flag.label}</strong>
+              <p>{flag.evidence}</p>
+              <small>{flag.fix}</small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="asset-empty">No major AI-voice patterns detected in this pass.</p>
+      )}
+      <div className="rubric-grid">
+        {scan.rubric.slice(0, 4).map((item) => (
+          <span key={item}>{item}</span>
+        ))}
+      </div>
+      <div className="dialogue-actions">
+        <button className="button secondary" type="button" onClick={onRunAgain}>
+          Re-scan current text
+        </button>
+        <button className="button" type="button" onClick={onCopyPrompt}>
+          Copy rewrite prompt
+        </button>
+      </div>
     </section>
   );
 }
@@ -994,8 +1397,11 @@ export function ProjectWorkspace({
     idea: "",
     synopsis: "",
     treatment: "",
+    character_bible: "",
+    location_bible: "",
     story: "",
     script: "",
+    dialogue_notes: "",
     breakdown_notes: "",
   });
   const [workflowTools, setWorkflowTools] = useState("");
@@ -1009,6 +1415,7 @@ export function ProjectWorkspace({
   const [sceneDrafts, setSceneDrafts] = useState<Record<string, SceneBreakdownDraft>>({});
   const [buildingShotListSceneId, setBuildingShotListSceneId] = useState("");
   const [creatingAssetSceneId, setCreatingAssetSceneId] = useState("");
+  const [dialogueScan, setDialogueScan] = useState<DialogueScan | null>(null);
   const [generatingAssetPromptId, setGeneratingAssetPromptId] = useState("");
   const [savingSceneId, setSavingSceneId] = useState("");
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
@@ -1020,6 +1427,12 @@ export function ProjectWorkspace({
       return grouped;
     }, {});
   }, [productionAssets]);
+  const characterBibleNames = useMemo(() => {
+    return uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.characters ?? []));
+  }, [sceneBreakdowns]);
+  const locationBibleNames = useMemo(() => {
+    return uniqueSorted(sceneBreakdowns.map((scene) => scene.location));
+  }, [sceneBreakdowns]);
   const readiness = useMemo(() => {
     const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
     const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
@@ -1045,6 +1458,9 @@ export function ProjectWorkspace({
       ),
       completionLine("Idea or script draft saved", hasText(drafts.idea) || hasText(drafts.script)),
       completionLine("Treatment or story notes started", hasText(drafts.treatment) || hasText(drafts.story)),
+      completionLine("Character bible started", hasText(drafts.character_bible)),
+      completionLine("Location bible started", hasText(drafts.location_bible)),
+      completionLine("Dialogue or AI-voice scan completed", hasText(drafts.dialogue_notes)),
       completionLine("At least one scene packet saved", sceneBreakdowns.length > 0),
       completionLine("Scene packets include core production fields", sceneCompleteness >= 0.75),
       completionLine("Detailed shot list built", shotAssets.length > 0),
@@ -1283,6 +1699,159 @@ export function ProjectWorkspace({
     setSaveError("");
   }
 
+  function loadGeneratedDocument({
+    content,
+    docType,
+    status,
+    stepId,
+  }: {
+    content: string;
+    docType: DocType;
+    status: string;
+    stepId: StageId;
+  }) {
+    setActiveStepId(stepId);
+    setDrafts((current) => ({ ...current, [docType]: content }));
+    onDraftChange(content);
+    setSaveStatus(status);
+    setSaveError("");
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+  }
+
+  function buildCharacterBibleTemplate() {
+    const names = characterBibleNames.length ? characterBibleNames : ["Primary Character"];
+    const sections = names.map((name) => {
+      const appearances = sceneBreakdowns
+        .filter((scene) =>
+          scene.characters?.some((character) => character.trim().toLowerCase() === name.trim().toLowerCase()),
+        )
+        .map(sceneBoardLabel);
+
+      return [
+        `## ${name}`,
+        "",
+        `Scene appearances: ${appearances.length ? appearances.join(", ") : "Not mapped yet"}`,
+        "",
+        "Role in story:",
+        "- ",
+        "",
+        "Visual continuity:",
+        "- Face, age, body type:",
+        "- Hair:",
+        "- Wardrobe baseline:",
+        "- Wardrobe changes by act/scene:",
+        "- Props carried:",
+        "",
+        "Performance and voice:",
+        "- Wants:",
+        "- Need beneath the want:",
+        "- Speech pattern:",
+        "- What they never say directly:",
+        "",
+        "Relationship map:",
+        "- Allies:",
+        "- Conflict:",
+        "- Power dynamic:",
+        "",
+        "Continuity risks:",
+        "- Emotional state entering each scene:",
+        "- Physical state or injury:",
+        "- Object continuity:",
+        "",
+        "Prompt consistency anchor:",
+        "- Reusable image prompt language:",
+        "- Negative prompt notes:",
+      ].join("\n");
+    });
+
+    const content = [
+      `# Character Bible - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Keep every recurring character visually, emotionally, and vocally consistent across scenes, images, animation, and dialogue.",
+      "",
+      ...sections,
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "character_bible",
+      status: `${names.length} character bible section${names.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
+      stepId: "characters",
+    });
+  }
+
+  function buildLocationBibleTemplate() {
+    const names = locationBibleNames.length ? locationBibleNames : ["Primary Location"];
+    const sections = names.map((name) => {
+      const scenes = sceneBreakdowns
+        .filter((scene) => scene.location?.trim().toLowerCase() === name.trim().toLowerCase())
+        .map((scene) => `${sceneBoardLabel(scene)} (${scene.time_of_day || "No time"})`);
+
+      return [
+        `## ${name}`,
+        "",
+        `Scenes using this location: ${scenes.length ? scenes.join(", ") : "Not mapped yet"}`,
+        "",
+        "Physical layout:",
+        "- Entrances/exits:",
+        "- Key zones:",
+        "- Camera-safe directions:",
+        "- Blocking constraints:",
+        "",
+        "Visual continuity:",
+        "- Color palette:",
+        "- Lighting motivation:",
+        "- Time-of-day rules:",
+        "- Set dressing:",
+        "- Weather or environmental state:",
+        "",
+        "Sound map:",
+        "- Room tone:",
+        "- Background texture:",
+        "- Practical sounds:",
+        "- Silence or pressure points:",
+        "",
+        "Production assets:",
+        "- Required props:",
+        "- Background details:",
+        "- Insert shot opportunities:",
+        "",
+        "Prompt consistency anchor:",
+        "- Reusable location prompt language:",
+        "- Negative prompt notes:",
+        "",
+        "Continuity risks:",
+        "- What must not change between scenes:",
+        "- What can change intentionally:",
+      ].join("\n");
+    });
+
+    const content = [
+      `# Location Bible - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Keep every recurring location visually, spatially, and sonically consistent across shots and generated assets.",
+      "",
+      ...sections,
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "location_bible",
+      status: `${names.length} location bible section${names.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
+      stepId: "locations",
+    });
+  }
+
   function selectedTextareaText() {
     const textarea = textareaRef.current;
 
@@ -1295,6 +1864,66 @@ export function ProjectWorkspace({
       selectionEnd > selectionStart ? currentDraft.slice(selectionStart, selectionEnd) : "";
 
     return { selectedText, selectionStart, selectionEnd };
+  }
+
+  function dialogueScannerSource() {
+    const { selectedText } = selectedTextareaText();
+
+    return (
+      selectedText.trim() ||
+      (activeStepId === "dialogue" ? drafts.script.trim() : currentDraft.trim()) ||
+      drafts.script.trim() ||
+      drafts.breakdown_notes.trim() ||
+      scenePacketSource()
+    );
+  }
+
+  function runDialogueScanner() {
+    const source = dialogueScannerSource();
+
+    if (!source) {
+      setSaveError("Paste or import a script section before running the AI Voice Scanner.");
+      setSaveStatus("");
+      return;
+    }
+
+    const scan = analyzeDialogueSource({
+      project,
+      source,
+      workflowTools,
+    });
+
+    setDialogueScan(scan);
+    loadGeneratedDocument({
+      content: buildDialogueReportMarkdown(scan),
+      docType: "dialogue_notes",
+      status: `AI Voice Scanner finished with a ${scan.score}% dialogue discipline score. Review the flags, then save the Dialogue stage.`,
+      stepId: "dialogue",
+    });
+  }
+
+  async function copyDialogueScannerPrompt() {
+    const scan =
+      dialogueScan ??
+      analyzeDialogueSource({
+        project,
+        source: dialogueScannerSource(),
+        workflowTools,
+      });
+
+    if (!scan.sourceExcerpt) {
+      setSaveError("Run the AI Voice Scanner after adding script text.");
+      setSaveStatus("");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(scan.prompt);
+      setSaveStatus("Dialogue rewrite prompt copied. Paste it into the AI tool you already use.");
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Run the scanner and copy the prompt from the Dialogue notes.");
+    }
   }
 
   function buildExpertPrompt(mode: GenerateMode) {
@@ -1695,7 +2324,10 @@ export function ProjectWorkspace({
     const docSections: Array<{ label: string; value: string }> = [
       { label: "Idea", value: drafts.idea },
       { label: "Treatment", value: drafts.treatment },
+      { label: "Character Bible", value: drafts.character_bible },
+      { label: "Location Bible", value: drafts.location_bible },
       { label: "Script", value: drafts.script },
+      { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Notes", value: drafts.story },
     ];
@@ -1824,7 +2456,10 @@ export function ProjectWorkspace({
     const docSections: Array<{ label: string; value: string }> = [
       { label: "Idea", value: drafts.idea },
       { label: "Treatment", value: drafts.treatment },
+      { label: "Character Bible", value: drafts.character_bible },
+      { label: "Location Bible", value: drafts.location_bible },
       { label: "Script", value: drafts.script },
+      { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Notes", value: drafts.story },
     ].filter((section) => section.value.trim());
@@ -2290,6 +2925,64 @@ export function ProjectWorkspace({
         onUpgrade={onUpgrade}
       />
 
+      <section className="bible-board" aria-label="Character and location bibles">
+        <div className="board-heading">
+          <div>
+            <span>Story bibles</span>
+            <h4>Lock the people and places before generating shots.</h4>
+            <p>
+              Character and location bibles create the visual continuity anchors that AI films need
+              before shot lists, prompt cards, and animation passes.
+            </p>
+          </div>
+          <strong>
+            {(hasText(drafts.character_bible) ? 1 : 0) + (hasText(drafts.location_bible) ? 1 : 0)} of 2 started
+          </strong>
+        </div>
+        <div className="bible-grid">
+          <article className={hasText(drafts.character_bible) ? "bible-card active" : "bible-card"}>
+            <span>Character Bible</span>
+            <strong>{characterBibleNames.length || "No"} character{characterBibleNames.length === 1 ? "" : "s"} detected</strong>
+            <p>
+              Track look, wardrobe, voice, props carried, relationships, and emotional continuity.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("characters")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildCharacterBibleTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build from scene packets" : "Pro: build bible"}
+              </button>
+            </div>
+          </article>
+          <article className={hasText(drafts.location_bible) ? "bible-card active" : "bible-card"}>
+            <span>Location Bible</span>
+            <strong>{locationBibleNames.length || "No"} location{locationBibleNames.length === 1 ? "" : "s"} detected</strong>
+            <p>
+              Track layout, light, color, dressing, sound texture, and cross-scene continuity risks.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("locations")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildLocationBibleTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build from scene packets" : "Pro: build bible"}
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section className="readiness-panel" aria-label="Production readiness score">
         <div className="readiness-score">
           <span>Production readiness</span>
@@ -2429,6 +3122,73 @@ export function ProjectWorkspace({
             <h4>{activeStep.label} room</h4>
             <span>{activeStep.projectStage}</span>
           </div>
+          {activeStepId === "characters" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Character continuity</span>
+                <strong>Make every recurring person reusable across images, animation, and dialogue.</strong>
+                <p>
+                  Use the scene packets to start a bible, then fill the visual anchor, wardrobe,
+                  speech pattern, carried props, and continuity risks.
+                </p>
+              </div>
+              <button
+                className="button"
+                type="button"
+                onClick={buildCharacterBibleTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Character Bible" : "Pro: Build Character Bible"}
+              </button>
+            </div>
+          ) : null}
+          {activeStepId === "locations" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Location continuity</span>
+                <strong>Make every recurring place feel like the same real space.</strong>
+                <p>
+                  Use scene packets to start a location bible, then fill layout, light, color,
+                  dressing, ambient sound, and what must stay consistent.
+                </p>
+              </div>
+              <button
+                className="button"
+                type="button"
+                onClick={buildLocationBibleTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Location Bible" : "Pro: Build Location Bible"}
+              </button>
+            </div>
+          ) : null}
+          {activeStepId === "script" || activeStepId === "dialogue" ? (
+            <div className="dialogue-tool-card">
+              <div>
+                <span>Dialogue discipline</span>
+                <strong>Find the lines that sound too robotic, expositional, or unplayable.</strong>
+                <p>
+                  Highlight a section or scan the script draft. StudioBuild creates a no-API
+                  diagnosis, rewrite rubric, and expert prompt you can use anywhere.
+                </p>
+              </div>
+              <div className="dialogue-actions">
+                <button className="button" type="button" onClick={runDialogueScanner}>
+                  Run AI Voice Scanner
+                </button>
+                <button className="button secondary" type="button" onClick={copyDialogueScannerPrompt}>
+                  Copy scanner prompt
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {activeStepId === "dialogue" && dialogueScan ? (
+            <DialogueScanPanel
+              scan={dialogueScan}
+              onCopyPrompt={copyDialogueScannerPrompt}
+              onRunAgain={runDialogueScanner}
+            />
+          ) : null}
           <textarea
             ref={textareaRef}
             className="script-pad"
@@ -2468,6 +3228,9 @@ export function ProjectWorkspace({
               onClick={() => copyExpertPrompt("dialogue")}
             >
               Copy dialogue prompt
+            </button>
+            <button className="button secondary" type="button" onClick={runDialogueScanner}>
+              Run AI Voice Scanner
             </button>
             <button
               className="button secondary"
@@ -2568,6 +3331,9 @@ export function ProjectWorkspace({
           </button>
           <button type="button" onClick={() => copyExpertPrompt("script")}>
             Copy script prompt
+          </button>
+          <button type="button" onClick={runDialogueScanner}>
+            Run AI voice scan
           </button>
           <button type="button" onClick={() => copyExpertPrompt("breakdown")}>
             Copy breakdown prompt

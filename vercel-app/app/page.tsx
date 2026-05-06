@@ -4,7 +4,7 @@ import { SceneFixDemo } from "./scene-fix-demo";
 const heroImageUrl = "/cinematic-hero.webp";
 
 const deliverables = [
-  ["Rough scene", "rewrite, scene purpose, emotional turn, and production notes"],
+  ["Rough scene", "AI voice scan, rewrite rubric, scene purpose, and production notes"],
   ["Imported script", "scene count, locations, speaking characters, and readiness gaps"],
   ["Finished scene", "props, wardrobe, sound, blocking, insert shots, and continuity needs"],
   ["Production need", "image prompts, animation prompts, sound prompts, and exportable packets"],
@@ -21,7 +21,7 @@ const pricingCards = [
   [
     "Founder Pro",
     "$12.99/mo",
-    "Multiple projects, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
+    "Multiple projects, character bibles, location bibles, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
   ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];

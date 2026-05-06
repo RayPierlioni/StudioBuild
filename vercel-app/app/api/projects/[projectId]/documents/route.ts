@@ -1,8 +1,28 @@
 import { getVerifiedRequestUser } from "../../../../../lib/auth";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase/server";
 
-const allowedDocTypes = new Set(["idea", "synopsis", "treatment", "story", "script", "breakdown_notes"]);
-const allowedStages = new Set(["idea", "synopsis", "treatment", "story", "script", "breakdown"]);
+const allowedDocTypes = new Set([
+  "idea",
+  "synopsis",
+  "treatment",
+  "character_bible",
+  "location_bible",
+  "story",
+  "script",
+  "dialogue_notes",
+  "breakdown_notes",
+]);
+const allowedStages = new Set([
+  "idea",
+  "synopsis",
+  "treatment",
+  "characters",
+  "locations",
+  "story",
+  "script",
+  "dialogue",
+  "breakdown",
+]);
 
 type RouteContext = {
   params: { projectId: string } | Promise<{ projectId: string }>;
