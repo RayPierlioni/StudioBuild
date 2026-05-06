@@ -69,6 +69,10 @@ The project command center now includes a Dialogue / AI Voice Scanner stage. The
 without hosted AI calls, creates a dialogue discipline score, flags robotic or expositional patterns,
 writes a rewrite rubric, and saves the report as a project document.
 
+The project command center now includes a Continuity Tracker stage. Founder Pro and admin users can
+generate a cross-scene tracker from saved scene packets for characters, props, wardrobe, set dressing,
+locations, sound, lighting, and generation risks.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.

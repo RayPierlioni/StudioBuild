@@ -25,6 +25,7 @@ type StageId =
   | "locations"
   | "script"
   | "dialogue"
+  | "continuity"
   | "breakdown"
   | "production";
 type DocType =
@@ -36,6 +37,7 @@ type DocType =
   | "story"
   | "script"
   | "dialogue_notes"
+  | "continuity_tracker"
   | "breakdown_notes";
 export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
 type GenerateMode =
@@ -207,6 +209,7 @@ const proFeatureList = [
   "Production board",
   "Local version history",
   "AI voice scanner",
+  "Continuity tracker",
   "Detailed shot lists",
   "Insert-shot prompt cards",
   "Image, animation, sound prompts",
@@ -327,6 +330,15 @@ const pipelineSteps: Array<{
       "Run the AI Voice Scanner from your script pages, then keep the diagnosis, rewrite checklist, and external AI prompt here.",
   },
   {
+    id: "continuity",
+    projectStage: "continuity",
+    docType: "continuity_tracker",
+    label: "Continuity",
+    description: "Track people, props, wardrobe, places, and state across scenes.",
+    placeholder:
+      "Build a continuity tracker from scene packets, then fill what changes, what must stay fixed, and what needs checking before generation.",
+  },
+  {
     id: "breakdown",
     projectStage: "breakdown",
     docType: "breakdown_notes",
@@ -425,6 +437,22 @@ function uniqueSorted(values: Array<string | undefined>) {
         .filter((value): value is string => Boolean(value)),
     ),
   ).sort((a, b) => a.localeCompare(b));
+}
+
+function scenesForValue(
+  scenes: SceneBreakdown[],
+  field: "characters" | "props" | "wardrobe" | "set_dressing",
+  value: string,
+) {
+  const normalized = value.trim().toLowerCase();
+
+  return scenes.filter((scene) =>
+    (scene[field] ?? []).some((item) => item.trim().toLowerCase() === normalized),
+  );
+}
+
+function sceneReferenceList(scenes: SceneBreakdown[]) {
+  return scenes.length ? scenes.map(sceneBoardLabel).join(", ") : "Not mapped yet";
 }
 
 const dialogueFlagRules: Array<{
@@ -1402,6 +1430,7 @@ export function ProjectWorkspace({
     story: "",
     script: "",
     dialogue_notes: "",
+    continuity_tracker: "",
     breakdown_notes: "",
   });
   const [workflowTools, setWorkflowTools] = useState("");
@@ -1461,6 +1490,7 @@ export function ProjectWorkspace({
       completionLine("Character bible started", hasText(drafts.character_bible)),
       completionLine("Location bible started", hasText(drafts.location_bible)),
       completionLine("Dialogue or AI-voice scan completed", hasText(drafts.dialogue_notes)),
+      completionLine("Continuity tracker started", hasText(drafts.continuity_tracker)),
       completionLine("At least one scene packet saved", sceneBreakdowns.length > 0),
       completionLine("Scene packets include core production fields", sceneCompleteness >= 0.75),
       completionLine("Detailed shot list built", shotAssets.length > 0),
@@ -1849,6 +1879,164 @@ export function ProjectWorkspace({
       docType: "location_bible",
       status: `${names.length} location bible section${names.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
       stepId: "locations",
+    });
+  }
+
+  function buildContinuityTrackerTemplate() {
+    if (!requirePro("Continuity tracker")) {
+      return;
+    }
+
+    const characterNames = characterBibleNames.length ? characterBibleNames : ["Primary Character"];
+    const propNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? []));
+    const wardrobeNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.wardrobe ?? []));
+    const setDressingNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.set_dressing ?? []));
+    const locationRows = locationBibleNames.length
+      ? locationBibleNames.map((location) => {
+          const scenes = sceneBreakdowns.filter(
+            (scene) => scene.location?.trim().toLowerCase() === location.trim().toLowerCase(),
+          );
+          const times = uniqueSorted(scenes.map((scene) => scene.time_of_day));
+
+          return [
+            `## ${location}`,
+            "",
+            `Scenes: ${sceneReferenceList(scenes)}`,
+            `Time states: ${times.length ? times.join(", ") : "Not mapped yet"}`,
+            "",
+            "Continuity lock:",
+            "- Layout:",
+            "- Lighting motivation:",
+            "- Dressing that must stay fixed:",
+            "- What can change intentionally:",
+            "- Risk before generation:",
+          ].join("\n");
+        })
+      : [
+          [
+            "## Primary Location",
+            "",
+            "Scenes: Not mapped yet",
+            "",
+            "Continuity lock:",
+            "- Layout:",
+            "- Lighting motivation:",
+            "- Dressing that must stay fixed:",
+            "- What can change intentionally:",
+            "- Risk before generation:",
+          ].join("\n"),
+        ];
+    const characterRows = characterNames.map((name) => {
+      const scenes = scenesForValue(sceneBreakdowns, "characters", name);
+      const wardrobe = uniqueSorted(scenes.flatMap((scene) => scene.wardrobe ?? []));
+      const props = uniqueSorted(scenes.flatMap((scene) => scene.props ?? []));
+
+      return [
+        `## ${name}`,
+        "",
+        `Scenes: ${sceneReferenceList(scenes)}`,
+        `Wardrobe seen nearby: ${wardrobe.length ? wardrobe.join(", ") : "Not mapped yet"}`,
+        `Props nearby: ${props.length ? props.join(", ") : "Not mapped yet"}`,
+        "",
+        "Scene-to-scene state:",
+        "- Emotional state entering first appearance:",
+        "- Emotional state after each scene:",
+        "- Physical state / injury / fatigue:",
+        "- Wardrobe changes:",
+        "- Carried props:",
+        "- Continuity risk before generation:",
+      ].join("\n");
+    });
+    const listRows = (label: string, values: string[], field: "props" | "wardrobe" | "set_dressing") => {
+      const fallback =
+        label === "Props" ? "Primary Prop" : label === "Wardrobe" ? "Primary Wardrobe Item" : "Primary Set Dressing Item";
+      const items = values.length ? values : [fallback];
+
+      return [
+        `# ${label}`,
+        "",
+        ...items.map((value) => {
+          const scenes = scenesForValue(sceneBreakdowns, field, value);
+
+          return [
+            `## ${value}`,
+            "",
+            `Scenes: ${sceneReferenceList(scenes)}`,
+            "- First appearance:",
+            "- Last known state:",
+            "- Owner / location:",
+            "- Must match across images:",
+            "- Continuity risk:",
+          ].join("\n");
+        }),
+      ].join("\n\n");
+    };
+    const soundRows = sceneBreakdowns.length
+      ? sceneBreakdowns.map((scene) =>
+          [
+            `## ${sceneBoardLabel(scene)}`,
+            "",
+            `Sound continuity: ${scene.sound_notes || "Not filled yet"}`,
+            `Color / lighting state: ${scene.color_palette || scene.tone || "Not filled yet"}`,
+            "- Room tone to preserve:",
+            "- Dialogue or breathing continuity:",
+            "- Silence / pressure point:",
+          ].join("\n"),
+        )
+      : [
+          [
+            "## Scene 1",
+            "",
+            "Sound continuity: Not mapped yet",
+            "Color / lighting state: Not mapped yet",
+            "- Room tone to preserve:",
+            "- Dialogue or breathing continuity:",
+            "- Silence / pressure point:",
+          ].join("\n"),
+        ];
+    const content = [
+      `# Continuity Tracker - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Track what must stay visually, emotionally, physically, and sonically consistent before generating shots, prompts, animation, and exports.",
+      "",
+      "# Characters",
+      "",
+      ...characterRows,
+      "",
+      listRows("Props", propNames, "props"),
+      "",
+      listRows("Wardrobe", wardrobeNames, "wardrobe"),
+      "",
+      listRows("Set Dressing", setDressingNames, "set_dressing"),
+      "",
+      "# Locations",
+      "",
+      ...locationRows,
+      "",
+      "# Sound and Lighting Continuity",
+      "",
+      ...soundRows,
+      "",
+      "# Pre-Generation Continuity Checklist",
+      "",
+      "- Character look matches the character bible.",
+      "- Wardrobe changes are intentional, not accidental.",
+      "- Props have a first appearance, last known state, and owner/location.",
+      "- Location layout, lighting, color, and dressing are consistent.",
+      "- Sound texture supports the same physical space.",
+      "- Insert shots do not introduce new continuity problems.",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "continuity_tracker",
+      status: "Continuity tracker prepared from saved scene packets. Review, fill gaps, then save.",
+      stepId: "continuity",
     });
   }
 
@@ -2328,6 +2516,7 @@ export function ProjectWorkspace({
       { label: "Location Bible", value: drafts.location_bible },
       { label: "Script", value: drafts.script },
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
+      { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Notes", value: drafts.story },
     ];
@@ -2460,6 +2649,7 @@ export function ProjectWorkspace({
       { label: "Location Bible", value: drafts.location_bible },
       { label: "Script", value: drafts.script },
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
+      { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Notes", value: drafts.story },
     ].filter((section) => section.value.trim());
@@ -2929,14 +3119,17 @@ export function ProjectWorkspace({
         <div className="board-heading">
           <div>
             <span>Story bibles</span>
-            <h4>Lock the people and places before generating shots.</h4>
+            <h4>Lock the people, places, and continuity before generating shots.</h4>
             <p>
-              Character and location bibles create the visual continuity anchors that AI films need
-              before shot lists, prompt cards, and animation passes.
+              Character bibles, location bibles, and continuity tracking create the anchors that AI
+              films need before shot lists, prompt cards, and animation passes.
             </p>
           </div>
           <strong>
-            {(hasText(drafts.character_bible) ? 1 : 0) + (hasText(drafts.location_bible) ? 1 : 0)} of 2 started
+            {(hasText(drafts.character_bible) ? 1 : 0) +
+              (hasText(drafts.location_bible) ? 1 : 0) +
+              (hasText(drafts.continuity_tracker) ? 1 : 0)}{" "}
+            of 3 started
           </strong>
         </div>
         <div className="bible-grid">
@@ -2977,6 +3170,27 @@ export function ProjectWorkspace({
                 disabled={!entitlement.isPro}
               >
                 {entitlement.isPro ? "Build from scene packets" : "Pro: build bible"}
+              </button>
+            </div>
+          </article>
+          <article className={hasText(drafts.continuity_tracker) ? "bible-card active" : "bible-card"}>
+            <span>Continuity Tracker</span>
+            <strong>{sceneBreakdowns.length || "No"} scene{sceneBreakdowns.length === 1 ? "" : "s"} mapped</strong>
+            <p>
+              Track cross-scene character state, props, wardrobe, set dressing, locations, sound,
+              lighting, and generation risks.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("continuity")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildContinuityTrackerTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build from scene packets" : "Pro: build tracker"}
               </button>
             </div>
           </article>
@@ -3159,6 +3373,26 @@ export function ProjectWorkspace({
                 disabled={!entitlement.isPro}
               >
                 {entitlement.isPro ? "Build Location Bible" : "Pro: Build Location Bible"}
+              </button>
+            </div>
+          ) : null}
+          {activeStepId === "continuity" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Cross-scene continuity</span>
+                <strong>Track the things that break AI films between shots.</strong>
+                <p>
+                  Build a tracker from scene packets, then fill character state, prop ownership,
+                  wardrobe changes, location state, lighting, sound, and generation risks.
+                </p>
+              </div>
+              <button
+                className="button"
+                type="button"
+                onClick={buildContinuityTrackerTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Continuity Tracker" : "Pro: Build Continuity Tracker"}
               </button>
             </div>
           ) : null}

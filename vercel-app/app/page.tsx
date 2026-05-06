@@ -6,14 +6,14 @@ const heroImageUrl = "/cinematic-hero.webp";
 const deliverables = [
   ["Rough scene", "AI voice scan, rewrite rubric, scene purpose, and production notes"],
   ["Imported script", "scene count, locations, speaking characters, and readiness gaps"],
-  ["Finished scene", "props, wardrobe, sound, blocking, insert shots, and continuity needs"],
+  ["Finished scene", "props, wardrobe, sound, blocking, insert shots, and continuity tracker"],
   ["Production need", "image prompts, animation prompts, sound prompts, and exportable packets"],
 ];
 
 const workflowPhases = [
   ["Develop", "Idea, logline, synopsis, and treatment"],
   ["Write", "Script import, rewrite prompts, dialogue rubrics, and AI voice removal"],
-  ["Produce", "Scene cards, shot needs, prompt packs, and production packet export"],
+  ["Produce", "Scene cards, continuity tracker, shot needs, prompt packs, and production packet export"],
 ];
 
 const pricingCards = [
@@ -21,7 +21,7 @@ const pricingCards = [
   [
     "Founder Pro",
     "$12.99/mo",
-    "Multiple projects, character bibles, location bibles, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
+    "Multiple projects, character bibles, location bibles, continuity tracker, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
   ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];

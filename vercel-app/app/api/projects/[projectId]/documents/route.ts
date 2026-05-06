@@ -10,6 +10,7 @@ const allowedDocTypes = new Set([
   "story",
   "script",
   "dialogue_notes",
+  "continuity_tracker",
   "breakdown_notes",
 ]);
 const allowedStages = new Set([
@@ -21,6 +22,7 @@ const allowedStages = new Set([
   "story",
   "script",
   "dialogue",
+  "continuity",
   "breakdown",
 ]);
 
