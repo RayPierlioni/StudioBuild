@@ -23,6 +23,7 @@ type StageId =
   | "treatment"
   | "characters"
   | "locations"
+  | "lookbook"
   | "script"
   | "dialogue"
   | "continuity"
@@ -34,6 +35,7 @@ type DocType =
   | "treatment"
   | "character_bible"
   | "location_bible"
+  | "look_book"
   | "story"
   | "script"
   | "dialogue_notes"
@@ -47,6 +49,7 @@ type GenerateMode =
   | "production"
   | "improve"
   | "dialogue"
+  | "lookbook"
   | "insert_shot"
   | "structure";
 
@@ -208,6 +211,7 @@ const proFeatureList = [
   "Full-script scene parsing",
   "Character Bible",
   "Location Bible",
+  "Visual Look Book",
   "Production board",
   "Local version history",
   "AI voice scanner",
@@ -313,6 +317,15 @@ const pipelineSteps: Array<{
     description: "Lock location layout, dressing, light, color, and continuity.",
     placeholder:
       "Build location bibles with layout, time-of-day needs, color palette, dressing, lighting, ambient sound, and continuity risks.",
+  },
+  {
+    id: "lookbook",
+    projectStage: "lookbook",
+    docType: "look_book",
+    label: "Look Book",
+    description: "Define the visual language that keeps every generated shot coherent.",
+    placeholder:
+      "Build the visual language: palette, lighting rules, camera grammar, reference spine, recurring motifs, negative prompts, and tool-specific look notes.",
   },
   {
     id: "script",
@@ -1429,6 +1442,7 @@ export function ProjectWorkspace({
     treatment: "",
     character_bible: "",
     location_bible: "",
+    look_book: "",
     story: "",
     script: "",
     dialogue_notes: "",
@@ -1491,6 +1505,7 @@ export function ProjectWorkspace({
       completionLine("Treatment or story notes started", hasText(drafts.treatment) || hasText(drafts.story)),
       completionLine("Character bible started", hasText(drafts.character_bible)),
       completionLine("Location bible started", hasText(drafts.location_bible)),
+      completionLine("Visual look book started", hasText(drafts.look_book)),
       completionLine("Dialogue or AI-voice scan completed", hasText(drafts.dialogue_notes)),
       completionLine("Continuity tracker started", hasText(drafts.continuity_tracker)),
       completionLine("At least one scene packet saved", sceneBreakdowns.length > 0),
@@ -2071,6 +2086,159 @@ export function ProjectWorkspace({
     });
   }
 
+  function buildLookBookTemplate() {
+    if (!requirePro("Visual Look Book")) {
+      return;
+    }
+
+    const sceneLookRows = sceneBreakdowns.length
+      ? sceneBreakdowns.map((scene) =>
+          [
+            `## ${sceneBoardLabel(scene)}`,
+            "",
+            `Location / time: ${scene.location || "Not mapped yet"} / ${scene.time_of_day || "Not mapped yet"}`,
+            `Current color or tone: ${scene.color_palette || scene.tone || "Not filled yet"}`,
+            "",
+            "Look assignment:",
+            "- Dominant color:",
+            "- Accent color:",
+            "- Lighting motivation:",
+            "- Texture / grain / lens feel:",
+            "- Visual motif:",
+            "- What must match the character and location bibles:",
+          ].join("\n"),
+        )
+      : [
+          [
+            "## Scene 1",
+            "",
+            "Location / time: Not mapped yet",
+            "Current color or tone: Not filled yet",
+            "",
+            "Look assignment:",
+            "- Dominant color:",
+            "- Accent color:",
+            "- Lighting motivation:",
+            "- Texture / grain / lens feel:",
+            "- Visual motif:",
+            "- What must match the character and location bibles:",
+          ].join("\n"),
+        ];
+    const characterAnchors = characterBibleNames.length
+      ? characterBibleNames.map((name) => `- ${name}: face, silhouette, wardrobe baseline, color relationship, and one recurring visual behavior.`)
+      : ["- Primary Character: face, silhouette, wardrobe baseline, color relationship, and one recurring visual behavior."];
+    const locationAnchors = locationBibleNames.length
+      ? locationBibleNames.map((name) => `- ${name}: layout, practical lights, color family, dressing, weather/air, and negative prompt risks.`)
+      : ["- Primary Location: layout, practical lights, color family, dressing, weather/air, and negative prompt risks."];
+    const propMotifs = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? [])).slice(0, 12);
+    const referenceSpine = project.inspirations?.length
+      ? project.inspirations.map((reference) => `- ${reference}: what to borrow / what to avoid`).join("\n")
+      : "- Reference 1: what to borrow / what to avoid\n- Reference 2: what to borrow / what to avoid";
+    const content = [
+      `# Visual Look Book - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Create a single visual language that keeps characters, locations, prompts, shot lists, and animation passes consistent across the whole film.",
+      "",
+      "# Visual Thesis",
+      "",
+      "- The film should feel like:",
+      "- The audience should remember this visual idea:",
+      "- The look should never become:",
+      "",
+      "# Reference Spine",
+      "",
+      referenceSpine,
+      "",
+      "# Color System",
+      "",
+      "Dominant palette:",
+      "- ",
+      "",
+      "Accent palette:",
+      "- ",
+      "",
+      "Colors to avoid:",
+      "- ",
+      "",
+      "Scene color progression:",
+      "- Opening look:",
+      "- Middle pressure look:",
+      "- Final image look:",
+      "",
+      "# Lighting Grammar",
+      "",
+      "- Main lighting motivation:",
+      "- Practical light rules:",
+      "- Shadow behavior:",
+      "- Exterior / weather behavior:",
+      "- What should never appear in lighting:",
+      "",
+      "# Camera Grammar",
+      "",
+      "- Default shot language:",
+      "- When to use wide shots:",
+      "- When to use close-ups:",
+      "- Movement rules:",
+      "- Lens / texture / grain:",
+      "- Framing rules for emotional turns:",
+      "",
+      "# Character Visual Anchors",
+      "",
+      ...characterAnchors,
+      "",
+      "# Location Visual Anchors",
+      "",
+      ...locationAnchors,
+      "",
+      "# Recurring Props and Motifs",
+      "",
+      propMotifs.length
+        ? propMotifs.map((prop) => `- ${prop}: visual meaning, first appearance, close-up rules, and continuity risk.`).join("\n")
+        : "- Primary prop or motif: visual meaning, first appearance, close-up rules, and continuity risk.",
+      "",
+      "# Scene-by-Scene Look Map",
+      "",
+      ...sceneLookRows,
+      "",
+      "# Prompt Consistency Rules",
+      "",
+      "Image prompt anchor:",
+      "- Always include: film title look, palette, lighting motivation, lens feel, character anchors, location anchors, and continuity props.",
+      "",
+      "Animation prompt anchor:",
+      "- Keep camera movement restrained, preserve eyelines, maintain wardrobe and prop continuity, and avoid new story information.",
+      "",
+      "Sound prompt anchor:",
+      "- Match room tone, practical texture, close physical sounds, and silence. Do not add music unless the story specifically needs it.",
+      "",
+      "# Negative Prompt Deck",
+      "",
+      "- No text, captions, logos, malformed hands, extra characters, random props, inconsistent wardrobe, wrong time of day, mismatched location layout, over-polished commercial lighting, or generic sci-fi glow unless specified.",
+      "",
+      "# Tool Adaptation Notes",
+      "",
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      "",
+      "- Image tools:",
+      "- Animation tools:",
+      "- Sound tools:",
+      "- Edit / color tools:",
+      "- What must be manually checked after each generation:",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "look_book",
+      status: "Visual Look Book prepared. Fill the look rules, then save the Look Book stage.",
+      stepId: "lookbook",
+    });
+  }
+
   function buildContinuityTrackerTemplate() {
     if (!requirePro("Continuity tracker")) {
       return;
@@ -2335,6 +2503,8 @@ export function ProjectWorkspace({
         "Improve the selected text while preserving the author's intent. Remove AI voice, add specificity, visual action, subtext, stronger rhythm, and a more cinematic emotional turn.",
       dialogue:
         "Polish the dialogue so it feels human, playable, compressed, character-specific, and full of subtext. Remove exposition and make the emotion live under the line.",
+      lookbook:
+        "Create a visual look book with a film-wide visual thesis, palette, lighting grammar, camera grammar, character and location anchors, recurring motifs, negative prompts, and tool-specific consistency rules.",
       insert_shot:
         "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
       structure:
@@ -2431,6 +2601,7 @@ export function ProjectWorkspace({
       drafts.script.trim() ||
       drafts.idea.trim() ||
       drafts.treatment.trim() ||
+      drafts.look_book.trim() ||
       drafts.story.trim()
     );
   }
@@ -2703,6 +2874,7 @@ export function ProjectWorkspace({
       { label: "Treatment", value: drafts.treatment },
       { label: "Character Bible", value: drafts.character_bible },
       { label: "Location Bible", value: drafts.location_bible },
+      { label: "Visual Look Book", value: drafts.look_book },
       { label: "Script", value: drafts.script },
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
@@ -2836,6 +3008,7 @@ export function ProjectWorkspace({
       { label: "Treatment", value: drafts.treatment },
       { label: "Character Bible", value: drafts.character_bible },
       { label: "Location Bible", value: drafts.location_bible },
+      { label: "Visual Look Book", value: drafts.look_book },
       { label: "Script", value: drafts.script },
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
@@ -3439,6 +3612,62 @@ export function ProjectWorkspace({
         </div>
       </section>
 
+      <section className="visual-board" aria-label="Visual look book">
+        <div className="board-heading">
+          <div>
+            <span>Visual language</span>
+            <h4>Make the film look like one film, not a pile of separate generations.</h4>
+            <p>
+              The Look Book defines palette, lighting, camera grammar, visual motifs, negative
+              prompts, and tool-specific consistency rules before images or animation drift.
+            </p>
+          </div>
+          <strong>{hasText(drafts.look_book) ? "Started" : "Not started"}</strong>
+        </div>
+        <div className="visual-grid">
+          <article className={hasText(drafts.look_book) ? "visual-card active" : "visual-card"}>
+            <span>Look Book</span>
+            <strong>Film-wide visual rules</strong>
+            <p>
+              Build a reusable visual thesis, color system, lighting grammar, camera language,
+              character anchors, location anchors, and negative prompt deck.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("lookbook")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildLookBookTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Look Book" : "Pro: build look book"}
+              </button>
+            </div>
+          </article>
+          <article className="visual-card">
+            <span>Palette Coverage</span>
+            <strong>
+              {sceneBreakdowns.filter((scene) => hasText(scene.color_palette) || hasText(scene.tone)).length} of{" "}
+              {sceneBreakdowns.length || 0} scene{sceneBreakdowns.length === 1 ? "" : "s"}
+            </strong>
+            <p>
+              Scene packets with color or tone notes feed the look map and help keep shots
+              consistent across the production packet.
+            </p>
+          </article>
+          <article className="visual-card">
+            <span>Prompt Anchors</span>
+            <strong>{productionAssets.filter((asset) => hasText(asset.image_prompt)).length} image prompt{productionAssets.filter((asset) => hasText(asset.image_prompt)).length === 1 ? "" : "s"}</strong>
+            <p>
+              Prompt cards should reuse the same palette, lighting, lens feel, continuity anchors,
+              and negative prompt rules.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <section className="readiness-panel" aria-label="Production readiness score">
         <div className="readiness-score">
           <span>Production readiness</span>
@@ -3653,6 +3882,31 @@ export function ProjectWorkspace({
               </button>
             </div>
           ) : null}
+          {activeStepId === "lookbook" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Visual consistency</span>
+                <strong>Build the look rules that every image, animation, and prompt should obey.</strong>
+                <p>
+                  Use project references, scene packets, character bibles, and location bibles to
+                  define palette, lighting, camera grammar, motifs, and negative prompt rules.
+                </p>
+              </div>
+              <div className="dialogue-actions">
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildLookBookTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Look Book" : "Pro: Build Look Book"}
+                </button>
+                <button className="button secondary" type="button" onClick={() => copyExpertPrompt("lookbook")}>
+                  Copy look book prompt
+                </button>
+              </div>
+            </div>
+          ) : null}
           {activeStepId === "continuity" ? (
             <div className="bible-tool-card">
               <div>
@@ -3849,8 +4103,11 @@ export function ProjectWorkspace({
           <button type="button" onClick={() => copyExpertPrompt("breakdown")}>
             Copy breakdown prompt
           </button>
+          <button type="button" onClick={() => copyExpertPrompt("lookbook")}>
+            Copy look book prompt
+          </button>
           <button type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
-            {isSavingPacket ? "Saving no-AI packet..." : "Parse + save no-AI scene packet"}
+            {isSavingPacket ? "Saving scene packet..." : "Parse + save scene packet"}
           </button>
           <button type="button" onClick={() => copyExpertPrompt("production")}>
             Copy production prompt plan

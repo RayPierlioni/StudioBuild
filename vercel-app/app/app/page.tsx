@@ -23,6 +23,7 @@ const pipelineStages = [
   ["Treatment", "Theme, structure, emotional turns"],
   ["Characters", "Look, wardrobe, speech, continuity"],
   ["Locations", "Layout, palette, dressing, risks"],
+  ["Look Book", "Palette, lighting, camera, motifs"],
   ["Script", "Pages, dialogue, AI voice cleanup"],
   ["Scene Breakdown", "Props, cast, sound, blocking"],
   ["Shot List", "Coverage, inserts, camera intent"],

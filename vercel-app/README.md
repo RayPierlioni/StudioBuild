@@ -77,6 +77,10 @@ The project command center now includes a Story Development layer. The Logline L
 one-sentence pitch and story engine, while Founder Pro and admin users can generate a Treatment
 Blueprint with theme, act movement, character arc, set pieces, and development questions.
 
+The project command center now includes a Visual Look Book stage. Founder Pro and admin users can
+generate a film-wide visual language with palette, lighting grammar, camera rules, character and
+location anchors, recurring motifs, negative prompts, and tool-specific consistency notes.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.
