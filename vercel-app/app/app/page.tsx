@@ -27,6 +27,7 @@ const pipelineStages = [
   ["Script", "Pages, dialogue, AI voice cleanup"],
   ["Scene Breakdown", "Props, cast, sound, blocking"],
   ["Shot List", "Coverage, inserts, camera intent"],
+  ["Production Schedule", "Generation order, review gates"],
   ["Sound Map", "Room tone, effects, dialogue needs"],
   ["Prompt Cards", "Image, animation, sound prompts"],
   ["Production Packet", "Export-ready film plan"],

@@ -28,6 +28,7 @@ type StageId =
   | "dialogue"
   | "continuity"
   | "breakdown"
+  | "schedule"
   | "production";
 type DocType =
   | "idea"
@@ -40,7 +41,8 @@ type DocType =
   | "script"
   | "dialogue_notes"
   | "continuity_tracker"
-  | "breakdown_notes";
+  | "breakdown_notes"
+  | "production_schedule";
 export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
 type GenerateMode =
   | "treatment"
@@ -50,6 +52,7 @@ type GenerateMode =
   | "improve"
   | "dialogue"
   | "lookbook"
+  | "schedule"
   | "insert_shot"
   | "structure";
 
@@ -217,6 +220,7 @@ const proFeatureList = [
   "AI voice scanner",
   "Continuity tracker",
   "Detailed shot lists",
+  "Production schedule",
   "Insert-shot prompt cards",
   "Image, animation, sound prompts",
   "Premium PDF packet export",
@@ -360,6 +364,15 @@ const pipelineSteps: Array<{
     label: "Breakdown",
     description: "Pull scenes, characters, props, wardrobe, sound, and prompts.",
     placeholder: "Break the script into scene needs, props, wardrobe, prompts, and continuity notes.",
+  },
+  {
+    id: "schedule",
+    projectStage: "schedule",
+    docType: "production_schedule",
+    label: "Schedule",
+    description: "Choose the smartest generation order and production sprint plan.",
+    placeholder:
+      "Build a production schedule with story locks, asset locks, scene order, shot generation order, tool handoffs, and export gates.",
   },
   {
     id: "production",
@@ -1448,6 +1461,7 @@ export function ProjectWorkspace({
     dialogue_notes: "",
     continuity_tracker: "",
     breakdown_notes: "",
+    production_schedule: "",
   });
   const [workflowTools, setWorkflowTools] = useState("");
   const [versionLabel, setVersionLabel] = useState("");
@@ -1514,6 +1528,7 @@ export function ProjectWorkspace({
       completionLine("Image prompts generated", imagePromptCount > 0),
       completionLine("Animation plus sound prompts generated", animationPromptCount > 0),
       completionLine("Insert or prompt cards created", promptAssets.length > 0),
+      completionLine("Production schedule started", hasText(drafts.production_schedule)),
       completionLine("Production packet ready to export", sceneBreakdowns.length > 0 && productionAssets.length > 0),
     ];
     const completedCount = checks.filter((check) => check.isComplete).length;
@@ -2397,6 +2412,168 @@ export function ProjectWorkspace({
     });
   }
 
+  function buildProductionScheduleTemplate() {
+    if (!requirePro("Production schedule")) {
+      return;
+    }
+
+    const sceneRows = sceneBreakdowns.length
+      ? sceneBreakdowns.map((scene) => {
+          const missing = [
+            hasText(scene.summary) ? "" : "scene purpose",
+            hasList(scene.characters) ? "" : "characters",
+            hasList(scene.props) ? "" : "props",
+            hasList(scene.wardrobe) ? "" : "wardrobe",
+            hasText(scene.sound_notes) ? "" : "sound",
+            hasText(scene.blocking) ? "" : "blocking",
+            hasText(scene.color_palette) || hasText(scene.tone) ? "" : "look/tone",
+          ].filter(Boolean);
+          const sceneAssets = assetsBySceneId[scene.id] ?? [];
+          const shotCount = sceneAssets.filter((asset) => asset.asset_type === "shot").length;
+          const promptCount = sceneAssets.filter(
+            (asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+          ).length;
+
+          return [
+            `## ${sceneBoardLabel(scene)}`,
+            "",
+            `Priority: ${missing.length ? "Lock missing production fields first" : shotCount ? "Generate prompt cards and animation passes" : "Build detailed shot list"}`,
+            `Location / time: ${scene.location || "Not mapped yet"} / ${scene.time_of_day || "Not mapped yet"}`,
+            `Current blockers: ${missing.length ? missing.join(", ") : "No core scene-packet blockers"}`,
+            `Shot-list rows: ${shotCount}`,
+            `Prompt-ready assets: ${promptCount}`,
+            "",
+            "Recommended order:",
+            "1. Confirm scene purpose and emotional turn.",
+            "2. Lock character, wardrobe, prop, location, sound, and look continuity.",
+            "3. Generate establishing/location frame.",
+            "4. Generate character coverage frames.",
+            "5. Generate inserts only after the scene geography and character look are stable.",
+            "6. Generate animation plus sound/dialogue prompts after still images are approved.",
+            "7. Check continuity against character bible, location bible, look book, and tracker.",
+          ].join("\n");
+        })
+      : [
+          "## No scene packets yet",
+          "",
+          "Recommended order:",
+          "1. Save or import script pages.",
+          "2. Parse and save at least one scene packet.",
+          "3. Build character bible, location bible, look book, and continuity tracker.",
+          "4. Return here to schedule shot generation and production handoff.",
+        ].join("\n");
+    const shotRows = sceneBreakdowns.length
+      ? sceneBreakdowns.map((scene) => {
+          const shotAssets = (assetsBySceneId[scene.id] ?? []).filter((asset) => asset.asset_type === "shot");
+          const fallbackShots = [
+            "Establish geography and pressure",
+            "Lead character intention",
+            "Opposing character response",
+            "Distance shift",
+            "Insert on story object",
+            "Final emotional beat",
+          ];
+          const shots = shotAssets.length
+            ? shotAssets.map((asset) => `- ${asset.name}: ${asset.purpose || asset.visual || "Generate image first, then animation and sound."}`)
+            : fallbackShots.map((shot, index) => `- Shot ${index + 1}: ${shot}`);
+
+          return [`## ${sceneBoardLabel(scene)}`, "", ...shots].join("\n");
+        })
+      : "## Shot order not available yet\n\nBuild scene packets and detailed shot lists first.";
+    const content = [
+      `# Production Schedule / Generation Order - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Turn the project into an ordered production plan so the filmmaker knows what to lock, generate, review, and export next.",
+      "",
+      "# Readiness Snapshot",
+      "",
+      `Production readiness: ${readiness.score}%`,
+      `Completed checks: ${readiness.completedCount} of ${readiness.total}`,
+      `Next best action: ${readiness.next}`,
+      "",
+      "## Required Locks",
+      "",
+      `- Logline / Idea: ${hasText(drafts.idea) || hasText(project.logline) ? "Started" : "Missing"}`,
+      `- Treatment Blueprint: ${hasText(drafts.treatment) ? "Started" : "Missing"}`,
+      `- Character Bible: ${hasText(drafts.character_bible) ? "Started" : "Missing"}`,
+      `- Location Bible: ${hasText(drafts.location_bible) ? "Started" : "Missing"}`,
+      `- Visual Look Book: ${hasText(drafts.look_book) ? "Started" : "Missing"}`,
+      `- Continuity Tracker: ${hasText(drafts.continuity_tracker) ? "Started" : "Missing"}`,
+      `- Scene Packets: ${sceneBreakdowns.length}`,
+      `- Production Assets: ${productionAssets.length}`,
+      "",
+      "# Generation Principles",
+      "",
+      "1. Lock the story, character look, location rules, and visual language before generating final shots.",
+      "2. Generate reusable anchors before one-off inserts.",
+      "3. Approve still-image continuity before animation.",
+      "4. Add sound and dialogue timing after the animation plan is stable.",
+      "5. Export only after continuity, look, and prompt cards agree with each other.",
+      "",
+      "# Phase 1: Story And Continuity Locks",
+      "",
+      "- Finalize logline and treatment blueprint.",
+      "- Fill character bible anchors for face, wardrobe, props, speech, and emotional state.",
+      "- Fill location bible anchors for layout, lighting, color, dressing, and ambient sound.",
+      "- Fill the visual look book with palette, camera grammar, lighting grammar, and negative prompts.",
+      "- Fill the continuity tracker before final generation.",
+      "",
+      "# Phase 2: Scene Priority Order",
+      "",
+      sceneRows,
+      "",
+      "# Phase 3: Shot Generation Order",
+      "",
+      shotRows,
+      "",
+      "# Phase 4: Tool Handoff",
+      "",
+      "Image generation:",
+      "- Generate approved still frames for locations, characters, core coverage, and inserts.",
+      "",
+      "Animation:",
+      "- Animate only approved stills. Preserve camera grammar, eyelines, wardrobe, props, and location layout.",
+      "",
+      "Sound and dialogue:",
+      "- Build room tone, practical object sounds, breath, silence, dialogue timing, and no music unless story-required.",
+      "",
+      "Edit and color:",
+      "- Assemble by scene purpose, then match color and sound continuity against the look book.",
+      "",
+      "# Suggested Production Sprint",
+      "",
+      "Day 1: Lock logline, treatment, character bible, location bible, and look book.",
+      "Day 2: Save scene packets and fill continuity gaps.",
+      "Day 3: Build shot lists for the highest-value scenes.",
+      "Day 4: Generate still-image anchors and approve continuity.",
+      "Day 5: Generate animation and sound/dialogue prompts for approved shots.",
+      "Day 6: Review continuity, regenerate only failed assets, then export the production packet.",
+      "",
+      "# Export Gates",
+      "",
+      "- Every recurring character has a visual anchor.",
+      "- Every recurring location has a layout and lighting anchor.",
+      "- The look book defines palette, camera, and negative prompt rules.",
+      "- Scene packets include props, wardrobe, sound, blocking, and tone.",
+      "- Shot lists exist before insert-shot expansion.",
+      "- Image prompts exist before animation and sound prompts.",
+      "- Continuity tracker has no unresolved high-risk items.",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "production_schedule",
+      status: "Production Schedule prepared. Review the order, then save the Schedule stage.",
+      stepId: "schedule",
+    });
+  }
+
   function selectedTextareaText() {
     const textarea = textareaRef.current;
 
@@ -2505,6 +2682,8 @@ export function ProjectWorkspace({
         "Polish the dialogue so it feels human, playable, compressed, character-specific, and full of subtext. Remove exposition and make the emotion live under the line.",
       lookbook:
         "Create a visual look book with a film-wide visual thesis, palette, lighting grammar, camera grammar, character and location anchors, recurring motifs, negative prompts, and tool-specific consistency rules.",
+      schedule:
+        "Create a production schedule and generation order with story locks, character/location/look locks, scene priority, shot generation sequence, tool handoff, continuity checks, and export gates.",
       insert_shot:
         "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
       structure:
@@ -2602,6 +2781,7 @@ export function ProjectWorkspace({
       drafts.idea.trim() ||
       drafts.treatment.trim() ||
       drafts.look_book.trim() ||
+      drafts.production_schedule.trim() ||
       drafts.story.trim()
     );
   }
@@ -2879,6 +3059,7 @@ export function ProjectWorkspace({
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
+      { label: "Production Schedule", value: drafts.production_schedule },
       { label: "Production Notes", value: drafts.story },
     ];
 
@@ -3013,6 +3194,7 @@ export function ProjectWorkspace({
       { label: "Dialogue / AI Voice Scan", value: drafts.dialogue_notes },
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
+      { label: "Production Schedule", value: drafts.production_schedule },
       { label: "Production Notes", value: drafts.story },
     ].filter((section) => section.value.trim());
 
@@ -3690,6 +3872,59 @@ export function ProjectWorkspace({
         </div>
       </section>
 
+      <section className="schedule-board" aria-label="Production schedule and generation order">
+        <div className="board-heading">
+          <div>
+            <span>Generation order</span>
+            <h4>Know what to lock, generate, review, and export next.</h4>
+            <p>
+              The Production Schedule turns the project into a practical sprint plan: story locks,
+              scene priority, shot order, tool handoff, continuity checks, and export gates.
+            </p>
+          </div>
+          <strong>{hasText(drafts.production_schedule) ? "Scheduled" : "Needs order"}</strong>
+        </div>
+        <div className="schedule-grid">
+          <article className={hasText(drafts.production_schedule) ? "schedule-card active" : "schedule-card"}>
+            <span>Production Schedule</span>
+            <strong>{readiness.next}</strong>
+            <p>
+              Build an ordered plan that shows which bibles, scene packets, shot lists, prompt
+              cards, and exports should happen first.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("schedule")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildProductionScheduleTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Schedule" : "Pro: build schedule"}
+              </button>
+            </div>
+          </article>
+          <article className="schedule-card">
+            <span>Scene Queue</span>
+            <strong>{sceneBreakdowns.length} scene{sceneBreakdowns.length === 1 ? "" : "s"} mapped</strong>
+            <p>
+              Scene packets become the schedule spine. Missing fields become blockers; complete
+              fields move into shot-list and prompt-card work.
+            </p>
+          </article>
+          <article className="schedule-card">
+            <span>Asset Handoff</span>
+            <strong>{productionAssets.length} asset{productionAssets.length === 1 ? "" : "s"} ready</strong>
+            <p>
+              Still images come first, animation and sound come after approved continuity, and the
+              packet export comes after all gates are clear.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <div className="export-panel" aria-label="Production packet export">
         <div>
           <span>Production packet</span>
@@ -3927,6 +4162,31 @@ export function ProjectWorkspace({
               </button>
             </div>
           ) : null}
+          {activeStepId === "schedule" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Production order</span>
+                <strong>Turn the film into a practical generation and review sequence.</strong>
+                <p>
+                  Build the schedule after story, bible, look, continuity, and scene-packet work
+                  have started. It will show what to lock first and what should wait.
+                </p>
+              </div>
+              <div className="dialogue-actions">
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildProductionScheduleTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Production Schedule" : "Pro: Build Production Schedule"}
+                </button>
+                <button className="button secondary" type="button" onClick={() => copyExpertPrompt("schedule")}>
+                  Copy schedule prompt
+                </button>
+              </div>
+            </div>
+          ) : null}
           {activeStepId === "script" || activeStepId === "dialogue" ? (
             <div className="dialogue-tool-card">
               <div>
@@ -4105,6 +4365,9 @@ export function ProjectWorkspace({
           </button>
           <button type="button" onClick={() => copyExpertPrompt("lookbook")}>
             Copy look book prompt
+          </button>
+          <button type="button" onClick={() => copyExpertPrompt("schedule")}>
+            Copy schedule prompt
           </button>
           <button type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
             {isSavingPacket ? "Saving scene packet..." : "Parse + save scene packet"}

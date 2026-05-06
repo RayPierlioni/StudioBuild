@@ -8,13 +8,13 @@ const deliverables = [
   ["Imported script", "scene count, locations, speaking characters, and readiness gaps"],
   ["Rough scene", "AI voice scan, rewrite rubric, scene purpose, and production notes"],
   ["Finished scene", "props, wardrobe, sound, blocking, look book rules, inserts, and continuity tracker"],
-  ["Production need", "image prompts, animation prompts, sound prompts, and exportable packets"],
+  ["Production need", "generation order, image prompts, animation prompts, sound prompts, and exportable packets"],
 ];
 
 const workflowPhases = [
   ["Develop", "Logline testing, theme spine, synopsis, and treatment blueprint"],
   ["Write", "Script import, rewrite prompts, dialogue rubrics, and AI voice removal"],
-  ["Produce", "Look book, scene cards, continuity tracker, shot needs, prompt packs, and production packet export"],
+  ["Produce", "Look book, scene cards, continuity tracker, shot needs, generation order, prompt packs, and production packet export"],
 ];
 
 const pricingCards = [
@@ -22,7 +22,7 @@ const pricingCards = [
   [
     "Founder Pro",
     "$12.99/mo",
-    "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, visual look books, continuity tracker, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
+    "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, visual look books, continuity tracker, AI voice scans, full-script parsing, production board, shot lists, production scheduling, prompt cards, version history, and premium PDF packets.",
   ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];

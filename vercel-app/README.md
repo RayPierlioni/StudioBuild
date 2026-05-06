@@ -81,6 +81,10 @@ The project command center now includes a Visual Look Book stage. Founder Pro an
 generate a film-wide visual language with palette, lighting grammar, camera rules, character and
 location anchors, recurring motifs, negative prompts, and tool-specific consistency notes.
 
+The project command center now includes a Production Schedule / Generation Order stage. Founder Pro
+and admin users can generate an ordered sprint plan for story locks, scene priority, shot generation,
+tool handoff, continuity review, and export gates.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.
