@@ -1255,6 +1255,7 @@ textarea:focus {
   color: #49675d;
 }
 
+.story-lab-board,
 .bible-board {
   display: grid;
   gap: 14px;
@@ -1266,13 +1267,23 @@ textarea:focus {
     white;
 }
 
+.story-lab-grid,
 .bible-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
+.story-lab-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bible-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.story-lab-card,
 .bible-card,
+.story-tool-card,
 .bible-tool-card {
   border: 1px solid rgba(52, 47, 45, 0.1);
   border-radius: 8px;
@@ -1282,6 +1293,7 @@ textarea:focus {
     rgba(237, 241, 240, 0.5);
 }
 
+.story-lab-card.active,
 .bible-card.active {
   border-color: rgba(102, 127, 118, 0.26);
   background:
@@ -1289,7 +1301,9 @@ textarea:focus {
     white;
 }
 
+.story-lab-card span,
 .bible-card span,
+.story-tool-card span,
 .bible-tool-card span {
   color: var(--accent-dark);
   font-size: 11px;
@@ -1298,7 +1312,9 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+.story-lab-card strong,
 .bible-card strong,
+.story-tool-card strong,
 .bible-tool-card strong {
   display: block;
   margin-top: 8px;
@@ -1307,7 +1323,9 @@ textarea:focus {
   line-height: 1.15;
 }
 
+.story-lab-card p,
 .bible-card p,
+.story-tool-card p,
 .bible-tool-card p {
   margin: 10px 0 0;
   color: var(--muted);
@@ -1323,12 +1341,14 @@ textarea:focus {
 }
 
 .bible-actions .button,
+.story-tool-card .button,
 .bible-tool-card .button {
   min-height: 36px;
   padding: 0 12px;
   font-size: 12px;
 }
 
+.story-tool-card,
 .bible-tool-card {
   display: flex;
   flex-wrap: wrap;
@@ -1338,6 +1358,7 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
+.story-tool-card > div,
 .bible-tool-card > div {
   flex: 1 1 280px;
 }
@@ -2523,7 +2544,9 @@ code {
     .studio-grid,
     .field-pair,
     .readiness-panel,
+    .story-lab-grid,
     .bible-grid,
+    .story-tool-card,
     .dialogue-tool-card,
     .dialogue-flag-grid,
     .rubric-grid,

@@ -73,6 +73,10 @@ The project command center now includes a Continuity Tracker stage. Founder Pro 
 generate a cross-scene tracker from saved scene packets for characters, props, wardrobe, set dressing,
 locations, sound, lighting, and generation risks.
 
+The project command center now includes a Story Development layer. The Logline Lab helps shape the
+one-sentence pitch and story engine, while Founder Pro and admin users can generate a Treatment
+Blueprint with theme, act movement, character arc, set pieces, and development questions.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.

@@ -4,14 +4,15 @@ import { SceneFixDemo } from "./scene-fix-demo";
 const heroImageUrl = "/cinematic-hero.webp";
 
 const deliverables = [
-  ["Rough scene", "AI voice scan, rewrite rubric, scene purpose, and production notes"],
+  ["Rough idea", "logline lab, theme spine, treatment blueprint, and story tests"],
   ["Imported script", "scene count, locations, speaking characters, and readiness gaps"],
+  ["Rough scene", "AI voice scan, rewrite rubric, scene purpose, and production notes"],
   ["Finished scene", "props, wardrobe, sound, blocking, insert shots, and continuity tracker"],
   ["Production need", "image prompts, animation prompts, sound prompts, and exportable packets"],
 ];
 
 const workflowPhases = [
-  ["Develop", "Idea, logline, synopsis, and treatment"],
+  ["Develop", "Logline testing, theme spine, synopsis, and treatment blueprint"],
   ["Write", "Script import, rewrite prompts, dialogue rubrics, and AI voice removal"],
   ["Produce", "Scene cards, continuity tracker, shot needs, prompt packs, and production packet export"],
 ];
@@ -21,7 +22,7 @@ const pricingCards = [
   [
     "Founder Pro",
     "$12.99/mo",
-    "Multiple projects, character bibles, location bibles, continuity tracker, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
+    "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, continuity tracker, AI voice scans, full-script parsing, production board, shot lists, prompt cards, version history, and premium PDF packets.",
   ],
   ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
 ];

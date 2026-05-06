@@ -203,6 +203,8 @@ const defaultUsage: ProjectUsage = {
 
 const proFeatureList = [
   "Multiple projects",
+  "Logline Lab",
+  "Treatment Blueprint",
   "Full-script scene parsing",
   "Character Bible",
   "Location Bible",
@@ -1748,6 +1750,193 @@ export function ProjectWorkspace({
     window.setTimeout(() => textareaRef.current?.focus(), 0);
   }
 
+  function buildLoglineLabTemplate() {
+    const seed = drafts.idea.trim() || draftText.trim() || project.logline || project.notes || "";
+    const content = [
+      `# Logline Lab - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      "",
+      "## Raw Material",
+      "",
+      seed || "Paste the rough idea, opening image, or premise here.",
+      "",
+      "## Story Engine",
+      "",
+      "Protagonist:",
+      "- Who carries the movie?",
+      "",
+      "Want:",
+      "- What do they actively pursue?",
+      "",
+      "Need:",
+      "- What truth, wound, or limitation must change under the plot?",
+      "",
+      "Obstacle:",
+      "- What person, system, fear, environment, or deadline blocks them?",
+      "",
+      "Stakes:",
+      "- What gets lost if they fail?",
+      "",
+      "Hook / irony:",
+      "- What makes this the same but different?",
+      "",
+      "## Logline Tests",
+      "",
+      "- Can a stranger picture the movie after one sentence?",
+      "- Does the protagonist make an active choice?",
+      "- Is there pressure, cost, or contradiction?",
+      "- Does the genre promise feel clear?",
+      "- Does it avoid vague words like journey, destiny, truth, or darkness unless they are concrete?",
+      "",
+      "## Logline Drafts",
+      "",
+      "1. When [protagonist] wants [goal], they must [action] before [stakes], but [obstacle/irony].",
+      "",
+      "2. After [inciting event], [protagonist] has to [goal/action] while [pressure], or [cost].",
+      "",
+      "3. In a world where [specific situation], [protagonist] must [active choice] before [consequence].",
+      "",
+      "## Best Current Logline",
+      "",
+      project.logline || "- ",
+      "",
+      "## Next Rewrite Move",
+      "",
+      "- Strengthen the active verb.",
+      "- Replace abstract stakes with a visible cost.",
+      "- Make the obstacle specific enough to generate scenes.",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "idea",
+      status: "Logline Lab prepared. Fill the story engine, choose the best draft, then save the Idea stage.",
+      stepId: "idea",
+    });
+  }
+
+  function buildTreatmentBlueprintTemplate() {
+    if (!requirePro("Treatment Blueprint")) {
+      return;
+    }
+
+    const source = drafts.idea.trim() || drafts.script.trim() || project.logline || project.notes || "";
+    const content = [
+      `# Treatment Blueprint - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Cinematic references: ${project.inspirations?.length ? project.inspirations.join(", ") : "Not specified"}`,
+      "",
+      "## Core Thesis",
+      "",
+      "What the film is really about beneath the plot:",
+      "- ",
+      "",
+      "## Cinematic Promise",
+      "",
+      "The visual, emotional, and genre experience the audience is buying:",
+      "- ",
+      "",
+      "## Same But Different",
+      "",
+      "Familiar pleasure:",
+      "- ",
+      "",
+      "Fresh angle:",
+      "- ",
+      "",
+      "## Character Arc Map",
+      "",
+      "Protagonist starts as:",
+      "- ",
+      "",
+      "Protagonist ends as:",
+      "- ",
+      "",
+      "The pressure that changes them:",
+      "- ",
+      "",
+      "## Act Movement",
+      "",
+      "### Opening Image",
+      "",
+      "- The first cinematic proof of the world, tone, and wound.",
+      "",
+      "### Act 1: Setup and Doorway",
+      "",
+      "- Ordinary world:",
+      "- Inciting incident:",
+      "- Refusal or wrong move:",
+      "- Choice that locks the story:",
+      "",
+      "### Act 2A: Promise of the Premise",
+      "",
+      "- New rules:",
+      "- First wins:",
+      "- New complication:",
+      "- Relationship pressure:",
+      "",
+      "### Midpoint",
+      "",
+      "- The story changes meaning because:",
+      "",
+      "### Act 2B: Cost and Collapse",
+      "",
+      "- Pressure escalates:",
+      "- Character flaw gets punished:",
+      "- Secret, betrayal, or reversal:",
+      "- Low point:",
+      "",
+      "### Act 3: Final Choice",
+      "",
+      "- New strategy:",
+      "- Final confrontation:",
+      "- Visual decision that proves the change:",
+      "- Ending image:",
+      "",
+      "## Key Scene Set Pieces",
+      "",
+      "1. Scene:",
+      "   - Purpose:",
+      "   - Visual hook:",
+      "   - Production need:",
+      "",
+      "2. Scene:",
+      "   - Purpose:",
+      "   - Visual hook:",
+      "   - Production need:",
+      "",
+      "3. Scene:",
+      "   - Purpose:",
+      "   - Visual hook:",
+      "   - Production need:",
+      "",
+      "## Treatment Draft",
+      "",
+      "Write the treatment here in clean, professional prose. Keep it cinematic, specific, and practical enough that each paragraph can become scenes, breakdowns, shot lists, and prompt cards.",
+      "",
+      source ? `Source notes:\n${source}` : "Source notes:\n- ",
+      "",
+      "## Development Questions",
+      "",
+      "- What does the protagonist want in the first five minutes?",
+      "- What image proves the tone?",
+      "- Where does the story stop sounding generic?",
+      "- Which scenes will become the strongest prompt-ready production assets?",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "treatment",
+      status: "Treatment Blueprint prepared. Fill the structure, then save the Treatment stage.",
+      stepId: "treatment",
+    });
+  }
+
   function buildCharacterBibleTemplate() {
     const names = characterBibleNames.length ? characterBibleNames : ["Primary Character"];
     const sections = names.map((name) => {
@@ -3115,6 +3304,59 @@ export function ProjectWorkspace({
         onUpgrade={onUpgrade}
       />
 
+      <section className="story-lab-board" aria-label="Story development tools">
+        <div className="board-heading">
+          <div>
+            <span>Story development</span>
+            <h4>Make the idea strong before the production machine starts.</h4>
+            <p>
+              The Logline Lab and Treatment Blueprint turn a rough premise into a sharper story
+              engine, theme, act path, and scene-ready development plan.
+            </p>
+          </div>
+          <strong>{(hasText(drafts.idea) ? 1 : 0) + (hasText(drafts.treatment) ? 1 : 0)} of 2 started</strong>
+        </div>
+        <div className="story-lab-grid">
+          <article className={hasText(drafts.idea) ? "story-lab-card active" : "story-lab-card"}>
+            <span>Logline Lab</span>
+            <strong>{project.logline ? "Current logline ready to test" : "Find the movie in one sentence"}</strong>
+            <p>
+              Clarify protagonist, want, need, obstacle, stakes, hook, and the strongest one-line
+              pitch before scenes get built.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("idea")}>
+                Open
+              </button>
+              <button className="button" type="button" onClick={buildLoglineLabTemplate}>
+                Build Logline Lab
+              </button>
+            </div>
+          </article>
+          <article className={hasText(drafts.treatment) ? "story-lab-card active" : "story-lab-card"}>
+            <span>Treatment Blueprint</span>
+            <strong>Turn the premise into a professional story map</strong>
+            <p>
+              Build theme, cinematic promise, same-but-different hook, character arc, act movement,
+              set pieces, and development questions.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("treatment")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildTreatmentBlueprintTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Treatment Blueprint" : "Pro: build treatment"}
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section className="bible-board" aria-label="Character and location bibles">
         <div className="board-heading">
           <div>
@@ -3336,6 +3578,41 @@ export function ProjectWorkspace({
             <h4>{activeStep.label} room</h4>
             <span>{activeStep.projectStage}</span>
           </div>
+          {activeStepId === "idea" ? (
+            <div className="story-tool-card">
+              <div>
+                <span>Logline discipline</span>
+                <strong>Make the pitch specific enough to generate the right scenes.</strong>
+                <p>
+                  Use the Logline Lab to define protagonist, want, obstacle, stakes, and hook before
+                  the project moves into treatment or script.
+                </p>
+              </div>
+              <button className="button" type="button" onClick={buildLoglineLabTemplate}>
+                Build Logline Lab
+              </button>
+            </div>
+          ) : null}
+          {activeStepId === "treatment" ? (
+            <div className="story-tool-card">
+              <div>
+                <span>Treatment discipline</span>
+                <strong>Turn the premise into a professional story blueprint.</strong>
+                <p>
+                  Build theme, act movement, character change, set pieces, and the story questions
+                  that need answering before production planning.
+                </p>
+              </div>
+              <button
+                className="button"
+                type="button"
+                onClick={buildTreatmentBlueprintTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Treatment Blueprint" : "Pro: Build Treatment Blueprint"}
+              </button>
+            </div>
+          ) : null}
           {activeStepId === "characters" ? (
             <div className="bible-tool-card">
               <div>
@@ -3402,7 +3679,7 @@ export function ProjectWorkspace({
                 <span>Dialogue discipline</span>
                 <strong>Find the lines that sound too robotic, expositional, or unplayable.</strong>
                 <p>
-                  Highlight a section or scan the script draft. StudioBuild creates a no-API
+                  Highlight a section or scan the script draft. StudioBuild creates a practical
                   diagnosis, rewrite rubric, and expert prompt you can use anywhere.
                 </p>
               </div>
