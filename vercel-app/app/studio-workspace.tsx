@@ -418,14 +418,20 @@ function emptySceneDraft(): SceneBreakdownDraft {
 function ProUnlockPanel({
   entitlement,
   compact = false,
+  isManagingBilling = false,
   isUpgrading = false,
+  onManageBilling,
   onUpgrade,
 }: {
   entitlement: AccessEntitlement;
   compact?: boolean;
+  isManagingBilling?: boolean;
   isUpgrading?: boolean;
+  onManageBilling?: () => void;
   onUpgrade?: () => void;
 }) {
+  const canManageBilling = entitlement.isPro && !entitlement.isAdmin && onManageBilling;
+
   if (entitlement.isPro) {
     return (
       <section className={compact ? "pro-panel compact active" : "pro-panel active"}>
@@ -437,6 +443,16 @@ function ProUnlockPanel({
             version history, premium exports, and multiple projects.
           </p>
         </div>
+        {canManageBilling ? (
+          <button
+            className="button secondary"
+            type="button"
+            onClick={onManageBilling}
+            disabled={isManagingBilling}
+          >
+            {isManagingBilling ? "Opening billing..." : "Manage billing"}
+          </button>
+        ) : null}
       </section>
     );
   }
@@ -483,6 +499,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -561,6 +578,13 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
 
     if (checkout === "cancelled") {
       setMessage("Checkout cancelled. You can upgrade whenever you are ready.");
+      return;
+    }
+
+    const billing = new URLSearchParams(window.location.search).get("billing");
+
+    if (billing === "return") {
+      setMessage("Billing settings saved. Your StudioBuild access will refresh automatically.");
     }
   }, []);
 
@@ -632,6 +656,38 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setError(caught instanceof Error ? caught.message : "Unable to open checkout.");
     } finally {
       setIsStartingCheckout(false);
+    }
+  }
+
+  async function openBillingPortal() {
+    if (!session?.access_token) {
+      setError("Sign in with Google before opening billing.");
+      setMessage("");
+      return;
+    }
+
+    setIsOpeningBillingPortal(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const result = (await response.json()) as { ok: boolean; url?: string; error?: string };
+
+      if (!response.ok || !result.ok || !result.url) {
+        throw new Error(result.error ?? "Unable to open billing.");
+      }
+
+      window.location.assign(result.url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to open billing.");
+    } finally {
+      setIsOpeningBillingPortal(false);
     }
   }
 
@@ -741,7 +797,9 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
             <ProjectWorkspace
               draftText={draftText}
               entitlement={entitlement}
+              isOpeningBillingPortal={isOpeningBillingPortal}
               isStartingCheckout={isStartingCheckout}
+              onManageBilling={openBillingPortal}
               onUpgrade={startCheckout}
               project={selectedProject}
               userEmail={userEmail}
@@ -760,7 +818,9 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
               <ProUnlockPanel
                 compact
                 entitlement={entitlement}
+                isManagingBilling={isOpeningBillingPortal}
                 isUpgrading={isStartingCheckout}
+                onManageBilling={openBillingPortal}
                 onUpgrade={startCheckout}
               />
 
@@ -893,8 +953,10 @@ export function ProjectWorkspace({
   draftText,
   documents = [],
   entitlement = freeEntitlement,
+  isOpeningBillingPortal = false,
   isStartingCheckout = false,
   onDocumentsChange,
+  onManageBilling,
   onUpgrade,
   onProductionAssetsChange,
   onSceneBreakdownsChange,
@@ -909,8 +971,10 @@ export function ProjectWorkspace({
   draftText: string;
   documents?: ProjectDocument[];
   entitlement?: AccessEntitlement;
+  isOpeningBillingPortal?: boolean;
   isStartingCheckout?: boolean;
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
+  onManageBilling?: () => void;
   onUpgrade?: () => void;
   onProductionAssetsChange?: (productionAssets: ProductionAsset[]) => void;
   onSceneBreakdownsChange?: (sceneBreakdowns: SceneBreakdown[]) => void;
@@ -2218,7 +2282,13 @@ export function ProjectWorkspace({
         <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
       </div>
 
-      <ProUnlockPanel entitlement={entitlement} isUpgrading={isStartingCheckout} onUpgrade={onUpgrade} />
+      <ProUnlockPanel
+        entitlement={entitlement}
+        isManagingBilling={isOpeningBillingPortal}
+        isUpgrading={isStartingCheckout}
+        onManageBilling={onManageBilling}
+        onUpgrade={onUpgrade}
+      />
 
       <section className="readiness-panel" aria-label="Production readiness score">
         <div className="readiness-score">

@@ -39,6 +39,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const [draftText, setDraftText] = useState("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [error, setError] = useState("");
 
@@ -159,6 +160,36 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
     }
   }
 
+  async function openBillingPortal() {
+    if (!session?.access_token) {
+      setError("Sign in with Google before opening billing.");
+      return;
+    }
+
+    setIsOpeningBillingPortal(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const result = (await response.json()) as { ok: boolean; url?: string; error?: string };
+
+      if (!response.ok || !result.ok || !result.url) {
+        throw new Error(result.error ?? "Unable to open billing.");
+      }
+
+      window.location.assign(result.url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to open billing.");
+    } finally {
+      setIsOpeningBillingPortal(false);
+    }
+  }
+
   return (
     <main className="detail-shell">
       <div className="detail-topbar">
@@ -186,7 +217,9 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             draftText={draftText}
             documents={documents}
             entitlement={entitlement}
+            isOpeningBillingPortal={isOpeningBillingPortal}
             isStartingCheckout={isStartingCheckout}
+            onManageBilling={openBillingPortal}
             onUpgrade={startCheckout}
             productionAssets={productionAssets}
             project={project}
