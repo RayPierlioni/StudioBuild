@@ -267,6 +267,19 @@ a {
   font-size: 12px;
 }
 
+.guide-assistant {
+  display: grid;
+  gap: 12px;
+}
+
+.guide-assistant.compact {
+  align-content: start;
+}
+
+.guide-assistant.minimal {
+  align-self: stretch;
+}
+
 .app-guide,
 .app-workspace {
   width: min(1180px, 100%);
@@ -299,6 +312,20 @@ a {
     linear-gradient(180deg, rgba(29, 26, 28, 0.92), rgba(63, 49, 50, 0.88));
   overflow: hidden;
   animation: guide-float 5.5s ease-in-out infinite;
+}
+
+.guide-character-button {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.guide-character-button:focus-visible {
+  outline: 3px solid rgba(182, 93, 104, 0.36);
+  outline-offset: 3px;
 }
 
 .guide-character::after {
@@ -515,6 +542,147 @@ a {
   color: var(--muted);
   font-size: clamp(17px, 1.7vw, 21px);
   line-height: 1.45;
+}
+
+.guide-dynamic-card {
+  display: grid;
+  gap: 10px;
+}
+
+.guide-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.guide-chip-row small {
+  border: 1px solid rgba(182, 93, 104, 0.18);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 250, 241, 0.72);
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guide-chat-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(237, 241, 240, 0.68)),
+    white;
+  box-shadow: 0 18px 52px rgba(46, 36, 29, 0.12);
+}
+
+.guide-chat-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.guide-chat-heading span,
+.guide-message span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 840;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.guide-chat-heading strong {
+  color: var(--deep);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.guide-chat-messages {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.guide-message {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.guide-message.user {
+  border-color: rgba(182, 93, 104, 0.2);
+  background: rgba(251, 240, 241, 0.58);
+}
+
+.guide-message p {
+  white-space: pre-line;
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.guide-quick-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.guide-quick-questions button {
+  min-height: 30px;
+  border: 1px solid rgba(182, 93, 104, 0.2);
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.guide-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.guide-chat-form input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 11px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.guide-chat-form .button {
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.project-workspace > .guide-assistant {
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: stretch;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 250, 241, 0.62)),
+    white;
+}
+
+.project-workspace > .guide-assistant .guide-chat-panel {
+  grid-column: 1 / -1;
 }
 
 .guide-paths {
@@ -2582,6 +2750,8 @@ code {
     .visual-grid,
     .schedule-grid,
     .sound-grid,
+    .project-workspace > .guide-assistant,
+    .guide-chat-form,
     .story-tool-card,
     .dialogue-tool-card,
     .dialogue-flag-grid,

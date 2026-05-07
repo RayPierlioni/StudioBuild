@@ -1,4 +1,4 @@
-import { StudioWorkspace } from "../studio-workspace";
+import { MiniPhilosopherGuide, StudioWorkspace, type GuideAssistantContext } from "../studio-workspace";
 
 const guidePaths = [
   {
@@ -32,6 +32,22 @@ const pipelineStages = [
   ["Prompt Cards", "Image, animation, sound prompts"],
   ["Production Packet", "Export-ready film plan"],
 ];
+
+const dashboardGuideContext: GuideAssistantContext = {
+  activeStageLabel: "Dashboard",
+  assetCount: 0,
+  body:
+    "Pick the way your film enters StudioBuild, then I will keep explaining why each production layer matters and what to do next.",
+  chips: ["Idea", "Script", "Breakdown"],
+  eyebrow: "StudioBuild Guide",
+  nextAction: "Choose idea, script, or breakdown start path",
+  planLabel: "Free",
+  projectTitle: "New film",
+  readinessScore: 0,
+  sceneCount: 0,
+  speech: "Have an idea for a film? Start here. Already have pages? Bring them in.",
+  title: "Tell me where you are starting.",
+};
 
 export default function AppHome() {
   return (
@@ -79,35 +95,7 @@ export default function AppHome() {
         </section>
 
         <aside className="command-guide-panel" aria-label="StudioBuild guide">
-          <div className="guide-character small" aria-hidden="true">
-            <div className="guide-speech">Choose the fastest route to a usable production packet.</div>
-            <div className="guide-antenna" />
-            <div className="guide-head">
-              <span />
-              <span />
-            </div>
-            <div className="guide-body">
-              <div className="guide-book" />
-            </div>
-          </div>
-
-          <div className="guide-stage-card">
-            <span>Next best action</span>
-            <strong>Pick the way your film enters StudioBuild.</strong>
-            <p>
-              Start from an idea, import pages you already have, or break down a single scene into
-              production-ready pieces.
-            </p>
-          </div>
-
-          <div className="guide-route-list">
-            {guidePaths.map((path) => (
-              <a href={path.href} key={path.href}>
-                <strong>{path.label}</strong>
-                <span>{path.text}</span>
-              </a>
-            ))}
-          </div>
+          <MiniPhilosopherGuide compact context={dashboardGuideContext} routes={guidePaths} />
         </aside>
       </section>
     </main>

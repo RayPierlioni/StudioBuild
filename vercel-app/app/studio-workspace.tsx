@@ -198,6 +198,33 @@ type ProjectUsage = {
   freeProjectLimit: number;
 };
 
+export type GuideAssistantContext = {
+  activeStageLabel: string;
+  assetCount: number;
+  body: string;
+  chips?: string[];
+  eyebrow: string;
+  nextAction: string;
+  planLabel: string;
+  projectTitle?: string;
+  readinessScore: number;
+  sceneCount: number;
+  speech: string;
+  title: string;
+};
+
+type GuideRoute = {
+  href: string;
+  label: string;
+  text: string;
+};
+
+type GuideChatMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -396,6 +423,81 @@ const pipelineSteps: Array<{
     placeholder: "Plan assets, insert shots, prompts, sound design, and production order.",
   },
 ];
+
+const stageGuideNotes: Record<StageId, { title: string; speech: string; teaching: string }> = {
+  idea: {
+    title: "Find the movie in the premise.",
+    speech: "Have an idea for a film? Start by naming the pressure inside it.",
+    teaching:
+      "The idea stage is where you test whether the premise has a character, a pressure, and a reason to become cinema instead of just a cool concept.",
+  },
+  treatment: {
+    title: "Turn the spark into a story path.",
+    speech: "A treatment is the bridge between feeling the film and being able to build it.",
+    teaching:
+      "The treatment forces the film to reveal its shape: beginning, escalation, emotional turn, ending, and the specific promise that makes the project worth finishing.",
+  },
+  characters: {
+    title: "Keep people consistent from shot to shot.",
+    speech: "Characters need a memory. AI images will drift unless you give them anchors.",
+    teaching:
+      "Character bibles protect visual identity, wardrobe, speech, desire, carried props, and emotional state so shot 14 still feels like the same person from shot 3.",
+  },
+  locations: {
+    title: "Make every place behave like a real place.",
+    speech: "A location is more than a background. It has rules, light, sound, and memory.",
+    teaching:
+      "Location bibles lock layout, dressing, color, light direction, room tone, and continuity risks so the film does not feel generated one shot at a time.",
+  },
+  lookbook: {
+    title: "Give the film one visual language.",
+    speech: "The look book is the promise that every frame belongs to the same film.",
+    teaching:
+      "A look book turns taste into rules: palette, lighting, camera distance, lens feeling, motifs, negative prompts, and references that keep the film coherent.",
+  },
+  script: {
+    title: "Make pages playable, not just readable.",
+    speech: "Good script pages give actors behavior, not explanations.",
+    teaching:
+      "The script stage is where you replace generic AI prose with wants, tactics, conflict, silence, visual action, and decisions the camera can actually hold.",
+  },
+  dialogue: {
+    title: "Remove the obvious AI voice.",
+    speech: "If a line says exactly what the character feels, it is probably not finished.",
+    teaching:
+      "Dialogue gets better when characters avoid, attack, hide, bargain, interrupt, and reveal themselves by accident. Subtext is the pressure under the words.",
+  },
+  continuity: {
+    title: "Protect the chain between moments.",
+    speech: "Continuity is the quiet discipline that makes a generated film feel intentional.",
+    teaching:
+      "Continuity tracks what changes and what must not change: props, wardrobe, location state, injuries, emotional momentum, light, sound, and object ownership.",
+  },
+  breakdown: {
+    title: "Translate story into production needs.",
+    speech: "Scene breakdowns turn pages into things that must be seen, heard, worn, carried, and remembered.",
+    teaching:
+      "A scene breakdown matters because production fails in the gap between what the script says and what the shot actually needs: characters, props, wardrobe, sound, blocking, inserts, and continuity.",
+  },
+  schedule: {
+    title: "Build in the smartest order.",
+    speech: "Do not generate the whole film at once. Lock the pieces that everything else depends on.",
+    teaching:
+      "A production schedule reduces waste by deciding what to lock first: story, characters, locations, look, key scenes, still images, animation, sound, review, then export.",
+  },
+  sound: {
+    title: "Make the film feel physically present.",
+    speech: "Sound is how the room tells the truth before a character does.",
+    teaching:
+      "A sound map gives every scene room tone, foley, silence, dialogue space, sync notes, and edit handoff so the final film feels grounded instead of flat.",
+  },
+  production: {
+    title: "Assemble the production packet.",
+    speech: "The packet is the moment the film stops being loose ideas and becomes a plan.",
+    teaching:
+      "The production stage gathers the decisions into one usable artifact: story, scenes, bibles, continuity, shots, prompts, sound, schedule, and export-ready notes.",
+  },
+};
 
 function splitInspirations(value: string) {
   return value
@@ -769,6 +871,257 @@ function buildDialogueReportMarkdown(scan: DialogueScan) {
 
 function completionLine(label: string, isComplete: boolean) {
   return { label, isComplete };
+}
+
+function buildGuideAnswer(question: string, context: GuideAssistantContext) {
+  const lowerQuestion = question.toLowerCase();
+  const projectName = context.projectTitle?.trim() || "this film";
+  const projectStatus = `${projectName} is at ${context.readinessScore}% production readiness with ${context.sceneCount} scene packet${context.sceneCount === 1 ? "" : "s"} and ${context.assetCount} production asset${context.assetCount === 1 ? "" : "s"}.`;
+  const stageLine = `Right now you are focused on ${context.activeStageLabel}. Next best action: ${context.nextAction}.`;
+
+  if (/\b(scene breakdown|breakdown|why.*break)\b/.test(lowerQuestion)) {
+    return [
+      "A scene breakdown is the moment the script becomes producible.",
+      "A script says what happens. A breakdown asks what must be seen, heard, worn, carried, lit, animated, and kept consistent.",
+      "For AI filmmaking, that matters even more because every missing detail becomes drift: different faces, wrong props, random wardrobe, flat sound, or shots that look pretty but do not tell the story.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(dialogue|line|subtext|ai voice|robotic|sounds like ai)\b/.test(lowerQuestion)) {
+    return [
+      "Dialogue starts sounding human when it stops explaining the emotion.",
+      "Give each line a tactic: hide, attack, test, dodge, seduce, confess, interrupt, retreat, or make a decision. Then let an object, pause, look, or movement carry some of the feeling.",
+      "A useful test: if the line names the emotion directly, ask what the character would do to avoid saying it.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(character|casting|look|face|wardrobe|bible)\b/.test(lowerQuestion)) {
+    return [
+      "The Character Bible is the antidote to AI visual drift.",
+      "It should lock the face, age, body language, wardrobe rules, carried props, speech pattern, relationships, and emotional state across scenes.",
+      "Think of it as casting plus continuity. The goal is that a viewer never feels like the actor changed between generations.",
+      projectStatus,
+    ].join("\n\n");
+  }
+
+  if (/\b(location|place|set|room|environment)\b/.test(lowerQuestion)) {
+    return [
+      "A location needs rules before it needs beauty.",
+      "Map the layout, practical lights, time-of-day behavior, color palette, sound texture, dressing, and what changes between scenes.",
+      "AI tools can generate impressive spaces, but StudioBuild helps make the same space behave like the same place twice.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(sound|silence|music|foley|dialogue timing|room tone)\b/.test(lowerQuestion)) {
+    return [
+      "Sound is not decoration. It is invisible continuity.",
+      "Room tone tells us where we are. Foley tells us what matters. Silence tells us when a choice has weight. Music should not cover a scene that sound design can make tense by itself.",
+      "Use the Sound Map to decide what the audience hears before animation and editing lock you into weak choices.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(shot list|shot|insert|camera|coverage|storyboard)\b/.test(lowerQuestion)) {
+    return [
+      "A shot list is not a list of cool images. It is a list of decisions.",
+      "Each shot should answer: what changes, what must the audience notice, what information does this angle reveal, and what needs continuity protection?",
+      "Insert shots make sense when they externalize the conflict: a key, a glass, a hand, a door, a prop moving from one person to another.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(treatment|structure|act|story|theme|logline)\b/.test(lowerQuestion)) {
+    return [
+      "Story structure is not a cage. It is a pressure system.",
+      "The logline tests whether the movie has a clean promise. The treatment tests whether that promise can survive a beginning, middle, escalation, reversal, and ending.",
+      "Theme is what the film is arguing underneath the plot. If you know that, every scene can make a sharper choice.",
+      stageLine,
+    ].join("\n\n");
+  }
+
+  if (/\b(what next|next step|what should i do|where do i start|stuck)\b/.test(lowerQuestion)) {
+    return [
+      "Here is the practical next move.",
+      projectStatus,
+      stageLine,
+      "Do not try to perfect the whole film at once. Finish the next missing production layer, save it, then move one stage forward.",
+    ].join("\n\n");
+  }
+
+  if (/\b(life|meaning|purpose|fear|confidence|give up|philosophy|why make)\b/.test(lowerQuestion)) {
+    return [
+      "Mini philosopher mode: making a film is a way of arguing that a feeling deserved a shape.",
+      "The work will always feel too big if you stare at the whole mountain. Your job is smaller and more honest: make the next scene clearer, the next choice more specific, the next image more truthful.",
+      "A film does not become meaningful because it explains life. It becomes meaningful because it notices something true and refuses to look away.",
+    ].join("\n\n");
+  }
+
+  if (/\b(price|upgrade|free|pro|paywall|subscription|founder)\b/.test(lowerQuestion)) {
+    return [
+      "Free is for proving the workflow. Founder Pro is for building full projects.",
+      "The upgrade is meant to unlock the deeper production system: multiple projects, bibles, shot lists, sound maps, schedules, prompt cards, version history, and premium exports.",
+      "The best paywall moment is when the project has become useful enough that exporting the full packet feels obvious.",
+    ].join("\n\n");
+  }
+
+  return [
+    "My read: treat this like a production problem, not just a writing problem.",
+    projectStatus,
+    stageLine,
+    "Ask me about story, dialogue, scene breakdowns, characters, locations, sound, shots, continuity, or the meaning of the work, and I will get more specific.",
+  ].join("\n\n");
+}
+
+export function MiniPhilosopherGuide({
+  compact = false,
+  context,
+  minimal = false,
+  routes = [],
+}: {
+  compact?: boolean;
+  context: GuideAssistantContext;
+  minimal?: boolean;
+  routes?: GuideRoute[];
+}) {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [messages, setMessages] = useState<GuideChatMessage[]>([]);
+  const visibleMessages =
+    messages.length > 0
+      ? messages
+      : [
+          {
+            id: "guide-intro",
+            role: "assistant" as const,
+            text: [
+              context.speech,
+              `You can ask me what to do next, why a stage matters, how to fix robotic dialogue, or the philosophical reason a scene needs to exist.`,
+            ].join("\n\n"),
+          },
+        ];
+  const quickQuestions = [
+    "What should I do next?",
+    `Why do I need ${context.activeStageLabel}?`,
+    "How do I make this less generic?",
+    "What is the philosophical point of this scene?",
+  ];
+
+  function askGuide(question: string) {
+    const cleanQuestion = question.trim();
+
+    if (!cleanQuestion) {
+      return;
+    }
+
+    setMessages((current) => [
+      ...current,
+      {
+        id: createVersionId(),
+        role: "user",
+        text: cleanQuestion,
+      },
+      {
+        id: createVersionId(),
+        role: "assistant",
+        text: buildGuideAnswer(cleanQuestion, context),
+      },
+    ]);
+    setMessageText("");
+    setIsChatOpen(true);
+  }
+
+  function submitQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    askGuide(messageText);
+  }
+
+  return (
+    <div className={`guide-assistant${compact ? " compact" : ""}${minimal ? " minimal" : ""}`}>
+      <button
+        aria-expanded={isChatOpen}
+        aria-label={isChatOpen ? "Close StudioBuild guide chat" : "Open StudioBuild guide chat"}
+        className="guide-character guide-character-button small"
+        type="button"
+        onClick={() => setIsChatOpen((current) => !current)}
+      >
+        <div className="guide-speech">{isChatOpen ? "Ask me the real question." : context.speech}</div>
+        <div className="guide-antenna" />
+        <div className="guide-head">
+          <span />
+          <span />
+        </div>
+        <div className="guide-body">
+          <div className="guide-book" />
+        </div>
+      </button>
+
+      {!minimal ? (
+        <div className="guide-stage-card guide-dynamic-card">
+          <span>{context.eyebrow}</span>
+          <strong>{context.title}</strong>
+          <p>{context.body}</p>
+          {context.chips?.length ? (
+            <div className="guide-chip-row">
+              {context.chips.map((chip) => (
+                <small key={chip}>{chip}</small>
+              ))}
+            </div>
+          ) : null}
+          <button className="button secondary full-width" type="button" onClick={() => setIsChatOpen((current) => !current)}>
+            {isChatOpen ? "Close guide chat" : "Ask the guide"}
+          </button>
+        </div>
+      ) : null}
+
+      {routes.length ? (
+        <div className="guide-route-list">
+          {routes.map((route) => (
+            <a href={route.href} key={route.href}>
+              <strong>{route.label}</strong>
+              <span>{route.text}</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+
+      {isChatOpen ? (
+        <section className="guide-chat-panel" aria-label="StudioBuild guide chat">
+          <div className="guide-chat-heading">
+            <span>Mini philosopher robot</span>
+            <strong>Ask about life, dialogue, or what to fix next.</strong>
+          </div>
+          <div className="guide-chat-messages">
+            {visibleMessages.map((message) => (
+              <article className={`guide-message ${message.role}`} key={message.id}>
+                <span>{message.role === "assistant" ? "Guide" : "You"}</span>
+                <p>{message.text}</p>
+              </article>
+            ))}
+          </div>
+          <div className="guide-quick-questions">
+            {quickQuestions.map((question) => (
+              <button type="button" key={question} onClick={() => askGuide(question)}>
+                {question}
+              </button>
+            ))}
+          </div>
+          <form className="guide-chat-form" onSubmit={submitQuestion}>
+            <input
+              value={messageText}
+              onChange={(event) => setMessageText(event.target.value)}
+              placeholder="Ask the robot why a stage matters..."
+            />
+            <button className="button" type="submit">
+              Ask
+            </button>
+          </form>
+        </section>
+      ) : null}
+    </div>
+  );
 }
 
 function sceneBoardLabel(scene: SceneBreakdown) {
@@ -1634,6 +1987,30 @@ export function ProjectWorkspace({
       { id: "set-dressing", label: "Set Dressing", items: sceneItems("set_dressing") },
     ];
   }, [productionAssets, sceneBreakdowns]);
+  const guideContext = useMemo<GuideAssistantContext>(() => {
+    const guideNote = stageGuideNotes[activeStep.id];
+    const activeChips = [
+      `${entitlement.planLabel} access`,
+      `${readiness.score}% ready`,
+      `${sceneBreakdowns.length} scene${sceneBreakdowns.length === 1 ? "" : "s"}`,
+      `${productionAssets.length} asset${productionAssets.length === 1 ? "" : "s"}`,
+    ];
+
+    return {
+      activeStageLabel: activeStep.label,
+      assetCount: productionAssets.length,
+      body: `${guideNote.teaching} Current readiness is ${readiness.score}%. Next: ${readiness.next}.`,
+      chips: activeChips,
+      eyebrow: "StudioBuild Guide",
+      nextAction: readiness.next,
+      planLabel: entitlement.planLabel,
+      projectTitle: project.title,
+      readinessScore: readiness.score,
+      sceneCount: sceneBreakdowns.length,
+      speech: guideNote.speech,
+      title: guideNote.title,
+    };
+  }, [activeStep.id, activeStep.label, entitlement.planLabel, productionAssets.length, project.title, readiness.next, readiness.score, sceneBreakdowns.length]);
 
   useEffect(() => {
     setDrafts((current) => {
@@ -3844,6 +4221,8 @@ export function ProjectWorkspace({
         onManageBilling={onManageBilling}
         onUpgrade={onUpgrade}
       />
+
+      <MiniPhilosopherGuide context={guideContext} />
 
       <section className="story-lab-board" aria-label="Story development tools">
         <div className="board-heading">

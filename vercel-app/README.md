@@ -89,6 +89,10 @@ The project command center now includes a Sound Design Map stage. Founder Pro an
 generate scene-by-scene room tone, foley, dialogue space, silence, animation handoff, edit notes,
 and final sound checklist guidance from scene packets, prompt cards, bibles, and workflow tools.
 
+The app now includes a dynamic StudioBuild Guide robot. The guide changes its advice by workflow
+stage, opens a small chat when clicked, and answers practical or philosophical questions about
+story, dialogue, breakdowns, bibles, shots, sound, continuity, pricing, and next production moves.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.

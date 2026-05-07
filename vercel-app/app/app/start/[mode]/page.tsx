@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { StudioWorkspace, type StartMode } from "../../../studio-workspace";
+import { MiniPhilosopherGuide, StudioWorkspace, type GuideAssistantContext, type StartMode } from "../../../studio-workspace";
 
 type RouteContext = {
   params: { mode: string } | Promise<{ mode: string }>;
@@ -59,6 +59,21 @@ export default async function StartModePage({ params }: RouteContext) {
     notFound();
   }
 
+  const guideContext: GuideAssistantContext = {
+    activeStageLabel: copy.eyebrow,
+    assetCount: 0,
+    body: copy.subtitle,
+    chips: copy.steps.slice(0, 3),
+    eyebrow: "StudioBuild Guide",
+    nextAction: copy.steps[0],
+    planLabel: "Free",
+    projectTitle: "New film",
+    readinessScore: 0,
+    sceneCount: 0,
+    speech: copy.subtitle,
+    title: copy.title,
+  };
+
   return (
     <main className="app-shell">
       <header className="app-topbar">
@@ -72,16 +87,7 @@ export default async function StartModePage({ params }: RouteContext) {
       </header>
 
       <section className="start-hero">
-        <div className="guide-character small" aria-hidden="true">
-          <div className="guide-antenna" />
-          <div className="guide-head">
-            <span />
-            <span />
-          </div>
-          <div className="guide-body">
-            <div className="guide-book" />
-          </div>
-        </div>
+        <MiniPhilosopherGuide compact context={guideContext} minimal />
         <div>
           <p className="eyebrow">{copy.eyebrow}</p>
           <h1>{copy.title}</h1>
