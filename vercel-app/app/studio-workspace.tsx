@@ -1913,8 +1913,9 @@ function ProUnlockPanel({
           <span>{entitlement.planLabel} access</span>
           <strong>Full MiseForge workflow unlocked.</strong>
           <p>
-            Admin and subscribed users can use character bibles, location bibles, the production
-            board, shot lists, prompt cards, version history, premium exports, and multiple projects.
+            Your account has access to the complete production workspace: character bibles, location
+            bibles, continuity, shot lists, prompt cards, version history, premium exports, and
+            multiple projects.
           </p>
         </div>
         {canManageBilling ? (
@@ -1935,10 +1936,11 @@ function ProUnlockPanel({
     <section className={compact ? "pro-panel compact" : "pro-panel"}>
       <div>
         <span>Free plan</span>
-        <strong>Founder Pro unlocks the full pre-production system.</strong>
+        <strong>Upgrade when you need the complete production packet.</strong>
         <p>
-          Free users can build one project, save one scene-packet preview, copy expert prompts, and
-          download a basic packet. The deeper production workflow is $12.99/month.
+          Free lets you start a real project, preview one scene packet, copy expert prompts, and
+          export a basic packet. Founder Pro unlocks full projects, bibles, shot lists, schedule,
+          sound maps, version history, and premium PDF export for $12.99/month.
         </p>
       </div>
       {!compact ? (
@@ -2348,7 +2350,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       <div className="panel-heading">
         <div>
           <p className="eyebrow">{selectedProject ? "Live workspace" : modeCopy.eyebrow}</p>
-          <h2>{selectedProject ? "Project command center." : modeCopy.heading}</h2>
+          <h2>{selectedProject ? "Project command center." : "Start where your film is today."}</h2>
           {!selectedProject ? <p className="workspace-helper">{modeCopy.helper}</p> : null}
           {session ? (
             <p className="workspace-account">
@@ -2488,7 +2490,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
             </div>
 
             {projects.length === 0 ? (
-              <p className="empty-state">No saved projects yet.</p>
+              <p className="empty-state">
+                No saved projects yet. Choose a start path, create a project shell, then MiseForge
+                opens the command center around it.
+              </p>
             ) : (
               projects.map((project) => (
                 <a
@@ -2500,9 +2505,9 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
                   <h4>{project.title}</h4>
                   <p>{project.logline || "No logline yet."}</p>
                   <small>
-                    {[project.genre, project.tone].filter(Boolean).join(" / ") || "Project shell"}
+                    {[project.genre, project.tone].filter(Boolean).join(" / ") || "Ready to open"}
                   </small>
-                  <strong>Open project</strong>
+                  <strong>Open command center</strong>
                 </a>
               ))
             )}
@@ -3545,6 +3550,48 @@ export function ProjectWorkspace({
     };
   }, [activeStep.id, activeStep.label, entitlement.planLabel, productionAssets.length, project.title, readiness.next, readiness.score, sceneBreakdowns.length]);
 
+  const launchReadinessCards = useMemo(() => {
+    const packetReady = sceneBreakdowns.length > 0 && productionAssets.length > 0;
+    const sceneLabel = sceneBreakdowns.length === 1 ? "scene packet" : "scene packets";
+    const assetLabel = productionAssets.length === 1 ? "asset" : "assets";
+
+    return [
+      {
+        detail: activeStep.description,
+        label: "Current room",
+        value: activeStep.label,
+      },
+      {
+        detail: `${readiness.completedCount} of ${readiness.total} checks complete. Next: ${readiness.next}.`,
+        label: "Production readiness",
+        value: `${readiness.score}%`,
+      },
+      {
+        detail: `${sceneBreakdowns.length} ${sceneLabel} / ${productionAssets.length} ${assetLabel}.`,
+        label: "Packet status",
+        value: packetReady ? "Export path open" : "Build the packet",
+      },
+      {
+        detail: entitlement.isPro
+          ? "Full workspace, exports, bibles, versions, and project depth are unlocked."
+          : "Free preview: one project, one scene-packet preview, prompt copying, and Markdown export.",
+        label: "Access",
+        value: entitlement.planLabel,
+      },
+    ];
+  }, [
+    activeStep.description,
+    activeStep.label,
+    entitlement.isPro,
+    entitlement.planLabel,
+    productionAssets.length,
+    readiness.completedCount,
+    readiness.next,
+    readiness.score,
+    readiness.total,
+    sceneBreakdowns.length,
+  ]);
+
   useEffect(() => {
     setDrafts((current) => {
       const next = { ...current };
@@ -3591,7 +3638,7 @@ export function ProjectWorkspace({
 
     setSaveStatus("");
     setSaveError(
-      `${feature} is a Founder Pro feature. Free users get one project, one scene-packet preview, basic prompt copying, and Markdown export.`,
+      `${feature} belongs to Founder Pro. Your free project can still build a preview, copy expert prompts, and export Markdown; upgrade when you want the full production system and premium PDF packet.`,
     );
     return false;
   }
@@ -7738,7 +7785,7 @@ export function ProjectWorkspace({
     <section className="project-workspace">
       <div className="project-toolbar">
         <button className="button secondary" type="button" onClick={onBack}>
-          New Project
+          All Projects
         </button>
         <span>Opened by {userEmail}</span>
         <strong className={entitlement.isPro ? "plan-badge active" : "plan-badge"}>
@@ -7749,7 +7796,20 @@ export function ProjectWorkspace({
       <div className="project-hero">
         <p className="eyebrow">Project workspace</p>
         <h3>{project.title}</h3>
-        <p>{project.logline || "Start with the idea, then move through the full filmmaking pipeline."}</p>
+        <p>
+          {project.logline ||
+            "Start from whatever you already have, then use the production spine to build the missing pieces."}
+        </p>
+      </div>
+
+      <div className="launch-readiness-strip" aria-label="Project status summary">
+        {launchReadinessCards.map((card) => (
+          <article key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <p>{card.detail}</p>
+          </article>
+        ))}
       </div>
 
       <ProUnlockPanel
@@ -9069,6 +9129,16 @@ export function ProjectWorkspace({
               onRunAgain={runDialogueScanner}
             />
           ) : null}
+          <div className="stage-focus-card">
+            <div>
+              <span>{activeStep.label} room</span>
+              <strong>{currentDraft.trim() ? "Draft in progress" : "Ready for source material"}</strong>
+              <p>{stageGuideNotes[activeStep.id].teaching}</p>
+            </div>
+            <small>
+              {currentDraft.trim() ? `${currentDraft.trim().split(/\s+/).length} words` : "No draft yet"}
+            </small>
+          </div>
           <textarea
             ref={textareaRef}
             className="script-pad"

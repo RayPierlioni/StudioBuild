@@ -3,18 +3,28 @@ import { MiniPhilosopherGuide, StudioWorkspace, type GuideAssistantContext } fro
 const guidePaths = [
   {
     href: "/app/start/idea",
-    label: "Start from an idea",
+    label: "I have an idea",
     text: "Shape the premise, genre, tone, logline, and first story pressure point.",
   },
   {
     href: "/app/start/script",
-    label: "Import a script",
+    label: "I have a script",
     text: "Bring in pages, parse the scenes, and move into rewrite and breakdown work.",
   },
   {
     href: "/app/start/breakdown",
-    label: "Break down a scene",
+    label: "I need a breakdown",
     text: "Turn one scene into props, wardrobe, sound, shots, prompts, and continuity notes.",
+  },
+  {
+    href: "/app/start/characters",
+    label: "I need consistency",
+    text: "Build character bibles, location bibles, and visual rules before generating shots.",
+  },
+  {
+    href: "/app/start/packet",
+    label: "I need a packet",
+    text: "Move toward an exportable production packet with shots, sound, prompts, and continuity.",
   },
 ];
 
@@ -37,16 +47,16 @@ const dashboardGuideContext: GuideAssistantContext = {
   activeStageLabel: "Dashboard",
   assetCount: 0,
   body:
-    "Pick the way your film enters MiseForge, then I will keep explaining why each production layer matters and what to do next.",
-  chips: ["Idea", "Script", "Breakdown"],
+    "Pick the place where your film already exists. MiseForge will open the right room first, then keep the rest of the production system organized around it.",
+  chips: ["Idea", "Script", "Scene", "Packet"],
   eyebrow: "MiseForge Guide",
-  nextAction: "Choose idea, script, or breakdown start path",
+  nextAction: "Choose the start path that matches what you already have",
   planLabel: "Free",
   projectTitle: "New film",
   readinessScore: 0,
   sceneCount: 0,
-  speech: "Have an idea for a film? Start here. Already have pages? Bring them in.",
-  title: "Tell me where you are starting.",
+  speech: "Have an idea for a film? Start there. Already have pages, a scene, or a production mess? Bring that in instead.",
+  title: "Start where your film is today.",
 };
 
 export default function AppHome() {
@@ -68,8 +78,8 @@ export default function AppHome() {
         <aside className="command-sidebar" aria-label="Pre-production pipeline">
           <div className="sidebar-brand-block">
             <span>Production spine</span>
-            <strong>Build the film in order.</strong>
-            <p>Move from story discipline into the production details that keep an AI film consistent.</p>
+            <strong>Start anywhere. Keep the film organized.</strong>
+            <p>Open the room you need now, then use the spine to move through story, continuity, shots, sound, and export.</p>
           </div>
           <nav className="pipeline-nav" aria-label="MiseForge pipeline">
             {pipelineStages.map(({ detail, mode, stage }, index) => (
@@ -85,10 +95,10 @@ export default function AppHome() {
         <section id="workspace-dashboard" className="command-main">
           <div className="command-main-head">
             <p className="eyebrow">MiseForge command center</p>
-            <h1>Start the project, then build the production system around it.</h1>
+            <h1>Start where your film is today.</h1>
             <p>
-              Create a project shell, open a saved film, or pick a guided path. MiseForge keeps
-              the work organized from first idea through production packet.
+              Bring an idea, rough pages, a single scene, a character problem, or an existing
+              production packet. MiseForge turns the starting point into a structured film workspace.
             </p>
           </div>
           <StudioWorkspace />
