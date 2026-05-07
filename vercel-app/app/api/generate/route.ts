@@ -99,7 +99,7 @@ const modeConfig: Record<
   production: {
     label: "production prompt plan",
     docType: "story",
-    activeStage: "story",
+    activeStage: "production",
     maxOutputTokens: 5200,
   },
   improve: {
@@ -117,7 +117,7 @@ const modeConfig: Record<
   insert_shot: {
     label: "insert shot",
     docType: "story",
-    activeStage: "story",
+    activeStage: "production",
     maxOutputTokens: 1800,
   },
   structure: {

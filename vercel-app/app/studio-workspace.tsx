@@ -45,7 +45,7 @@ type DocType =
   | "breakdown_notes"
   | "production_schedule"
   | "sound_map";
-export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
+export type StartMode = "dashboard" | StageId | "shotlist" | "prompts" | "packet";
 type GenerateMode =
   | "treatment"
   | "script"
@@ -306,6 +306,14 @@ const startModeCopy: Record<
     starterPlaceholder: "Paste the opening scene, rough pages, or script section you want to improve and break down.",
     submitLabel: "Create Script Project",
   },
+  dialogue: {
+    eyebrow: "Dialogue cleanup",
+    heading: "Bring in dialogue that needs a human pass.",
+    helper: "Paste pages or dialogue you already have. MiseForge will open the script room so you can scan for AI voice, exposition, and weak subtext.",
+    starterLabel: "Dialogue or script pages",
+    starterPlaceholder: "Paste the dialogue, scene, or script section you want to test for AI voice, subtext, and playable behavior.",
+    submitLabel: "Create Dialogue Project",
+  },
   breakdown: {
     eyebrow: "Breakdown builder",
     heading: "Turn scenes into production needs.",
@@ -314,6 +322,113 @@ const startModeCopy: Record<
     starterPlaceholder: "Paste a scene that needs a breakdown, including slugline, action, and dialogue if you have it.",
     submitLabel: "Create Breakdown Project",
   },
+  treatment: {
+    eyebrow: "Treatment start",
+    heading: "Start from a story map you already have.",
+    helper: "Paste your rough synopsis, outline, or treatment notes. MiseForge will open the treatment room so you can shape it into a stronger blueprint.",
+    starterLabel: "Treatment or outline",
+    starterPlaceholder: "Paste your synopsis, outline, beat sheet, or treatment draft.",
+    submitLabel: "Create Treatment Project",
+  },
+  characters: {
+    eyebrow: "Character start",
+    heading: "Start with the people in the film.",
+    helper: "Paste character notes, casting thoughts, look references, or relationship ideas. MiseForge will open the character bible room.",
+    starterLabel: "Character notes",
+    starterPlaceholder: "Paste character descriptions, wardrobe notes, speech patterns, relationships, or visual continuity references.",
+    submitLabel: "Create Character Project",
+  },
+  locations: {
+    eyebrow: "Location start",
+    heading: "Start with the world and recurring places.",
+    helper: "Paste location notes, set dressing, lighting direction, or visual rules. MiseForge will open the location bible room.",
+    starterLabel: "Location notes",
+    starterPlaceholder: "Paste location descriptions, layout notes, lighting rules, set dressing, room tone, or continuity risks.",
+    submitLabel: "Create Location Project",
+  },
+  lookbook: {
+    eyebrow: "Look book start",
+    heading: "Start from the visual language.",
+    helper: "Paste references, palette notes, camera rules, or mood-board thoughts. MiseForge will open the look book room.",
+    starterLabel: "Visual language notes",
+    starterPlaceholder: "Paste reference films, palette ideas, lighting rules, lens feeling, motifs, or negative prompt rules.",
+    submitLabel: "Create Look Book Project",
+  },
+  continuity: {
+    eyebrow: "Continuity start",
+    heading: "Start with what must stay consistent.",
+    helper: "Paste continuity risks or cross-scene notes. MiseForge will open the continuity tracker room.",
+    starterLabel: "Continuity notes",
+    starterPlaceholder: "Paste prop, wardrobe, character state, location state, lighting, sound, or timeline continuity notes.",
+    submitLabel: "Create Continuity Project",
+  },
+  schedule: {
+    eyebrow: "Schedule start",
+    heading: "Start from production order.",
+    helper: "Paste your planned generation order, deadline, or workflow stack. MiseForge will open the production schedule room.",
+    starterLabel: "Production order notes",
+    starterPlaceholder: "Paste generation order, tool handoffs, review gates, deadlines, or production sprint notes.",
+    submitLabel: "Create Schedule Project",
+  },
+  sound: {
+    eyebrow: "Sound start",
+    heading: "Start from the sound world.",
+    helper: "Paste room tone, foley, dialogue, effects, or silence notes. MiseForge will open the sound map room.",
+    starterLabel: "Sound design notes",
+    starterPlaceholder: "Paste room tone, foley, dialogue space, effects, silence, mix references, or sound continuity notes.",
+    submitLabel: "Create Sound Map Project",
+  },
+  production: {
+    eyebrow: "Production start",
+    heading: "Start from the production plan.",
+    helper: "Paste production notes, prompt needs, or asset lists. MiseForge will open the production room.",
+    starterLabel: "Production notes",
+    starterPlaceholder: "Paste production checklist items, asset needs, prompts, insert shots, or workflow notes.",
+    submitLabel: "Create Production Project",
+  },
+  shotlist: {
+    eyebrow: "Shot list start",
+    heading: "Start from the shots you already know.",
+    helper: "Paste shot ideas, coverage notes, inserts, or camera movement. MiseForge will open the production room where shot lists live.",
+    starterLabel: "Shot list notes",
+    starterPlaceholder: "Paste shot numbers, coverage ideas, insert shots, camera movement, lens feeling, or scene coverage notes.",
+    submitLabel: "Create Shot List Project",
+  },
+  prompts: {
+    eyebrow: "Prompt card start",
+    heading: "Start from image, animation, or sound prompts.",
+    helper: "Paste prompt material from another tool. MiseForge will open the production room so prompts can become part of the packet.",
+    starterLabel: "Prompt material",
+    starterPlaceholder: "Paste image prompts, animation prompts, sound prompts, negative prompts, or tool-specific workflow notes.",
+    submitLabel: "Create Prompt Project",
+  },
+  packet: {
+    eyebrow: "Packet start",
+    heading: "Start from a production packet in progress.",
+    helper: "Paste an existing plan, checklist, or packet draft. MiseForge will open the production room so you can organize and export it.",
+    starterLabel: "Packet or checklist",
+    starterPlaceholder: "Paste a production packet draft, checklist, asset list, shot plan, or handoff notes.",
+    submitLabel: "Create Packet Project",
+  },
+};
+
+const startModeDefaults: Record<StartMode, { activeStage: string; initialDocType: DocType }> = {
+  dashboard: { activeStage: "idea", initialDocType: "idea" },
+  idea: { activeStage: "idea", initialDocType: "idea" },
+  treatment: { activeStage: "treatment", initialDocType: "treatment" },
+  characters: { activeStage: "characters", initialDocType: "character_bible" },
+  locations: { activeStage: "locations", initialDocType: "location_bible" },
+  lookbook: { activeStage: "lookbook", initialDocType: "look_book" },
+  script: { activeStage: "script", initialDocType: "script" },
+  dialogue: { activeStage: "script", initialDocType: "script" },
+  continuity: { activeStage: "continuity", initialDocType: "continuity_tracker" },
+  breakdown: { activeStage: "breakdown", initialDocType: "breakdown_notes" },
+  schedule: { activeStage: "schedule", initialDocType: "production_schedule" },
+  sound: { activeStage: "sound", initialDocType: "sound_map" },
+  production: { activeStage: "production", initialDocType: "story" },
+  shotlist: { activeStage: "production", initialDocType: "story" },
+  prompts: { activeStage: "production", initialDocType: "story" },
+  packet: { activeStage: "production", initialDocType: "story" },
 };
 
 const emptyForm: ProjectForm = {
@@ -430,7 +545,7 @@ const pipelineSteps: Array<{
   },
   {
     id: "production",
-    projectStage: "story",
+    projectStage: "production",
     docType: "story",
     label: "Production",
     description: "Build the shot plan and pre-production checklist.",
@@ -1547,6 +1662,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     setMessage("");
 
     try {
+      const modeDefaults = startModeDefaults[startMode] ?? startModeDefaults.dashboard;
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: {
@@ -1560,6 +1676,8 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
           logline: form.logline,
           inspirations: splitInspirations(form.inspirations),
           initialContent: form.initialContent,
+          activeStage: modeDefaults.activeStage,
+          initialDocType: modeDefaults.initialDocType,
         }),
       });
       const result = (await response.json()) as {

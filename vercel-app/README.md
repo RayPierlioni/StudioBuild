@@ -55,6 +55,8 @@ Never commit real values for:
 - `/api/projects/[projectId]` - authenticated single-project loader
 - `/api/projects/[projectId]/documents` - saves editable stage drafts per project
 - `/app/projects/[projectId]` - project command center route
+- `/app/start/[mode]` - guided entry points for idea, treatment, characters, locations, look book,
+  script, dialogue, breakdown, continuity, schedule, sound, shot-list, prompt-card, and packet starts
 - `/api/generate` - protected MiseForge AI route for treatments, scripts, breakdowns, prompt
   plans, dialogue polish, improvement passes, structure passes, and insert shots
 
@@ -66,6 +68,10 @@ production pipeline, and protected AI action buttons.
 
 Pipeline stages are clickable. AI generation and manual draft saves both write editable stage
 documents back to Supabase.
+
+The app home now lets filmmakers start wherever their project already is. Choosing a script,
+breakdown, character, location, sound, shot-list, prompt-card, or packet entry point creates the
+project with that stage active instead of forcing every new project into the idea room.
 
 The project command center now includes Character Bible and Location Bible stages. Founder Pro and
 admin users can generate starter bibles from saved scene packets, then edit and save them as

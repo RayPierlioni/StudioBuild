@@ -10,7 +10,42 @@ type ProjectPayload = {
   inspirations?: string[];
   notes?: string;
   initialContent?: string;
+  activeStage?: string;
+  initialDocType?: string;
 };
+
+const allowedDocTypes = new Set([
+  "idea",
+  "synopsis",
+  "treatment",
+  "character_bible",
+  "location_bible",
+  "look_book",
+  "story",
+  "script",
+  "dialogue_notes",
+  "continuity_tracker",
+  "breakdown_notes",
+  "production_schedule",
+  "sound_map",
+]);
+
+const allowedStages = new Set([
+  "idea",
+  "synopsis",
+  "treatment",
+  "characters",
+  "locations",
+  "lookbook",
+  "story",
+  "script",
+  "dialogue",
+  "continuity",
+  "breakdown",
+  "schedule",
+  "sound",
+  "production",
+]);
 
 function cleanText(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
@@ -92,10 +127,23 @@ export async function POST(request: Request) {
     const { user } = await getVerifiedRequestUser(request);
     const body = (await request.json()) as ProjectPayload;
     const title = cleanText(body.title, "Untitled Project");
+    const requestedActiveStage = cleanText(body.activeStage);
+    const requestedInitialDocType = cleanText(body.initialDocType);
 
     if (title.length < 2) {
       return Response.json({ ok: false, error: "Project title is required." }, { status: 400 });
     }
+
+    if (requestedActiveStage && !allowedStages.has(requestedActiveStage)) {
+      return Response.json({ ok: false, error: "Unsupported project entry point." }, { status: 400 });
+    }
+
+    if (requestedInitialDocType && !allowedDocTypes.has(requestedInitialDocType)) {
+      return Response.json({ ok: false, error: "Unsupported starter document type." }, { status: 400 });
+    }
+
+    const activeStage = requestedActiveStage || "idea";
+    const initialDocType = requestedInitialDocType || "idea";
 
     const supabase = getSupabaseAdminClient();
     const entitlement = await getUserEntitlement(user);
@@ -126,7 +174,7 @@ export async function POST(request: Request) {
         logline: cleanText(body.logline),
         inspirations: cleanInspirations(body.inspirations),
         notes: cleanText(body.notes),
-        active_stage: "idea",
+        active_stage: activeStage,
       })
       .select("id,title,genre,tone,logline,inspirations,active_stage,notes,created_at,updated_at")
       .single();
@@ -147,7 +195,7 @@ export async function POST(request: Request) {
         .insert({
           project_id: project.id,
           owner_id: user.id,
-          doc_type: "idea",
+          doc_type: initialDocType,
           content: initialContent,
         })
         .select("id,doc_type,content,created_at,updated_at")

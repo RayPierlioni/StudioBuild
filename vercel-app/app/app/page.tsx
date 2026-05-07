@@ -19,18 +19,18 @@ const guidePaths = [
 ];
 
 const pipelineStages = [
-  ["Idea", "Premise, hook, story engine"],
-  ["Treatment", "Theme, structure, emotional turns"],
-  ["Characters", "Look, wardrobe, speech, continuity"],
-  ["Locations", "Layout, palette, dressing, risks"],
-  ["Look Book", "Palette, lighting, camera, motifs"],
-  ["Script", "Pages, dialogue, AI voice cleanup"],
-  ["Scene Breakdown", "Props, cast, sound, blocking"],
-  ["Shot List", "Coverage, inserts, camera intent"],
-  ["Production Schedule", "Generation order, review gates"],
-  ["Sound Map", "Room tone, effects, dialogue needs"],
-  ["Prompt Cards", "Image, animation, sound prompts"],
-  ["Production Packet", "Export-ready film plan"],
+  { mode: "idea", stage: "Idea", detail: "Premise, hook, story engine" },
+  { mode: "treatment", stage: "Treatment", detail: "Theme, structure, emotional turns" },
+  { mode: "characters", stage: "Characters", detail: "Look, wardrobe, speech, continuity" },
+  { mode: "locations", stage: "Locations", detail: "Layout, palette, dressing, risks" },
+  { mode: "lookbook", stage: "Look Book", detail: "Palette, lighting, camera, motifs" },
+  { mode: "script", stage: "Script", detail: "Pages, dialogue, AI voice cleanup" },
+  { mode: "breakdown", stage: "Scene Breakdown", detail: "Props, cast, sound, blocking" },
+  { mode: "shotlist", stage: "Shot List", detail: "Coverage, inserts, camera intent" },
+  { mode: "schedule", stage: "Production Schedule", detail: "Generation order, review gates" },
+  { mode: "sound", stage: "Sound Map", detail: "Room tone, effects, dialogue needs" },
+  { mode: "prompts", stage: "Prompt Cards", detail: "Image, animation, sound prompts" },
+  { mode: "packet", stage: "Production Packet", detail: "Export-ready film plan" },
 ];
 
 const dashboardGuideContext: GuideAssistantContext = {
@@ -72,8 +72,8 @@ export default function AppHome() {
             <p>Move from story discipline into the production details that keep an AI film consistent.</p>
           </div>
           <nav className="pipeline-nav" aria-label="MiseForge pipeline">
-            {pipelineStages.map(([stage, detail], index) => (
-              <a href="#workspace-dashboard" key={stage}>
+            {pipelineStages.map(({ detail, mode, stage }, index) => (
+              <a href={`/app/start/${mode}`} key={stage}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <strong>{stage}</strong>
                 <small>{detail}</small>

@@ -30,6 +30,7 @@ const allowedStages = new Set([
   "breakdown",
   "schedule",
   "sound",
+  "production",
 ]);
 
 type RouteContext = {
