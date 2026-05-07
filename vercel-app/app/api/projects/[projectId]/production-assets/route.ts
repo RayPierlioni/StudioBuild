@@ -68,6 +68,37 @@ function sceneTone(scene: SceneBreakdownRecord) {
   return scene.tone || scene.color_palette || "restrained cinematic tension";
 }
 
+function buildShotNotes({
+  action,
+  angle,
+  continuity,
+  dialogueSound,
+  duration,
+  lens,
+  movement,
+  shotType,
+}: {
+  action: string;
+  angle: string;
+  continuity: string;
+  dialogueSound: string;
+  duration: string;
+  lens: string;
+  movement: string;
+  shotType: string;
+}) {
+  return [
+    `Shot type: ${shotType}`,
+    `Camera angle: ${angle}`,
+    `Camera movement: ${movement}`,
+    `Lens / feel: ${lens}`,
+    `Estimated duration: ${duration}`,
+    `Action: ${action}`,
+    `Dialogue / sound: ${dialogueSound}`,
+    `Continuity check: ${continuity}`,
+  ].join("\n");
+}
+
 async function loadProductionAssets({
   projectId,
   supabase,
@@ -122,6 +153,10 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
   const firstCharacter = characters[0] || "the lead character";
   const secondCharacter = characters[1] || "the opposing character";
   const heroProp = firstListItem(scene.props, "the key story object");
+  const wardrobe = joinList(scene.wardrobe, "locked wardrobe for this scene");
+  const props = joinList(scene.props, "story-specific props");
+  const setDressing = joinList(scene.set_dressing, "locked set dressing");
+  const sound = scene.sound_notes || "room tone, close physical sounds, dialogue space, and no music unless story-necessary";
   const tone = sceneTone(scene);
   const blocking = scene.blocking || "Use the scene blocking to track entrances, exits, eyelines, and distance shifts.";
 
@@ -134,7 +169,16 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: `Shot-list page. Tone: ${tone}. ${blocking}`,
+      notes: buildShotNotes({
+        action: `Reveal ${location}, the blocking geography, and the pressure around ${firstCharacter}.`,
+        angle: "Eye-level or slightly observational, wide enough to understand exits, eyelines, and geography.",
+        continuity: `Lock ${location}, ${timeOfDay}, ${setDressing}, palette ${tone}, and the opening positions before closer coverage.`,
+        dialogueSound: sound,
+        duration: "4-6 seconds",
+        lens: "24-28mm natural wide, grounded texture, motivated practical light.",
+        movement: "Slow push, restrained handheld drift, or locked-off frame if tension needs stillness.",
+        shotType: "Establishing wide / medium-wide",
+      }),
     },
     {
       asset_type: "shot",
@@ -144,7 +188,16 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: "Generate the image prompt first, then unlock animation, sound design, and dialogue timing.",
+      notes: buildShotNotes({
+        action: `Show what ${firstCharacter} wants through posture, hands, eyeline, or movement toward ${heroProp}.`,
+        angle: "Clean single with eyeline preserved toward the opposing force.",
+        continuity: `Keep ${firstCharacter}'s wardrobe consistent: ${wardrobe}. Keep key props visible only if established.`,
+        dialogueSound: `Dialogue can sit here if ${firstCharacter} carries the first playable beat. ${sound}`,
+        duration: "3-5 seconds",
+        lens: "35-50mm, intimate but not glossy, human skin texture.",
+        movement: "Small motivated push or controlled static frame.",
+        shotType: "Medium close-up / single",
+      }),
     },
     {
       asset_type: "shot",
@@ -154,7 +207,16 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: "Keep camera language consistent with the previous shot.",
+      notes: buildShotNotes({
+        action: `Catch ${secondCharacter}'s response, resistance, or silence after ${firstCharacter}'s beat.`,
+        angle: "Reverse single matching eyeline, height, and screen direction from Shot 2.",
+        continuity: `Match ${location}, light direction, wardrobe, and prop placement from the previous shot.`,
+        dialogueSound: `Use dialogue or breath only if the response needs it. Preserve room tone: ${sound}`,
+        duration: "3-5 seconds",
+        lens: "35-50mm matched to Shot 2.",
+        movement: "Match Shot 2 movement language; do not suddenly become more stylized.",
+        shotType: "Reverse medium close-up",
+      }),
     },
     {
       asset_type: "shot",
@@ -164,7 +226,16 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: "Use this as the bridge into an insert shot when the scene needs a concrete visual beat.",
+      notes: buildShotNotes({
+        action: `Show the distance changing, freezing, or becoming impossible between ${firstCharacter} and ${secondCharacter}.`,
+        angle: "Two-shot, profile, or over-the-shoulder that clarifies spatial pressure.",
+        continuity: `Maintain screen direction and object ownership. Props in play: ${props}.`,
+        dialogueSound: `This shot can carry overlapping silence, interruption, or a short exchange. ${sound}`,
+        duration: "4-7 seconds",
+        lens: "28-40mm with enough space to read body language.",
+        movement: "Lateral slide, slow creep, or locked frame depending on scene pressure.",
+        shotType: "Two-shot / OTS / profile coverage",
+      }),
     },
     {
       asset_type: "shot",
@@ -174,17 +245,54 @@ function buildDetailedShotList(scene: SceneBreakdownRecord) {
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: "This is the row that naturally connects to the I need another insert shot button.",
+      notes: buildShotNotes({
+        action: `Externalize the scene conflict through ${heroProp}, texture, hand placement, or object state.`,
+        angle: "Tight insert with clear story object, readable texture, and no extra random objects.",
+        continuity: `The ${heroProp} must match its first appearance, current owner/location, and last known state.`,
+        dialogueSound: `No dialogue unless it plays over the insert. Emphasize close object sound, room tone, and silence. ${sound}`,
+        duration: "1-3 seconds",
+        lens: "50-85mm close detail, shallow but readable focus.",
+        movement: "Tiny push-in, rack focus, or still frame with physical sound.",
+        shotType: "Insert / ECU detail",
+      }),
     },
     {
       asset_type: "shot",
-      name: "Shot 6: Final emotional beat",
+      name: `Shot 6: ${firstCharacter} reaction after the turn`,
+      purpose: "Let the audience see the emotional cost after the object or line lands.",
+      visual: `Held reaction on ${firstCharacter}, with the previous insert or action affecting posture, breath, eyeline, or silence.`,
+      image_prompt: "",
+      animation_prompt: "",
+      sound_prompt: "",
+      notes: buildShotNotes({
+        action: `Show what changed in ${firstCharacter} without explaining it in dialogue.`,
+        angle: "Close-up or medium close-up with enough environment to preserve geography.",
+        continuity: `Match eyeline back to ${secondCharacter} or ${heroProp}; preserve wardrobe and light direction.`,
+        dialogueSound: `Use silence, breath, or one clean line only if it sharpens subtext. ${sound}`,
+        duration: "3-6 seconds",
+        lens: "50-65mm, restrained emotional intimacy.",
+        movement: "Held frame or almost invisible push.",
+        shotType: "Reaction close-up",
+      }),
+    },
+    {
+      asset_type: "shot",
+      name: "Shot 7: Final emotional beat",
       purpose: "End the scene with a visual decision, not a purely verbal explanation.",
       visual: `A held frame after the last line where the blocking, object placement, or character silence shows what changed in the scene.`,
       image_prompt: "",
       animation_prompt: "",
       sound_prompt: "",
-      notes: "Use dialogue timing only where it supports the final beat.",
+      notes: buildShotNotes({
+        action: "Land the final choice, refusal, or silence as a visible image that can cut cleanly to the next scene.",
+        angle: "Composed final frame, either wider to show consequence or closer if the choice is internal.",
+        continuity: `Confirm ending positions, prop state, wardrobe, light, and sound before moving to the next scene.`,
+        dialogueSound: `Final line, silence, or room tone tail. No music unless the ending beat demands it. ${sound}`,
+        duration: "4-8 seconds",
+        lens: "35-65mm depending on whether the ending is spatial or emotional.",
+        movement: "Hold, slow drift away, or final push only if motivated by the story turn.",
+        shotType: "Final beat / button shot",
+      }),
     },
   ];
 }
@@ -195,11 +303,13 @@ function buildImagePrompt(scene: SceneBreakdownRecord, asset: ProductionAsset) {
   const props = joinList(scene.props, "story-specific props");
   const setDressing = joinList(scene.set_dressing, scene.location || "the location");
   const tone = sceneTone(scene);
+  const shotNotes = asset.notes ? ` Shot design: ${asset.notes.replace(/\s+/g, " ")}` : "";
 
   return [
     `${asset.name}. ${asset.visual}`,
     `Scene: ${scene.scene_heading}. Location: ${scene.location || "unspecified"} at ${scene.time_of_day || "unspecified time"}.`,
     `Characters in continuity: ${characters}. Wardrobe: ${wardrobe}. Props: ${props}. Set dressing: ${setDressing}.`,
+    shotNotes,
     `Color and feel: ${tone}. Cinematic, natural physical texture, motivated lighting, no text, no captions, no extra characters, no distorted hands.`,
   ].join(" ");
 }
@@ -208,12 +318,14 @@ function buildAnimationPrompt(scene: SceneBreakdownRecord, asset: ProductionAsse
   const characters = joinList(scene.characters, "the characters");
   const sound = scene.sound_notes || "room tone, close physical sounds, and location texture";
   const blocking = scene.blocking || "follow the scene blocking and preserve eyelines";
+  const shotNotes = asset.notes ? `Shot list metadata: ${asset.notes.replace(/\s+/g, " ")}` : "";
 
   return {
     animation_prompt: [
       `${asset.name}. Animate the image as a usable film shot, not a flashy trailer shot.`,
       `Motion: controlled camera movement, subtle performance behavior, and continuity with ${scene.scene_heading}.`,
       `Blocking: ${blocking}. Characters: ${characters}.`,
+      shotNotes,
       "Dialogue timing: preserve the exact script dialogue for this shot when available, keep lip movement restrained and believable, and leave room for natural pauses.",
       "Do not add new characters, new props, extra story events, subtitles, or music unless the story specifically calls for it.",
     ].join(" "),
@@ -335,6 +447,23 @@ export async function POST(request: Request, context: RouteContext) {
           if (insertError) {
             return Response.json({ ok: false, error: insertError.message }, { status: 502 });
           }
+        }
+      }
+
+      const extraShotIds = existing.slice(shotRows.length).map((shot) => shot.id);
+
+      if (extraShotIds.length) {
+        const { error: deleteExtraError } = await supabase
+          .from("production_assets")
+          .delete()
+          .in("id", extraShotIds)
+          .eq("project_id", projectId)
+          .eq("owner_id", user.id)
+          .eq("scene_breakdown_id", sceneBreakdownId)
+          .eq("asset_type", "shot");
+
+        if (deleteExtraError) {
+          return Response.json({ ok: false, error: deleteExtraError.message }, { status: 502 });
         }
       }
 

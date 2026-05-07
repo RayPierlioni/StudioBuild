@@ -2588,6 +2588,13 @@ textarea:focus {
   font-size: 12px;
 }
 
+.asset-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .shot-list {
   display: grid;
   gap: 10px;
@@ -2647,6 +2654,59 @@ textarea:focus {
 
 .shot-row-main small {
   color: var(--muted);
+}
+
+.shot-meta-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-left: 42px;
+}
+
+.shot-meta-grid div {
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.shot-meta-grid dt,
+.shot-progress-track span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shot-meta-grid dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.38;
+}
+
+.shot-progress-track {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 7px;
+  margin-left: 42px;
+}
+
+.shot-progress-track span {
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--muted);
+}
+
+.shot-progress-track span.complete {
+  border-color: rgba(102, 127, 118, 0.22);
+  background: rgba(223, 231, 226, 0.76);
+  color: #415f57;
 }
 
 .shot-row-actions {
@@ -3070,6 +3130,7 @@ code {
     .dialogue-tool-card,
     .dialogue-flag-grid,
     .rubric-grid,
+    .shot-meta-grid,
     .workspace-tools,
   .demo-grid,
   .production-board-grid,
@@ -3095,8 +3156,9 @@ code {
   }
 
   .asset-heading,
-  .shot-row-actions,
-  .asset-card-actions {
+    .shot-row-actions,
+    .asset-heading-actions,
+    .asset-card-actions {
     align-items: stretch;
     flex-direction: column;
   }
@@ -3140,6 +3202,7 @@ code {
   }
 
   .asset-heading .button,
+  .asset-heading-actions .button,
   .shot-row-actions .button,
   .asset-card-actions .button {
     width: 100%;
@@ -3155,6 +3218,11 @@ code {
     border-left: 0;
     border-top: 1px solid rgba(182, 93, 104, 0.18);
     padding-top: 10px;
+  }
+
+  .shot-meta-grid,
+  .shot-progress-track {
+    margin-left: 0;
   }
 
   .project-list {

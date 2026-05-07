@@ -284,6 +284,17 @@ type ContinuityItemProfile = {
   type: "Prop" | "Wardrobe" | "Set dressing";
 };
 
+type ShotMetadata = {
+  action: string;
+  angle: string;
+  continuity: string;
+  dialogueSound: string;
+  duration: string;
+  lens: string;
+  movement: string;
+  shotType: string;
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -776,6 +787,57 @@ function sharedValues(first: string[] | undefined, second: string[] | undefined)
 
 function sceneReferenceList(scenes: SceneBreakdown[]) {
   return scenes.length ? scenes.map(sceneBoardLabel).join(", ") : "Not mapped yet";
+}
+
+function parseShotMetadata(notes: string | undefined): ShotMetadata {
+  const fields: ShotMetadata = {
+    action: "",
+    angle: "",
+    continuity: "",
+    dialogueSound: "",
+    duration: "",
+    lens: "",
+    movement: "",
+    shotType: "",
+  };
+  const fieldMap: Record<string, keyof ShotMetadata> = {
+    action: "action",
+    angle: "angle",
+    "camera angle": "angle",
+    "camera movement": "movement",
+    continuity: "continuity",
+    "continuity check": "continuity",
+    dialogue: "dialogueSound",
+    "dialogue / sound": "dialogueSound",
+    "dialogue/sound": "dialogueSound",
+    duration: "duration",
+    "estimated duration": "duration",
+    lens: "lens",
+    "lens / feel": "lens",
+    movement: "movement",
+    "shot type": "shotType",
+    type: "shotType",
+  };
+
+  for (const line of (notes ?? "").split(/\r?\n/)) {
+    const match = line.match(/^\s*([^:]+):\s*(.+)\s*$/);
+
+    if (!match) {
+      continue;
+    }
+
+    const key = fieldMap[match[1].trim().toLowerCase()];
+
+    if (key) {
+      fields[key] = match[2].trim();
+    }
+  }
+
+  return fields;
+}
+
+function hasShotMetadata(metadata: ShotMetadata) {
+  return Object.values(metadata).some((value) => value.trim());
 }
 
 const dialogueFlagRules: Array<{
@@ -4220,6 +4282,77 @@ export function ProjectWorkspace({
     }
   }
 
+  function buildShotListPrompt(scene: SceneBreakdown, shotAssets: ProductionAsset[]) {
+    const rows = shotAssets.length
+      ? shotAssets
+          .map((asset) => {
+            const metadata = parseShotMetadata(asset.notes);
+
+            return [
+              `- ${asset.name}`,
+              `  Purpose: ${asset.purpose || "Not set"}`,
+              `  Visual: ${asset.visual || "Not set"}`,
+              `  Shot type: ${metadata.shotType || "Not set"}`,
+              `  Angle: ${metadata.angle || "Not set"}`,
+              `  Movement: ${metadata.movement || "Not set"}`,
+              `  Lens / feel: ${metadata.lens || "Not set"}`,
+              `  Duration: ${metadata.duration || "Not set"}`,
+              `  Dialogue / sound: ${metadata.dialogueSound || "Not set"}`,
+              `  Continuity: ${metadata.continuity || "Not set"}`,
+            ].join("\n");
+          })
+          .join("\n")
+      : "- No shot rows yet. Build a practical shot list first.";
+
+    return [
+      "You are a professional director, DP, and script supervisor preparing a shot list for an AI film workflow.",
+      "",
+      "PROJECT",
+      `Title: ${project.title || "Untitled"}`,
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      "",
+      "SCENE",
+      `Heading: ${scene.scene_heading || "Not specified"}`,
+      `Summary: ${scene.summary || "Not specified"}`,
+      `Location/time: ${scene.location || "Not specified"} / ${scene.time_of_day || "Not specified"}`,
+      `Characters: ${listText(scene.characters, "Not specified")}`,
+      `Props: ${listText(scene.props, "Not specified")}`,
+      `Wardrobe: ${listText(scene.wardrobe, "Not specified")}`,
+      `Set dressing: ${listText(scene.set_dressing, "Not specified")}`,
+      `Sound: ${scene.sound_notes || "Not specified"}`,
+      `Blocking: ${scene.blocking || "Not specified"}`,
+      "",
+      "CURRENT SHOT LIST",
+      rows,
+      "",
+      "TASK",
+      "Refine this into a director-ready shot list. For every shot, include shot number, shot type, camera angle, movement, lens/feel, duration, action, dialogue/sound, continuity check, image prompt guidance, and animation prompt guidance.",
+      "",
+      "RULES",
+      "- Keep the scene producible.",
+      "- Protect eyelines, screen direction, wardrobe, props, sound, and location continuity.",
+      "- Insert shots must externalize story conflict, not decorate it.",
+      "- Do not add music unless the story requires it.",
+    ].join("\n");
+  }
+
+  async function copyShotListPrompt(scene: SceneBreakdown, shotAssets: ProductionAsset[]) {
+    if (!requirePro("Shot list prompt compiler")) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildShotListPrompt(scene, shotAssets));
+      setSaveStatus(`Shot list prompt copied for scene ${scene.scene_number}.`);
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Build the shot list and copy from the production packet instead.");
+    }
+  }
+
   async function createInsertShot(scene: SceneBreakdown) {
     if (!requirePro("Insert-shot prompt cards")) {
       return;
@@ -4534,18 +4667,37 @@ export function ProjectWorkspace({
               "### Detailed Shot List",
               "",
               ...shotAssets.map((asset) =>
-                [
+                {
+                  const shotMetadata = parseShotMetadata(asset.notes);
+                  const shotMetadataBlock = hasShotMetadata(shotMetadata)
+                    ? [
+                        "Shot metadata:",
+                        `- Shot type: ${markdownValue(shotMetadata.shotType)}`,
+                        `- Camera angle: ${markdownValue(shotMetadata.angle)}`,
+                        `- Camera movement: ${markdownValue(shotMetadata.movement)}`,
+                        `- Lens / feel: ${markdownValue(shotMetadata.lens)}`,
+                        `- Estimated duration: ${markdownValue(shotMetadata.duration)}`,
+                        `- Action: ${markdownValue(shotMetadata.action)}`,
+                        `- Dialogue / sound: ${markdownValue(shotMetadata.dialogueSound)}`,
+                        `- Continuity check: ${markdownValue(shotMetadata.continuity)}`,
+                      ].join("\n")
+                    : `Shot notes: ${markdownValue(asset.notes)}`;
+
+                  return [
                   `#### ${asset.name}`,
                   "",
                   `Purpose: ${markdownValue(asset.purpose)}`,
                   `Visual: ${markdownValue(asset.visual)}`,
+                  "",
+                  shotMetadataBlock,
                   "",
                   `Image prompt: ${markdownValue(asset.image_prompt)}`,
                   "",
                   `Animation prompt: ${markdownValue(asset.animation_prompt)}`,
                   "",
                   `Sound/dialogue prompt: ${markdownValue(asset.sound_prompt)}`,
-                ].join("\n"),
+                ].join("\n");
+                },
               ),
             ].join("\n\n")
           : "### Detailed Shot List\n\nNot built yet.";
@@ -4662,14 +4814,31 @@ export function ProjectWorkspace({
 
         const shotRows = shotAssets.length
           ? shotAssets
-              .map(
-                (asset) => `
+              .map((asset) => {
+                const shotMetadata = parseShotMetadata(asset.notes);
+                const shotMetadataGrid = hasShotMetadata(shotMetadata)
+                  ? `
+                    <div class="shot-meta-export">
+                      <section><b>Shot Type</b>${htmlParagraphs(shotMetadata.shotType)}</section>
+                      <section><b>Camera Angle</b>${htmlParagraphs(shotMetadata.angle)}</section>
+                      <section><b>Camera Movement</b>${htmlParagraphs(shotMetadata.movement)}</section>
+                      <section><b>Lens / Feel</b>${htmlParagraphs(shotMetadata.lens)}</section>
+                      <section><b>Estimated Duration</b>${htmlParagraphs(shotMetadata.duration)}</section>
+                      <section><b>Action</b>${htmlParagraphs(shotMetadata.action)}</section>
+                      <section><b>Dialogue / Sound</b>${htmlParagraphs(shotMetadata.dialogueSound)}</section>
+                      <section><b>Continuity Check</b>${htmlParagraphs(shotMetadata.continuity)}</section>
+                    </div>
+                  `
+                  : `<p>${htmlValue(asset.notes)}</p>`;
+
+                return `
                   <article class="shot">
                     <div class="shot-number">${String(asset.order_index).padStart(2, "0")}</div>
                     <div>
                       <h4>${htmlValue(asset.name, "Untitled shot")}</h4>
                       <p class="purpose">${htmlValue(asset.purpose)}</p>
                       <p>${htmlValue(asset.visual)}</p>
+                      ${shotMetadataGrid}
                       <div class="prompt-grid">
                         <section><b>Image Prompt</b>${htmlParagraphs(asset.image_prompt)}</section>
                         <section><b>Animation Prompt</b>${htmlParagraphs(asset.animation_prompt)}</section>
@@ -4677,8 +4846,8 @@ export function ProjectWorkspace({
                       </div>
                     </div>
                   </article>
-                `,
-              )
+                `;
+              })
               .join("")
           : `<p class="empty">Shot list not built yet.</p>`;
 
@@ -5320,6 +5489,18 @@ export function ProjectWorkspace({
       .purpose {
         color: var(--muted);
         font-weight: 760;
+      }
+      .shot-meta-export {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .shot-meta-export section {
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 10px;
+        background: rgba(251, 250, 247, 0.74);
       }
       .prompt-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -6886,20 +7067,30 @@ export function ProjectWorkspace({
                               prompt for each shot.
                             </p>
                           </div>
-                          <button
-                            className="button secondary"
-                            type="button"
-                            onClick={() => buildDetailedShotList(scene)}
-                            disabled={buildingShotListSceneId === scene.id}
-                          >
-                            {!entitlement.isPro
-                              ? "Pro: Build detailed shot list"
-                              : buildingShotListSceneId === scene.id
-                              ? "Building..."
-                              : shotAssets.length
-                                ? "Regenerate shot list"
-                                : "Build detailed shot list"}
-                          </button>
+                          <div className="asset-heading-actions">
+                            <button
+                              className="button secondary"
+                              type="button"
+                              onClick={() => buildDetailedShotList(scene)}
+                              disabled={buildingShotListSceneId === scene.id}
+                            >
+                              {!entitlement.isPro
+                                ? "Pro: Build detailed shot list"
+                                : buildingShotListSceneId === scene.id
+                                ? "Building..."
+                                : shotAssets.length
+                                  ? "Regenerate shot list"
+                                  : "Build detailed shot list"}
+                            </button>
+                            <button
+                              className="button secondary"
+                              type="button"
+                              onClick={() => void copyShotListPrompt(scene, shotAssets)}
+                              disabled={!entitlement.isPro}
+                            >
+                              {entitlement.isPro ? "Copy shot-list prompt" : "Pro: shot-list prompt"}
+                            </button>
+                          </div>
                         </div>
 
                         {shotAssets.length ? (
@@ -6909,6 +7100,8 @@ export function ProjectWorkspace({
                               const animationPromptKey = `animation_prompt:${asset.id}`;
                               const isGeneratingImage = generatingAssetPromptId === imagePromptKey;
                               const isGeneratingAnimation = generatingAssetPromptId === animationPromptKey;
+                              const shotMetadata = parseShotMetadata(asset.notes);
+                              const showShotMetadata = hasShotMetadata(shotMetadata);
 
                               return (
                                 <article className="shot-row" key={asset.id}>
@@ -6919,6 +7112,48 @@ export function ProjectWorkspace({
                                       <p>{asset.purpose}</p>
                                       <small>{asset.visual}</small>
                                     </div>
+                                  </div>
+                                  {showShotMetadata ? (
+                                    <dl className="shot-meta-grid">
+                                      <div>
+                                        <dt>Shot type</dt>
+                                        <dd>{shotMetadata.shotType || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Angle</dt>
+                                        <dd>{shotMetadata.angle || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Movement</dt>
+                                        <dd>{shotMetadata.movement || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Lens / feel</dt>
+                                        <dd>{shotMetadata.lens || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Duration</dt>
+                                        <dd>{shotMetadata.duration || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Action</dt>
+                                        <dd>{shotMetadata.action || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Dialogue / sound</dt>
+                                        <dd>{shotMetadata.dialogueSound || "Not set"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Continuity</dt>
+                                        <dd>{shotMetadata.continuity || "Not set"}</dd>
+                                      </div>
+                                    </dl>
+                                  ) : null}
+                                  <div className="shot-progress-track">
+                                    <span className={asset.image_prompt ? "complete" : ""}>Image prompt</span>
+                                    <span className={asset.animation_prompt || asset.sound_prompt ? "complete" : ""}>
+                                      Animation + sound
+                                    </span>
                                   </div>
                                   <div className="shot-row-actions">
                                     <button
