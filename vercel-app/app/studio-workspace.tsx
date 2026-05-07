@@ -3760,12 +3760,55 @@ export function ProjectWorkspace({
       { label: "Sound Design Map", value: drafts.sound_map },
       { label: "Production Notes", value: drafts.story },
     ].filter((section) => section.value.trim());
+    const shotCount = productionAssets.filter((asset) => asset.asset_type === "shot").length;
+    const promptCardCount = productionAssets.filter((asset) => asset.asset_type !== "shot").length;
+    const imagePromptCount = productionAssets.filter((asset) => hasText(asset.image_prompt)).length;
+    const animationSoundPromptCount = productionAssets.filter(
+      (asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+    ).length;
+    const soundSceneCount = sceneBreakdowns.filter((scene) => hasText(scene.sound_notes)).length;
+    const completeSceneCount = sceneBreakdowns.filter(
+      (scene) =>
+        hasText(scene.summary) &&
+        hasList(scene.characters) &&
+        hasList(scene.props) &&
+        hasText(scene.sound_notes) &&
+        hasText(scene.blocking),
+    ).length;
+    const readinessItems = [
+      { label: "Story documents", value: `${docSections.length} saved` },
+      { label: "Scene packets", value: `${sceneBreakdowns.length} mapped` },
+      { label: "Complete scene packets", value: `${completeSceneCount} of ${sceneBreakdowns.length || 0}` },
+      { label: "Shot rows", value: `${shotCount} built` },
+      { label: "Prompt cards", value: `${promptCardCount} built` },
+      { label: "Image prompts", value: `${imagePromptCount} ready` },
+      { label: "Animation / sound prompts", value: `${animationSoundPromptCount} ready` },
+      { label: "Sound mapped scenes", value: `${soundSceneCount} of ${sceneBreakdowns.length || 0}` },
+    ];
+    const tocItems = [
+      "Cover",
+      "Production Readiness",
+      "Project Roadmap",
+      ...docSections.map((section) => section.label),
+      versions.length ? "Version History" : "",
+      sceneBreakdowns.length ? "Scene Packets" : "",
+      sceneBreakdowns.length ? "Detailed Shot Lists" : "",
+      sceneBreakdowns.length ? "Prompt Cards" : "",
+    ].filter(Boolean);
 
     const sceneSections = sceneBreakdowns
       .map((scene) => {
         const sceneAssets = assetsBySceneId[scene.id] ?? [];
         const shotAssets = sceneAssets.filter((asset) => asset.asset_type === "shot");
         const promptAssets = sceneAssets.filter((asset) => asset.asset_type !== "shot");
+        const sceneReadiness = [
+          hasText(scene.summary),
+          hasList(scene.characters),
+          hasList(scene.props),
+          hasList(scene.wardrobe),
+          hasText(scene.sound_notes),
+          hasText(scene.blocking),
+        ].filter(Boolean).length;
 
         const shotRows = shotAssets.length
           ? shotAssets
@@ -3811,13 +3854,18 @@ export function ProjectWorkspace({
 
         return `
           <section class="packet-section scene-page">
-            <div class="section-kicker">Scene ${scene.scene_number}</div>
+            <div class="section-label">Scene ${scene.scene_number}</div>
             <h2>${htmlValue(scene.scene_heading, "Unlabeled scene")}</h2>
             <p class="lede">${htmlValue(scene.summary)}</p>
             <div class="meta-grid">
               <div><b>Location</b><span>${htmlValue(scene.location)}</span></div>
               <div><b>Time</b><span>${htmlValue(scene.time_of_day)}</span></div>
               <div><b>Tone</b><span>${htmlValue(scene.tone || scene.color_palette)}</span></div>
+            </div>
+            <div class="scene-status">
+              <span>${sceneReadiness}/6 core fields filled</span>
+              <span>${shotAssets.length} shot rows</span>
+              <span>${promptAssets.length} prompt cards</span>
             </div>
             <div class="details-grid">
               <section><h3>Characters</h3>${htmlList(scene.characters)}</section>
@@ -3829,13 +3877,15 @@ export function ProjectWorkspace({
             </div>
           </section>
           <section class="packet-section">
-            <div class="section-kicker">Page 2</div>
+            <div class="section-label">Scene ${scene.scene_number} / Page 2</div>
             <h2>Detailed Shot List</h2>
+            <p class="lede">Coverage, inserts, camera intent, animation handoff, and sound notes for the scene.</p>
             ${shotRows}
           </section>
           <section class="packet-section">
-            <div class="section-kicker">Prompt Cards</div>
+            <div class="section-label">Scene ${scene.scene_number} / Prompt Cards</div>
             <h2>Image, Animation, Sound</h2>
+            <p class="lede">Prompt-ready production assets for image generation, animation, sound design, and dialogue timing.</p>
             ${promptCards}
           </section>
         `;
@@ -3846,7 +3896,7 @@ export function ProjectWorkspace({
       .map(
         (section) => `
           <section class="packet-section">
-            <div class="section-kicker">${htmlValue(section.label)}</div>
+            <div class="section-label">${htmlValue(section.label)}</div>
             <h2>${htmlValue(section.label)}</h2>
             <div class="document-body">${htmlParagraphs(section.value)}</div>
           </section>
@@ -3856,7 +3906,7 @@ export function ProjectWorkspace({
     const versionSections = versions.length
       ? `
           <section class="packet-section">
-            <div class="section-kicker">Saved Passes</div>
+            <div class="section-label">Saved Passes</div>
             <h2>Version History</h2>
             ${versions
               .map(
@@ -3873,6 +3923,63 @@ export function ProjectWorkspace({
           </section>
         `
       : "";
+    const tocSection = `
+      <section class="packet-section contents-page">
+        <div class="section-label">Production Index</div>
+        <h2>What is inside this packet.</h2>
+        <p class="lede">A clean handoff document for story, continuity, shot planning, prompts, sound, and export-ready pre-production decisions.</p>
+        <div class="toc-grid">
+          ${tocItems
+            .map(
+              (item, index) => `
+                <article>
+                  <span>${String(index + 1).padStart(2, "0")}</span>
+                  <strong>${htmlValue(item)}</strong>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    `;
+    const readinessSection = `
+      <section class="packet-section readiness-page">
+        <div class="section-label">Production Readiness</div>
+        <h2>${readiness.score}% ready for production planning.</h2>
+        <p class="lede">Next best action: ${htmlValue(readiness.next)}.</p>
+        <div class="readiness-hero">
+          <div>
+            <span class="readiness-number">${readiness.score}%</span>
+            <strong>${readiness.completedCount} of ${readiness.total} production checks complete</strong>
+          </div>
+          <p>StudioBuild measures whether the project has enough story, scene, continuity, shot, prompt, schedule, and sound information to become a reliable production packet.</p>
+        </div>
+        <div class="readiness-grid">
+          ${readinessItems
+            .map(
+              (item) => `
+                <article>
+                  <span>${htmlValue(item.label)}</span>
+                  <strong>${htmlValue(item.value)}</strong>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="checklist">
+          ${readiness.checks
+            .map(
+              (check) => `
+                <div class="${check.isComplete ? "complete" : ""}">
+                  <span>${check.isComplete ? "Done" : "Next"}</span>
+                  <p>${htmlValue(check.label)}</p>
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    `;
 
     return `<!doctype html>
 <html>
@@ -3884,16 +3991,21 @@ export function ProjectWorkspace({
       :root {
         --paper: #fbfaf7;
         --ink: #151515;
-        --muted: #70665f;
-        --line: #ded6cd;
+        --muted: #6d655f;
+        --line: #ddd4cb;
         --accent: #9d4853;
+        --accent-soft: #f5dde1;
+        --deep: #1d1a1c;
         --soft: #f0e7de;
         --sage: #dfe7e2;
+        --gold: #c6a45f;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #e7e2dc;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(157, 72, 83, 0.16), transparent 32%),
+          #e7e2dc;
         color: var(--ink);
         font-family: "Aptos", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
         font-size: 14px;
@@ -3908,7 +4020,7 @@ export function ProjectWorkspace({
         justify-content: space-between;
         gap: 12px;
         padding: 12px 18px;
-        background: rgba(21, 21, 21, 0.92);
+        background: rgba(21, 21, 21, 0.94);
         color: white;
       }
       .print-bar button {
@@ -3924,7 +4036,7 @@ export function ProjectWorkspace({
       .packet {
         width: min(980px, calc(100% - 32px));
         margin: 24px auto;
-        box-shadow: 0 30px 100px rgba(28, 23, 20, 0.18);
+        box-shadow: 0 34px 110px rgba(28, 23, 20, 0.2);
       }
       .cover,
       .packet-section {
@@ -3941,9 +4053,16 @@ export function ProjectWorkspace({
         min-height: 1100px;
         color: white;
         background:
-          linear-gradient(135deg, rgba(18, 18, 18, 0.92), rgba(73, 58, 52, 0.72)),
-          linear-gradient(90deg, rgba(157, 72, 83, 0.34), transparent 44%, rgba(223, 231, 226, 0.18)),
+          radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.18), transparent 20%),
+          linear-gradient(135deg, rgba(18, 18, 18, 0.95), rgba(65, 50, 49, 0.82)),
+          linear-gradient(90deg, rgba(157, 72, 83, 0.4), transparent 44%, rgba(223, 231, 226, 0.2)),
           #171717;
+      }
+      .cover-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
       }
       .brand {
         font-size: 12px;
@@ -3951,9 +4070,28 @@ export function ProjectWorkspace({
         letter-spacing: 0;
         text-transform: uppercase;
       }
+      .cover-mark {
+        display: grid;
+        place-items: center;
+        width: 58px;
+        height: 58px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.84);
+        font-weight: 900;
+      }
+      .cover-kicker {
+        margin: 0 0 14px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
       .cover h1 {
         max-width: 760px;
-        margin: 120px 0 18px;
+        margin: 0 0 18px;
         font-size: 72px;
         line-height: 0.96;
         letter-spacing: 0;
@@ -3966,7 +4104,10 @@ export function ProjectWorkspace({
       .cover-grid,
       .meta-grid,
       .details-grid,
-      .prompt-grid {
+      .prompt-grid,
+      .readiness-grid,
+      .toc-grid,
+      .roadmap-strip {
         display: grid;
         gap: 12px;
       }
@@ -3976,7 +4117,10 @@ export function ProjectWorkspace({
       .cover-grid div,
       .meta-grid div,
       .details-grid section,
-      .prompt-grid section {
+      .prompt-grid section,
+      .readiness-grid article,
+      .toc-grid article,
+      .roadmap-strip article {
         border: 1px solid rgba(21, 21, 21, 0.12);
         border-radius: 8px;
         padding: 14px;
@@ -3987,8 +4131,12 @@ export function ProjectWorkspace({
         background: rgba(255, 255, 255, 0.08);
       }
       b,
+      .section-label,
       .section-kicker,
-      .prompt-card span {
+      .prompt-card span,
+      .roadmap-strip span,
+      .readiness-grid span,
+      .toc-grid span {
         display: block;
         color: var(--accent);
         font-size: 11px;
@@ -4022,6 +4170,103 @@ export function ProjectWorkspace({
         color: var(--muted);
         font-size: 18px;
       }
+      .contents-page h2,
+      .readiness-page h2 {
+        max-width: 720px;
+      }
+      .toc-grid {
+        grid-template-columns: repeat(2, 1fr);
+        margin-top: 28px;
+      }
+      .toc-grid article {
+        min-height: 74px;
+        display: grid;
+        align-content: space-between;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(223, 231, 226, 0.44)),
+          white;
+      }
+      .toc-grid strong,
+      .readiness-grid strong,
+      .roadmap-strip strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--deep);
+        font-size: 18px;
+        line-height: 1.14;
+      }
+      .readiness-hero {
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr;
+        gap: 18px;
+        align-items: center;
+        border: 1px solid rgba(157, 72, 83, 0.16);
+        border-radius: 8px;
+        padding: 22px;
+        background:
+          linear-gradient(135deg, rgba(245, 221, 225, 0.74), rgba(255, 255, 255, 0.74)),
+          white;
+      }
+      .readiness-number {
+        display: block;
+        color: var(--accent);
+        font-size: 72px;
+        font-weight: 900;
+        line-height: 0.94;
+      }
+      .readiness-hero strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+      .readiness-hero p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      .readiness-grid {
+        grid-template-columns: repeat(4, 1fr);
+        margin-top: 18px;
+      }
+      .checklist {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 22px;
+      }
+      .checklist div {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        border-top: 1px solid var(--line);
+        padding-top: 8px;
+      }
+      .checklist span {
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 999px;
+        padding: 4px 6px;
+        color: var(--accent);
+        font-size: 9px;
+        font-weight: 900;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .checklist .complete span {
+        border-color: rgba(77, 115, 100, 0.24);
+        color: #4d7364;
+      }
+      .checklist p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.3;
+      }
+      .roadmap-strip {
+        grid-template-columns: repeat(4, 1fr);
+        margin: 24px 0;
+      }
       .meta-grid {
         grid-template-columns: repeat(3, 1fr);
         margin: 24px 0;
@@ -4034,6 +4279,22 @@ export function ProjectWorkspace({
       .details-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+      .scene-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: -8px 0 22px;
+      }
+      .scene-status span {
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.64);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
       .details-grid ul {
         margin: 0;
         padding-left: 18px;
@@ -4042,18 +4303,23 @@ export function ProjectWorkspace({
       .prompt-card {
         display: grid;
         gap: 14px;
-        border-top: 1px solid var(--line);
-        padding: 18px 0;
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 12px;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(240, 231, 222, 0.4)),
+          white;
         break-inside: avoid;
       }
       .shot {
-        grid-template-columns: 44px minmax(0, 1fr);
+        grid-template-columns: 48px minmax(0, 1fr);
       }
       .shot-number {
         display: grid;
         place-items: center;
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 999px;
         background: var(--accent);
         color: white;
@@ -4068,9 +4334,18 @@ export function ProjectWorkspace({
         grid-template-columns: repeat(3, 1fr);
         margin-top: 12px;
       }
+      .prompt-grid section {
+        background: rgba(251, 250, 247, 0.72);
+      }
       .prompt-grid p,
       .document-body p {
         margin: 8px 0 0;
+      }
+      .document-body {
+        columns: 1;
+      }
+      .document-body p {
+        max-width: 780px;
       }
       .empty {
         border: 1px dashed var(--line);
@@ -4095,31 +4370,55 @@ export function ProjectWorkspace({
           min-height: 10.35in;
           padding: 0.55in;
         }
+        .toc-grid,
+        .details-grid,
+        .checklist {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .readiness-grid,
+        .roadmap-strip {
+          grid-template-columns: repeat(4, 1fr);
+        }
       }
     </style>
   </head>
   <body>
     <div class="print-bar">
-      <strong>StudioBuild premium packet preview</strong>
-      <button onclick="window.print()">Save as PDF</button>
+      <strong>StudioBuild premium production packet</strong>
+      <button onclick="window.print()">Save / Print PDF</button>
     </div>
     <main class="packet">
       <section class="cover">
-        <div class="brand">StudioBuild Production Packet</div>
+        <div class="cover-top">
+          <div class="brand">StudioBuild Production Packet</div>
+          <div class="cover-mark">SB</div>
+        </div>
         <div>
+          <p class="cover-kicker">Pre-production command packet</p>
           <h1>${htmlValue(project.title, "Untitled Project")}</h1>
           <p class="subtitle">${htmlValue(project.logline, "A production-ready packet built for AI filmmaking workflow.")}</p>
         </div>
         <div class="cover-grid">
           <div><b>Genre</b><span>${htmlValue(project.genre)}</span></div>
           <div><b>Tone</b><span>${htmlValue(project.tone)}</span></div>
-          <div><b>Scenes / Assets</b><span>${sceneBreakdowns.length} / ${productionAssets.length}</span></div>
+          <div><b>Readiness</b><span>${readiness.score}%</span></div>
+          <div><b>Scenes</b><span>${sceneBreakdowns.length}</span></div>
+          <div><b>Shots</b><span>${shotCount}</span></div>
+          <div><b>Prompt Cards</b><span>${promptCardCount}</span></div>
         </div>
       </section>
+      ${tocSection}
+      ${readinessSection}
       <section class="packet-section">
-        <div class="section-kicker">Project Overview</div>
+        <div class="section-label">Project Overview</div>
         <h2>Production Roadmap</h2>
         <p class="lede">${htmlValue(project.logline, "No logline entered yet.")}</p>
+        <div class="roadmap-strip">
+          <article><span>Story</span><strong>${docSections.length} docs</strong></article>
+          <article><span>Scenes</span><strong>${sceneBreakdowns.length} packets</strong></article>
+          <article><span>Assets</span><strong>${productionAssets.length} rows</strong></article>
+          <article><span>Next</span><strong>${htmlValue(readiness.next)}</strong></article>
+        </div>
         <div class="details-grid">
           <section><h3>Inspirations</h3>${htmlList(project.inspirations)}</section>
           <section><h3>Workflow / Tools</h3>${htmlParagraphs(workflowTools, "Tool stack not specified.")}</section>

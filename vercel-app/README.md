@@ -93,6 +93,10 @@ The app now includes a dynamic StudioBuild Guide robot. The guide changes its ad
 stage, opens a small chat when clicked, and answers practical or philosophical questions about
 story, dialogue, breakdowns, bibles, shots, sound, continuity, pricing, and next production moves.
 
+Premium PDF preview export now uses a more polished production-packet layout with a cinematic cover,
+production index, readiness page, roadmap cards, scene status chips, refined shot-list pages, and
+prompt-card sections for image, animation, and sound handoff.
+
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
 production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
 credit-based convenience path.
