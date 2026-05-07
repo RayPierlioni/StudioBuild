@@ -295,6 +295,28 @@ type ShotMetadata = {
   shotType: string;
 };
 
+type VisualStyleRule = {
+  anchors: string[];
+  body: string;
+  id: string;
+  readiness: number;
+  status: string;
+  title: string;
+};
+
+type VisualSceneProfile = {
+  cameraRule: string;
+  colorState: string;
+  id: string;
+  lightingRule: string;
+  locationTime: string;
+  missing: string[];
+  motif: string;
+  negativeRisk: string;
+  readiness: number;
+  sceneLabel: string;
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -755,6 +777,10 @@ function hasText(value: string | undefined) {
 
 function hasList(values: string[] | undefined) {
   return Boolean(values?.some((value) => value.trim()));
+}
+
+function firstListItem(values: string[] | undefined, fallback: string) {
+  return values?.find((value) => value.trim())?.trim() || fallback;
 }
 
 function uniqueSorted(values: Array<string | undefined>) {
@@ -2291,6 +2317,145 @@ export function ProjectWorkspace({
       ...buildProfiles(sceneBreakdowns.flatMap((scene) => scene.set_dressing ?? []), "set_dressing", "Set dressing"),
     ].slice(0, 36);
   }, [sceneBreakdowns]);
+  const visualSceneProfiles = useMemo<VisualSceneProfile[]>(() => {
+    return [...sceneBreakdowns]
+      .sort((first, second) => first.scene_number - second.scene_number)
+      .map((scene) => {
+        const colorState = scene.color_palette || scene.tone;
+        const heroProp = firstListItem(scene.props, "story object");
+        const missing = [
+          hasText(scene.location) ? "" : "location",
+          hasText(scene.time_of_day) ? "" : "time",
+          hasText(colorState) ? "" : "color/tone",
+          hasText(scene.blocking) ? "" : "blocking",
+          hasText(scene.sound_notes) ? "" : "sound texture",
+          hasList(scene.characters) ? "" : "characters",
+          hasList(scene.props) ? "" : "props/motifs",
+        ].filter((value): value is string => Boolean(value));
+        const readinessChecks = [
+          hasText(scene.location),
+          hasText(scene.time_of_day),
+          hasText(colorState),
+          hasText(scene.blocking),
+          hasText(scene.sound_notes),
+          hasList(scene.characters),
+          hasList(scene.props),
+        ];
+
+        return {
+          cameraRule: scene.blocking
+            ? `Camera must preserve this geography: ${scene.blocking}`
+            : "Choose camera distance after blocking is mapped.",
+          colorState: colorState || "Needs palette assignment",
+          id: scene.id,
+          lightingRule: colorState
+            ? `Motivated light should protect ${colorState}.`
+            : "Define practical light source, shadow behavior, and contrast level.",
+          locationTime: `${scene.location || "Unmapped location"} / ${scene.time_of_day || "unmapped time"}`,
+          missing,
+          motif: heroProp,
+          negativeRisk: missing.length
+            ? `Risk of drift: ${missing.join(", ")} missing.`
+            : "Low automatic drift risk; still check faces, wardrobe, props, light direction, and location layout.",
+          readiness: Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100),
+          sceneLabel: sceneBoardLabel(scene),
+        };
+      });
+  }, [sceneBreakdowns]);
+  const visualStyleRules = useMemo<VisualStyleRule[]>(() => {
+    const paletteScenes = visualSceneProfiles.filter((profile) => !profile.missing.includes("color/tone")).length;
+    const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
+    const imagePrompts = productionAssets.filter((asset) => hasText(asset.image_prompt));
+    const promptAnchors = imagePrompts.filter((asset) => {
+      const prompt = asset.image_prompt.toLowerCase();
+
+      return prompt.includes("lighting") || prompt.includes("palette") || prompt.includes("continuity");
+    }).length;
+
+    return [
+      {
+        anchors: [
+          project.genre || "genre not set",
+          project.tone || "tone not set",
+          project.inspirations?.length ? project.inspirations.join(", ") : "references not set",
+        ],
+        body: "Defines what the audience should feel before any individual shot gets generated.",
+        id: "visual-thesis",
+        readiness: Math.round(
+          ([hasText(project.genre), hasText(project.tone), Boolean(project.inspirations?.length)].filter(Boolean).length /
+            3) *
+            100,
+        ),
+        status: "Film-wide identity",
+        title: "Visual thesis",
+      },
+      {
+        anchors: uniqueSorted(sceneBreakdowns.flatMap((scene) => [scene.color_palette, scene.tone])).slice(0, 8),
+        body: "Locks dominant colors, accent colors, contrast, and what should never appear in the palette.",
+        id: "color-system",
+        readiness: sceneBreakdowns.length ? Math.round((paletteScenes / sceneBreakdowns.length) * 100) : 0,
+        status: `${paletteScenes} of ${sceneBreakdowns.length || 0} scenes`,
+        title: "Color system",
+      },
+      {
+        anchors: uniqueSorted(sceneBreakdowns.map((scene) => scene.blocking)).slice(0, 5),
+        body: "Turns shot choices into repeatable rules for distance, movement, lens feel, and emotional turns.",
+        id: "camera-grammar",
+        readiness: sceneBreakdowns.length
+          ? Math.round((sceneBreakdowns.filter((scene) => hasText(scene.blocking)).length / sceneBreakdowns.length) * 100)
+          : 0,
+        status: "Lens and movement",
+        title: "Camera grammar",
+      },
+      {
+        anchors: characterProfiles.map((profile) => `${profile.name}: ${profile.readiness}% ready`).slice(0, 8),
+        body: "Protects faces, silhouettes, wardrobe baselines, carried props, and performance texture.",
+        id: "character-anchors",
+        readiness: characterProfiles.length
+          ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
+          : 0,
+        status: `${characterProfiles.length} character${characterProfiles.length === 1 ? "" : "s"}`,
+        title: "Character anchors",
+      },
+      {
+        anchors: locationProfiles.map((profile) => `${profile.name}: ${profile.readiness}% ready`).slice(0, 8),
+        body: "Protects layout, practical lights, set dressing, sound texture, weather, and room scale.",
+        id: "location-anchors",
+        readiness: locationProfiles.length
+          ? Math.round(locationProfiles.reduce((total, profile) => total + profile.readiness, 0) / locationProfiles.length)
+          : 0,
+        status: `${locationProfiles.length} location${locationProfiles.length === 1 ? "" : "s"}`,
+        title: "Location anchors",
+      },
+      {
+        anchors: [
+          "No text, captions, or logos",
+          "No random props or extra characters",
+          "No inconsistent wardrobe, wrong time of day, or mismatched location layout",
+        ],
+        body: "Creates a reusable guardrail for every image, animation, and storyboard prompt.",
+        id: "negative-deck",
+        readiness: promptAnchors && imagePrompts.length ? Math.round((promptAnchors / imagePrompts.length) * 100) : 0,
+        status: `${imagePrompts.length} image prompt${imagePrompts.length === 1 ? "" : "s"}`,
+        title: "Negative prompt deck",
+      },
+      {
+        anchors: [
+          `${shotAssets.length} shot row${shotAssets.length === 1 ? "" : "s"}`,
+          `${imagePrompts.length} image prompt${imagePrompts.length === 1 ? "" : "s"}`,
+          workflowTools || "tool stack not set",
+        ],
+        body: "Adapts the same look rules to image tools, animation tools, sound tools, edit, and color.",
+        id: "tool-adapters",
+        readiness: Math.round(
+          ([Boolean(shotAssets.length), Boolean(imagePrompts.length), hasText(workflowTools)].filter(Boolean).length / 3) *
+            100,
+        ),
+        status: "Workflow handoff",
+        title: "Tool adapters",
+      },
+    ];
+  }, [characterProfiles, locationProfiles, productionAssets, project, sceneBreakdowns, visualSceneProfiles, workflowTools]);
   const readiness = useMemo(() => {
     const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
     const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
@@ -3257,13 +3422,36 @@ export function ProjectWorkspace({
       return;
     }
 
-    const sceneLookRows = sceneBreakdowns.length
-      ? sceneBreakdowns.map((scene) =>
+    const styleRuleRows = visualStyleRules.map((rule) =>
+      [
+        `## ${rule.title}`,
+        "",
+        `Readiness: ${rule.readiness}%`,
+        `Status: ${rule.status}`,
+        rule.body,
+        "",
+        "Current anchors:",
+        rule.anchors.length ? rule.anchors.map((anchor) => `- ${anchor}`).join("\n") : "- Not mapped yet",
+        "",
+        "Rules to lock:",
+        "- Must stay consistent:",
+        "- Can change intentionally when:",
+        "- Must never appear:",
+        "- Manual check before final generation:",
+      ].join("\n"),
+    );
+    const sceneLookRows = visualSceneProfiles.length
+      ? visualSceneProfiles.map((profile) =>
           [
-            `## ${sceneBoardLabel(scene)}`,
+            `## ${profile.sceneLabel}`,
             "",
-            `Location / time: ${scene.location || "Not mapped yet"} / ${scene.time_of_day || "Not mapped yet"}`,
-            `Current color or tone: ${scene.color_palette || scene.tone || "Not filled yet"}`,
+            `Readiness: ${profile.readiness}%`,
+            `Location / time: ${profile.locationTime}`,
+            `Current color or tone: ${profile.colorState}`,
+            `Camera rule: ${profile.cameraRule}`,
+            `Lighting rule: ${profile.lightingRule}`,
+            `Motif / object anchor: ${profile.motif}`,
+            `Negative prompt risk: ${profile.negativeRisk}`,
             "",
             "Look assignment:",
             "- Dominant color:",
@@ -3301,24 +3489,29 @@ export function ProjectWorkspace({
       ? project.inspirations.map((reference) => `- ${reference}: what to borrow / what to avoid`).join("\n")
       : "- Reference 1: what to borrow / what to avoid\n- Reference 2: what to borrow / what to avoid";
     const content = [
-      `# Visual Look Book - ${project.title || "Untitled MiseForge Project"}`,
+      `# Visual Style Bible - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
       `Logline: ${project.logline || "Not specified"}`,
       "",
       "Purpose:",
-      "Create a single visual language that keeps characters, locations, prompts, shot lists, and animation passes consistent across the whole film.",
+      "Create a single visual language that keeps characters, locations, prompts, shot lists, and animation passes consistent across the whole film. This is the source of truth for every image prompt, animation prompt, storyboard panel, and final packet export.",
       "",
       "# Visual Thesis",
       "",
       "- The film should feel like:",
       "- The audience should remember this visual idea:",
       "- The look should never become:",
+      "- Same-but-different visual promise:",
       "",
       "# Reference Spine",
       "",
       referenceSpine,
+      "",
+      "# Style Rule Cards",
+      "",
+      ...styleRuleRows,
       "",
       "# Color System",
       "",
@@ -3343,6 +3536,7 @@ export function ProjectWorkspace({
       "- Shadow behavior:",
       "- Exterior / weather behavior:",
       "- What should never appear in lighting:",
+      "- How lighting changes as the story pressure rises:",
       "",
       "# Camera Grammar",
       "",
@@ -3352,6 +3546,8 @@ export function ProjectWorkspace({
       "- Movement rules:",
       "- Lens / texture / grain:",
       "- Framing rules for emotional turns:",
+      "- Insert-shot rules:",
+      "- What camera behavior would make this feel generic:",
       "",
       "# Character Visual Anchors",
       "",
@@ -3385,6 +3581,7 @@ export function ProjectWorkspace({
       "# Negative Prompt Deck",
       "",
       "- No text, captions, logos, malformed hands, extra characters, random props, inconsistent wardrobe, wrong time of day, mismatched location layout, over-polished commercial lighting, or generic sci-fi glow unless specified.",
+      "- No unmotivated neon, fog, fantasy glow, fake cinematic bokeh, wrong weather, extra windows, unexpected costumes, mismatched face age, or continuity-breaking background objects unless the style bible explicitly allows it.",
       "",
       "# Tool Adaptation Notes",
       "",
@@ -3400,9 +3597,85 @@ export function ProjectWorkspace({
     loadGeneratedDocument({
       content,
       docType: "look_book",
-      status: "Visual Look Book prepared. Fill the look rules, then save the Look Book stage.",
+      status: "Visual Style Bible prepared. Fill the look rules, then save the Look Book stage.",
       stepId: "lookbook",
     });
+  }
+
+  function buildStyleBiblePromptAnchor() {
+    const ruleRows = visualStyleRules
+      .map((rule) =>
+        [
+          `- ${rule.title} (${rule.readiness}%): ${rule.body}`,
+          `  Anchors: ${rule.anchors.length ? rule.anchors.join("; ") : "not mapped yet"}`,
+        ].join("\n"),
+      )
+      .join("\n");
+    const sceneRows = visualSceneProfiles
+      .slice(0, 12)
+      .map((profile) =>
+        [
+          `- ${profile.sceneLabel}`,
+          `  Location/time: ${profile.locationTime}`,
+          `  Color/tone: ${profile.colorState}`,
+          `  Camera: ${profile.cameraRule}`,
+          `  Light: ${profile.lightingRule}`,
+          `  Motif: ${profile.motif}`,
+          `  Drift risk: ${profile.negativeRisk}`,
+        ].join("\n"),
+      )
+      .join("\n");
+
+    return [
+      "You are a visual development lead, cinematographer, and AI film continuity supervisor.",
+      "",
+      "Create or refine a visual style bible for this AI film. The goal is not pretty generic images. The goal is one coherent film language that can survive image generation, animation, sound, edit, and export.",
+      "",
+      "PROJECT",
+      `Title: ${project.title || "Untitled"}`,
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `References: ${project.inspirations?.length ? project.inspirations.join(", ") : "Not specified"}`,
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      "",
+      "STYLE RULES",
+      ruleRows || "- No style rules mapped yet.",
+      "",
+      "SCENE LOOK MAP",
+      sceneRows || "- No scene packets saved yet.",
+      "",
+      "RETURN",
+      "1. Visual thesis",
+      "2. Palette system",
+      "3. Lighting grammar",
+      "4. Camera and lens grammar",
+      "5. Character visual anchors",
+      "6. Location visual anchors",
+      "7. Motifs and insert-shot rules",
+      "8. Negative prompt deck",
+      "9. Tool-specific prompt adapters",
+      "10. What must never drift",
+      "",
+      "RULES",
+      "- Do not give generic aesthetic advice.",
+      "- Every rule must help prompts, shot lists, animation, sound, or continuity.",
+      "- Flag anything that would make generated shots look like separate films.",
+    ].join("\n");
+  }
+
+  async function copyStyleBiblePromptAnchor() {
+    if (!requirePro("Style Bible prompt compiler")) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildStyleBiblePromptAnchor());
+      setSaveStatus("Style Bible prompt copied.");
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Build the Style Bible and copy from the editor.");
+    }
   }
 
   function buildContinuityTrackerTemplate() {
@@ -4517,6 +4790,42 @@ export function ProjectWorkspace({
       .filter((section) => section.value.trim())
       .map((section) => [`## ${section.label}`, "", section.value.trim()].join("\n"))
       .join("\n\n");
+    const visualStyleBibleBlocks = visualStyleRules.length
+      ? [
+          "## Visual Style Bible Snapshot",
+          "",
+          ...visualStyleRules.map((rule) =>
+            [
+              `### ${rule.title}`,
+              "",
+              `Readiness: ${rule.readiness}%`,
+              `Status: ${rule.status}`,
+              rule.body,
+              "",
+              "Anchors:",
+              markdownList(rule.anchors, "Not mapped yet"),
+            ].join("\n"),
+          ),
+          "",
+          "### Scene Look Map",
+          "",
+          ...(visualSceneProfiles.length
+            ? visualSceneProfiles.map((profile) =>
+                [
+                  `#### ${profile.sceneLabel}`,
+                  "",
+                  `Readiness: ${profile.readiness}%`,
+                  `Location / time: ${markdownValue(profile.locationTime)}`,
+                  `Color / tone: ${markdownValue(profile.colorState)}`,
+                  `Lighting: ${markdownValue(profile.lightingRule)}`,
+                  `Camera: ${markdownValue(profile.cameraRule)}`,
+                  `Motif: ${markdownValue(profile.motif)}`,
+                  `Drift risk: ${markdownValue(profile.negativeRisk)}`,
+                ].join("\n"),
+              )
+            : ["No scene look map yet."]),
+        ].join("\n\n")
+      : "";
     const versionBlocks = entitlement.isPro && versions.length
       ? [
           "## Saved Passes",
@@ -4732,6 +5041,7 @@ export function ProjectWorkspace({
 
     return [
       projectSummary,
+      visualStyleBibleBlocks,
       characterProfileBlocks,
       locationProfileBlocks,
       continuityMatrixBlocks,
@@ -4788,6 +5098,7 @@ export function ProjectWorkspace({
       "Cover",
       "Production Readiness",
       "Project Roadmap",
+      visualStyleRules.length ? "Visual Style Bible Snapshot" : "",
       characterProfiles.length ? "Character Continuity Cards" : "",
       locationProfiles.length ? "Location Continuity Cards" : "",
       continuityRows.length ? "Cross-Scene Continuity Matrix" : "",
@@ -4941,6 +5252,65 @@ export function ProjectWorkspace({
                 .join("")}
             </div>
           </section>
+        `
+      : "";
+    const visualStyleBibleSection = visualStyleRules.length
+      ? `
+          <section class="packet-section">
+            <div class="section-label">Visual Style Bible Snapshot</div>
+            <h2>Rules that keep the film looking like one film.</h2>
+            <p class="lede">Palette, light, camera, face, location, motif, and negative-prompt rules built from the project, scene packets, bibles, shot lists, and prompt cards.</p>
+            <div class="style-export-grid">
+              ${visualStyleRules
+                .map(
+                  (rule) => `
+                    <article class="style-export-card">
+                      <div class="character-export-head">
+                        <span>${rule.readiness}% ready</span>
+                        <h3>${htmlValue(rule.title)}</h3>
+                      </div>
+                      <p>${htmlValue(rule.status)}</p>
+                      <p>${htmlValue(rule.body)}</p>
+                      <div class="details-grid compact">
+                        <section><h4>Anchors</h4>${htmlList(rule.anchors, "Not mapped yet")}</section>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+          ${
+            visualSceneProfiles.length
+              ? `<section class="packet-section">
+                  <div class="section-label">Scene Look Map</div>
+                  <h2>Scene-by-scene visual assignments.</h2>
+                  <p class="lede">The visual state, camera rule, lighting rule, motif, and drift risk for each mapped scene.</p>
+                  <div class="character-export-grid">
+                    ${visualSceneProfiles
+                      .map(
+                        (profile) => `
+                          <article class="character-export-card">
+                            <div class="character-export-head">
+                              <span>${profile.readiness}% ready</span>
+                              <h3>${htmlValue(profile.sceneLabel)}</h3>
+                            </div>
+                            <div class="details-grid compact">
+                              <section><h4>Location / Time</h4>${htmlParagraphs(profile.locationTime)}</section>
+                              <section><h4>Color / Tone</h4>${htmlParagraphs(profile.colorState)}</section>
+                              <section><h4>Lighting</h4>${htmlParagraphs(profile.lightingRule)}</section>
+                              <section><h4>Camera</h4>${htmlParagraphs(profile.cameraRule)}</section>
+                              <section><h4>Motif</h4>${htmlParagraphs(profile.motif)}</section>
+                              <section><h4>Drift Risk</h4>${htmlParagraphs(profile.negativeRisk)}</section>
+                            </div>
+                          </article>
+                        `,
+                      )
+                      .join("")}
+                  </div>
+                </section>`
+              : ""
+          }
         `
       : "";
     const locationProfileSection = locationProfiles.length
@@ -5410,12 +5780,26 @@ export function ProjectWorkspace({
         display: grid;
         gap: 14px;
       }
+      .style-export-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
       .character-export-card {
         border: 1px solid rgba(21, 21, 21, 0.1);
         border-radius: 8px;
         padding: 18px;
         background:
           linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(223, 231, 226, 0.44)),
+          white;
+        break-inside: avoid;
+      }
+      .style-export-card {
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        background:
+          linear-gradient(145deg, rgba(255, 250, 241, 0.76), rgba(223, 231, 226, 0.42)),
           white;
         break-inside: avoid;
       }
@@ -5596,6 +5980,7 @@ export function ProjectWorkspace({
           <section><h3>Workflow / Tools</h3>${htmlParagraphs(workflowTools, "Tool stack not specified.")}</section>
         </div>
       </section>
+      ${visualStyleBibleSection}
       ${characterProfileSection}
       ${locationProfileSection}
       ${continuityMatrixSection}
@@ -6454,29 +6839,127 @@ export function ProjectWorkspace({
             </>
           ) : null}
           {activeStepId === "lookbook" ? (
-            <div className="bible-tool-card">
-              <div>
-                <span>Visual consistency</span>
-                <strong>Build the look rules that every image, animation, and prompt should obey.</strong>
-                <p>
-                  Use project references, scene packets, character bibles, and location bibles to
-                  define palette, lighting, camera grammar, motifs, and negative prompt rules.
-                </p>
+            <>
+              <div className="bible-tool-card">
+                <div>
+                  <span>Visual consistency</span>
+                  <strong>Build the look rules that every image, animation, and prompt should obey.</strong>
+                  <p>
+                    Use project references, scene packets, character bibles, location bibles, shot
+                    lists, and continuity to define palette, lighting, camera grammar, motifs, and
+                    negative prompt rules.
+                  </p>
+                </div>
+                <div className="dialogue-actions">
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={buildLookBookTemplate}
+                    disabled={!entitlement.isPro}
+                  >
+                    {entitlement.isPro ? "Build Style Bible" : "Pro: Build Style Bible"}
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => void copyStyleBiblePromptAnchor()}
+                    disabled={!entitlement.isPro}
+                  >
+                    {entitlement.isPro ? "Copy style prompt" : "Pro: style prompt"}
+                  </button>
+                </div>
               </div>
-              <div className="dialogue-actions">
-                <button
-                  className="button"
-                  type="button"
-                  onClick={buildLookBookTemplate}
-                  disabled={!entitlement.isPro}
-                >
-                  {entitlement.isPro ? "Build Look Book" : "Pro: Build Look Book"}
-                </button>
-                <button className="button secondary" type="button" onClick={() => copyExpertPrompt("lookbook")}>
-                  Copy look book prompt
-                </button>
+              <div className="style-bible-studio">
+                <div className="tool-heading">
+                  <div>
+                    <h4>Style Bible command board</h4>
+                    <p>
+                      Film-wide rules for palette, lighting, camera grammar, faces, locations,
+                      motifs, negative prompts, and tool-specific adapters.
+                    </p>
+                  </div>
+                  <span>{visualSceneProfiles.length ? `${visualSceneProfiles.length} scene look${visualSceneProfiles.length === 1 ? "" : "s"}` : "Needs scene packets"}</span>
+                </div>
+                <div className="style-rule-grid">
+                  {visualStyleRules.map((rule) => (
+                    <article className="style-rule-card" key={rule.id}>
+                      <div>
+                        <span>{rule.status}</span>
+                        <strong>{rule.title}</strong>
+                      </div>
+                      <small>{rule.readiness}% ready</small>
+                      <p>{rule.body}</p>
+                      <ul>
+                        {(rule.anchors.length ? rule.anchors : ["Not mapped yet"]).slice(0, 4).map((anchor) => (
+                          <li key={anchor}>{anchor}</li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+                <div className="tool-heading compact">
+                  <div>
+                    <h4>Scene look map</h4>
+                    <p>Each scene gets a specific look assignment so the film does not visually drift.</p>
+                  </div>
+                  <span>{visualSceneProfiles.length ? `${visualSceneProfiles.length} mapped` : "No scenes yet"}</span>
+                </div>
+                {visualSceneProfiles.length ? (
+                  <div className="scene-look-grid">
+                    {visualSceneProfiles.slice(0, 8).map((profile) => (
+                      <article className="scene-look-card" key={profile.id}>
+                        <div className="scene-look-head">
+                          <div>
+                            <span>{profile.readiness}% look-ready</span>
+                            <strong>{profile.sceneLabel}</strong>
+                          </div>
+                          <button className="button secondary" type="button" onClick={() => openBoardScene(profile.id)}>
+                            Edit source scene
+                          </button>
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>Location / time</dt>
+                            <dd>{profile.locationTime}</dd>
+                          </div>
+                          <div>
+                            <dt>Color / tone</dt>
+                            <dd>{profile.colorState}</dd>
+                          </div>
+                          <div>
+                            <dt>Lighting</dt>
+                            <dd>{profile.lightingRule}</dd>
+                          </div>
+                          <div>
+                            <dt>Camera</dt>
+                            <dd>{profile.cameraRule}</dd>
+                          </div>
+                          <div>
+                            <dt>Motif</dt>
+                            <dd>{profile.motif}</dd>
+                          </div>
+                          <div>
+                            <dt>Drift risk</dt>
+                            <dd>{profile.negativeRisk}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="style-empty-state">
+                    <strong>No scene look map yet.</strong>
+                    <p>
+                      Save a scene packet first, then the Style Bible can map each scene’s color,
+                      lighting, camera, motif, and drift risks.
+                    </p>
+                    <button className="button" type="button" onClick={() => setActiveStepId("breakdown")}>
+                      Open Scene Breakdown
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            </>
           ) : null}
           {activeStepId === "continuity" ? (
             <>

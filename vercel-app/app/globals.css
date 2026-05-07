@@ -1852,6 +1852,130 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.style-bible-studio {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(237, 241, 240, 0.66), rgba(255, 250, 241, 0.56)),
+    white;
+}
+
+.style-rule-grid,
+.scene-look-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.style-rule-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.style-rule-card,
+.scene-look-card,
+.style-empty-state {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(237, 241, 240, 0.54)),
+    white;
+}
+
+.style-rule-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.style-rule-card p,
+.style-empty-state p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.style-rule-card span,
+.scene-look-head span,
+.scene-look-card dt {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.style-rule-card strong,
+.scene-look-head strong,
+.style-empty-state strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--deep);
+  font-size: 20px;
+  line-height: 1.08;
+}
+
+.style-rule-card small {
+  border: 1px solid rgba(102, 127, 118, 0.2);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #415f57;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.style-rule-card ul {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.style-rule-card li {
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.scene-look-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scene-look-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.scene-look-card dl div {
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.scene-look-card dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .tool-heading.compact {
   padding-top: 8px;
 }
@@ -3123,6 +3247,8 @@ code {
     .continuity-stat-grid,
     .continuity-row-meta,
     .continuity-item-grid,
+    .style-rule-grid,
+    .scene-look-card dl,
     .character-profile-meta,
     .project-workspace > .guide-assistant,
     .guide-chat-form,
