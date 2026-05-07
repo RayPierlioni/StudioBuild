@@ -257,6 +257,33 @@ type LocationContinuityProfile = {
   wardrobe: string[];
 };
 
+type ContinuityTrackerRow = {
+  blocking: string;
+  characters: string[];
+  colorState: string;
+  id: string;
+  location: string;
+  missing: string[];
+  previousSceneLabel: string;
+  props: string[];
+  readiness: number;
+  riskFlags: string[];
+  sceneLabel: string;
+  setDressing: string[];
+  soundState: string;
+  timeOfDay: string;
+  wardrobe: string[];
+};
+
+type ContinuityItemProfile = {
+  id: string;
+  label: string;
+  locations: string[];
+  risk: string;
+  sceneLabels: string[];
+  type: "Prop" | "Wardrobe" | "Set dressing";
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -739,6 +766,12 @@ function scenesForValue(
   return scenes.filter((scene) =>
     (scene[field] ?? []).some((item) => item.trim().toLowerCase() === normalized),
   );
+}
+
+function sharedValues(first: string[] | undefined, second: string[] | undefined) {
+  const secondSet = new Set((second ?? []).map((value) => value.trim().toLowerCase()).filter(Boolean));
+
+  return (first ?? []).filter((value) => secondSet.has(value.trim().toLowerCase()));
 }
 
 function sceneReferenceList(scenes: SceneBreakdown[]) {
@@ -2109,6 +2142,93 @@ export function ProjectWorkspace({
       };
     });
   }, [locationBibleNames, productionAssets, sceneBreakdowns]);
+  const continuityRows = useMemo<ContinuityTrackerRow[]>(() => {
+    const orderedScenes = [...sceneBreakdowns].sort((first, second) => first.scene_number - second.scene_number);
+
+    return orderedScenes.map((scene, index) => {
+      const previousScene = orderedScenes[index - 1];
+      const missing = [
+        hasList(scene.characters) ? "" : "characters",
+        hasList(scene.props) ? "" : "props",
+        hasList(scene.wardrobe) ? "" : "wardrobe",
+        hasText(scene.location) ? "" : "location",
+        hasText(scene.time_of_day) ? "" : "time-of-day",
+        hasText(scene.sound_notes) ? "" : "sound",
+        hasText(scene.blocking) ? "" : "blocking",
+        hasText(scene.color_palette || scene.tone) ? "" : "color/light",
+      ].filter((value): value is string => Boolean(value));
+      const sharedCharacters = previousScene ? sharedValues(scene.characters, previousScene.characters) : [];
+      const sharedProps = previousScene ? sharedValues(scene.props, previousScene.props) : [];
+      const sameLocation =
+        previousScene && scene.location?.trim().toLowerCase() === previousScene.location?.trim().toLowerCase();
+      const riskFlags = [
+        sharedCharacters.length ? `Character handoff: ${sharedCharacters.join(", ")}` : "",
+        sharedProps.length ? `Prop handoff: ${sharedProps.join(", ")}` : "",
+        sameLocation ? "Same location as previous scene; verify layout, dressing, light, and sound state." : "",
+        missing.length ? `Missing ${missing.join(", ")}` : "",
+      ].filter((value): value is string => Boolean(value));
+      const readinessChecks = [
+        hasList(scene.characters),
+        hasList(scene.props),
+        hasList(scene.wardrobe),
+        hasText(scene.location),
+        hasText(scene.time_of_day),
+        hasText(scene.sound_notes),
+        hasText(scene.blocking),
+        hasText(scene.color_palette || scene.tone),
+      ];
+
+      return {
+        blocking: scene.blocking,
+        characters: scene.characters ?? [],
+        colorState: scene.color_palette || scene.tone,
+        id: scene.id,
+        location: scene.location,
+        missing,
+        previousSceneLabel: previousScene ? sceneBoardLabel(previousScene) : "Opening scene",
+        props: scene.props ?? [],
+        readiness: Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100),
+        riskFlags,
+        sceneLabel: sceneBoardLabel(scene),
+        setDressing: scene.set_dressing ?? [],
+        soundState: scene.sound_notes,
+        timeOfDay: scene.time_of_day,
+        wardrobe: scene.wardrobe ?? [],
+      };
+    });
+  }, [sceneBreakdowns]);
+  const continuityItemProfiles = useMemo<ContinuityItemProfile[]>(() => {
+    const buildProfiles = (
+      values: string[],
+      field: "props" | "wardrobe" | "set_dressing",
+      type: ContinuityItemProfile["type"],
+    ) =>
+      uniqueSorted(values)
+        .map((label) => {
+          const scenes = scenesForValue(sceneBreakdowns, field, label);
+          const locations = uniqueSorted(scenes.map((scene) => scene.location)).slice(0, 6);
+          const sceneLabels = scenes.map(sceneBoardLabel);
+
+          return {
+            id: `${type}:${label}`,
+            label,
+            locations,
+            risk:
+              scenes.length > 1
+                ? "Track first appearance, owner/location, last state, and whether it changes intentionally."
+                : "First appearance only; decide if this must carry forward.",
+            sceneLabels,
+            type,
+          };
+        })
+        .filter((profile) => profile.sceneLabels.length > 0);
+
+    return [
+      ...buildProfiles(sceneBreakdowns.flatMap((scene) => scene.props ?? []), "props", "Prop"),
+      ...buildProfiles(sceneBreakdowns.flatMap((scene) => scene.wardrobe ?? []), "wardrobe", "Wardrobe"),
+      ...buildProfiles(sceneBreakdowns.flatMap((scene) => scene.set_dressing ?? []), "set_dressing", "Set dressing"),
+    ].slice(0, 36);
+  }, [sceneBreakdowns]);
   const readiness = useMemo(() => {
     const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
     const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
@@ -3228,113 +3348,107 @@ export function ProjectWorkspace({
       return;
     }
 
-    const characterNames = characterBibleNames.length ? characterBibleNames : ["Primary Character"];
-    const propNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? []));
-    const wardrobeNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.wardrobe ?? []));
-    const setDressingNames = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.set_dressing ?? []));
-    const locationRows = locationBibleNames.length
-      ? locationBibleNames.map((location) => {
-          const scenes = sceneBreakdowns.filter(
-            (scene) => scene.location?.trim().toLowerCase() === location.trim().toLowerCase(),
-          );
-          const times = uniqueSorted(scenes.map((scene) => scene.time_of_day));
-
-          return [
-            `## ${location}`,
-            "",
-            `Scenes: ${sceneReferenceList(scenes)}`,
-            `Time states: ${times.length ? times.join(", ") : "Not mapped yet"}`,
-            "",
-            "Continuity lock:",
-            "- Layout:",
-            "- Lighting motivation:",
-            "- Dressing that must stay fixed:",
-            "- What can change intentionally:",
-            "- Risk before generation:",
-          ].join("\n");
-        })
-      : [
+    const sceneRows = continuityRows.length
+      ? continuityRows.map((row) =>
           [
-            "## Primary Location",
+            `## ${row.sceneLabel}`,
             "",
-            "Scenes: Not mapped yet",
+            `Previous scene handoff: ${row.previousSceneLabel}`,
+            `Readiness: ${row.readiness}%`,
+            `Location / time: ${row.location || "Not mapped yet"} / ${row.timeOfDay || "Not mapped yet"}`,
+            `Characters: ${row.characters.length ? row.characters.join(", ") : "Not mapped yet"}`,
+            `Props: ${row.props.length ? row.props.join(", ") : "Not mapped yet"}`,
+            `Wardrobe: ${row.wardrobe.length ? row.wardrobe.join(", ") : "Not mapped yet"}`,
+            `Set dressing: ${row.setDressing.length ? row.setDressing.join(", ") : "Not mapped yet"}`,
+            `Color / light state: ${row.colorState || "Not mapped yet"}`,
+            `Sound state: ${row.soundState || "Not mapped yet"}`,
+            `Blocking / layout: ${row.blocking || "Not mapped yet"}`,
             "",
-            "Continuity lock:",
-            "- Layout:",
-            "- Lighting motivation:",
-            "- Dressing that must stay fixed:",
-            "- What can change intentionally:",
-            "- Risk before generation:",
-          ].join("\n"),
-        ];
-    const characterRows = characterNames.map((name) => {
-      const scenes = scenesForValue(sceneBreakdowns, "characters", name);
-      const wardrobe = uniqueSorted(scenes.flatMap((scene) => scene.wardrobe ?? []));
-      const props = uniqueSorted(scenes.flatMap((scene) => scene.props ?? []));
-
-      return [
-        `## ${name}`,
-        "",
-        `Scenes: ${sceneReferenceList(scenes)}`,
-        `Wardrobe seen nearby: ${wardrobe.length ? wardrobe.join(", ") : "Not mapped yet"}`,
-        `Props nearby: ${props.length ? props.join(", ") : "Not mapped yet"}`,
-        "",
-        "Scene-to-scene state:",
-        "- Emotional state entering first appearance:",
-        "- Emotional state after each scene:",
-        "- Physical state / injury / fatigue:",
-        "- Wardrobe changes:",
-        "- Carried props:",
-        "- Continuity risk before generation:",
-      ].join("\n");
-    });
-    const listRows = (label: string, values: string[], field: "props" | "wardrobe" | "set_dressing") => {
-      const fallback =
-        label === "Props" ? "Primary Prop" : label === "Wardrobe" ? "Primary Wardrobe Item" : "Primary Set Dressing Item";
-      const items = values.length ? values : [fallback];
-
-      return [
-        `# ${label}`,
-        "",
-        ...items.map((value) => {
-          const scenes = scenesForValue(sceneBreakdowns, field, value);
-
-          return [
-            `## ${value}`,
+            "Risks to check:",
+            row.riskFlags.length ? row.riskFlags.map((risk) => `- ${risk}`).join("\n") : "- No major automatic risks flagged.",
             "",
-            `Scenes: ${sceneReferenceList(scenes)}`,
-            "- First appearance:",
-            "- Last known state:",
-            "- Owner / location:",
-            "- Must match across images:",
-            "- Continuity risk:",
-          ].join("\n");
-        }),
-      ].join("\n\n");
-    };
-    const soundRows = sceneBreakdowns.length
-      ? sceneBreakdowns.map((scene) =>
-          [
-            `## ${sceneBoardLabel(scene)}`,
-            "",
-            `Sound continuity: ${scene.sound_notes || "Not filled yet"}`,
-            `Color / lighting state: ${scene.color_palette || scene.tone || "Not filled yet"}`,
-            "- Room tone to preserve:",
-            "- Dialogue or breathing continuity:",
-            "- Silence / pressure point:",
+            "Manual state notes:",
+            "- Emotional state entering:",
+            "- Emotional state leaving:",
+            "- Prop owner / location at end:",
+            "- Wardrobe or makeup change:",
+            "- Light/sound change:",
+            "- Generation check before final approval:",
           ].join("\n"),
         )
       : [
           [
             "## Scene 1",
             "",
-            "Sound continuity: Not mapped yet",
-            "Color / lighting state: Not mapped yet",
-            "- Room tone to preserve:",
-            "- Dialogue or breathing continuity:",
-            "- Silence / pressure point:",
+            "Previous scene handoff: Opening scene",
+            "Readiness: 0%",
+            "Location / time: Not mapped yet",
+            "",
+            "Manual state notes:",
+            "- Emotional state entering:",
+            "- Emotional state leaving:",
+            "- Prop owner / location at end:",
+            "- Wardrobe or makeup change:",
+            "- Light/sound change:",
+            "- Generation check before final approval:",
           ].join("\n"),
         ];
+    const characterRows = characterProfiles.length
+      ? characterProfiles.map((profile) =>
+          [
+            `## ${profile.name}`,
+            "",
+            `Scenes: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+            `Readiness: ${profile.readiness}%`,
+            `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
+            `Wardrobe: ${profile.wardrobe.length ? profile.wardrobe.join(", ") : "Not mapped yet"}`,
+            `Props: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+            `Relationships: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+            "",
+            "- Emotional state after each scene:",
+            "- Physical state / injury / fatigue:",
+            "- Wardrobe changes:",
+            "- Carried props:",
+            "- Continuity risk before generation:",
+          ].join("\n"),
+        )
+      : ["## Primary Character\n\nScenes: Not mapped yet\n\n- Emotional state:\n- Wardrobe:\n- Carried props:\n- Continuity risk:"];
+    const locationRows = locationProfiles.length
+      ? locationProfiles.map((profile) =>
+          [
+            `## ${profile.name}`,
+            "",
+            `Scenes: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+            `Readiness: ${profile.readiness}%`,
+            `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
+            `Time states: ${profile.timeOfDays.length ? profile.timeOfDays.join(", ") : "Not mapped yet"}`,
+            `Set dressing: ${profile.setDressing.length ? profile.setDressing.join(", ") : "Not mapped yet"}`,
+            `Sound: ${profile.soundNotes.length ? profile.soundNotes.join("; ") : "Not mapped yet"}`,
+            "",
+            "- Layout that must stay fixed:",
+            "- Lighting motivation:",
+            "- Dressing that can change intentionally:",
+            "- Risk before generation:",
+          ].join("\n"),
+        )
+      : ["## Primary Location\n\nScenes: Not mapped yet\n\n- Layout:\n- Lighting motivation:\n- Dressing that must stay fixed:\n- Risk before generation:"];
+    const itemRows = continuityItemProfiles.length
+      ? continuityItemProfiles.map((item) =>
+          [
+            `## ${item.type}: ${item.label}`,
+            "",
+            `Scenes: ${item.sceneLabels.length ? item.sceneLabels.join(", ") : "Not mapped yet"}`,
+            `Locations: ${item.locations.length ? item.locations.join(", ") : "Not mapped yet"}`,
+            `Risk: ${item.risk}`,
+            "",
+            "- First appearance:",
+            "- Last known state:",
+            "- Owner / location:",
+            "- Must match across images:",
+            "- Continuity risk:",
+          ].join("\n"),
+        )
+      : ["## Primary Prop\n\nScenes: Not mapped yet\n\n- First appearance:\n- Last known state:\n- Owner / location:\n- Continuity risk:"];
     const content = [
       `# Continuity Tracker - ${project.title || "Untitled MiseForge Project"}`,
       "",
@@ -3345,23 +3459,21 @@ export function ProjectWorkspace({
       "Purpose:",
       "Track what must stay visually, emotionally, physically, and sonically consistent before generating shots, prompts, animation, and exports.",
       "",
-      "# Characters",
+      "# Scene Handoff Matrix",
+      "",
+      ...sceneRows,
+      "",
+      "# Character State",
       "",
       ...characterRows,
       "",
-      listRows("Props", propNames, "props"),
-      "",
-      listRows("Wardrobe", wardrobeNames, "wardrobe"),
-      "",
-      listRows("Set Dressing", setDressingNames, "set_dressing"),
-      "",
-      "# Locations",
+      "# Location State",
       "",
       ...locationRows,
       "",
-      "# Sound and Lighting Continuity",
+      "# Props, Wardrobe, and Set Dressing",
       "",
-      ...soundRows,
+      ...itemRows,
       "",
       "# Pre-Generation Continuity Checklist",
       "",
@@ -3379,6 +3491,57 @@ export function ProjectWorkspace({
       status: "Continuity tracker prepared from saved scene packets. Review, fill gaps, then save.",
       stepId: "continuity",
     });
+  }
+
+  function buildContinuityPromptAnchor() {
+    const sceneRows = continuityRows.slice(0, 12).map((row) =>
+      [
+        `- ${row.sceneLabel}`,
+        `  Previous: ${row.previousSceneLabel}`,
+        `  Location/time: ${row.location || "unknown"} / ${row.timeOfDay || "unknown"}`,
+        `  Characters: ${row.characters.length ? row.characters.join(", ") : "unknown"}`,
+        `  Props: ${row.props.length ? row.props.join(", ") : "unknown"}`,
+        `  Wardrobe: ${row.wardrobe.length ? row.wardrobe.join(", ") : "unknown"}`,
+        `  Risks: ${row.riskFlags.length ? row.riskFlags.join("; ") : "none flagged"}`,
+      ].join("\n"),
+    );
+
+    return [
+      "You are a script supervisor and AI film continuity coordinator.",
+      "",
+      "Review this project continuity map before image generation, animation, sound design, or final export.",
+      "",
+      "PROJECT",
+      `Title: ${project.title || "Untitled"}`,
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "TASK",
+      "Find continuity risks across scenes. Return a practical checklist of what must stay fixed, what changed intentionally, what is missing, and which scene should be fixed first.",
+      "",
+      "SCENE HANDOFFS",
+      sceneRows.length ? sceneRows.join("\n") : "- No scene packets saved yet.",
+      "",
+      "RULES",
+      "- Protect character face, wardrobe, props, emotional state, location layout, light, color, sound, and object ownership.",
+      "- Do not give generic advice. Give exact fixes by scene.",
+      "- Flag anything that could make generated shots look like different films.",
+    ].join("\n");
+  }
+
+  async function copyContinuityPromptAnchor() {
+    if (!requirePro("Continuity check prompts")) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildContinuityPromptAnchor());
+      setSaveStatus("Continuity check prompt copied.");
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Build the continuity tracker and copy from the editor.");
+    }
   }
 
   function buildProductionScheduleTemplate() {
@@ -4301,6 +4464,40 @@ export function ProjectWorkspace({
           ),
         ].join("\n\n")
       : "";
+    const continuityMatrixBlocks = continuityRows.length
+      ? [
+          "## Cross-Scene Continuity Matrix",
+          "",
+          ...continuityRows.map((row) =>
+            [
+              `### ${row.sceneLabel}`,
+              "",
+              `Previous scene handoff: ${row.previousSceneLabel}`,
+              `Continuity readiness: ${row.readiness}%`,
+              `Location / time: ${markdownValue(row.location)} / ${markdownValue(row.timeOfDay)}`,
+              "",
+              "Characters:",
+              markdownList(row.characters),
+              "",
+              "Props:",
+              markdownList(row.props),
+              "",
+              "Wardrobe:",
+              markdownList(row.wardrobe),
+              "",
+              "Set dressing:",
+              markdownList(row.setDressing),
+              "",
+              `Sound state: ${markdownValue(row.soundState)}`,
+              `Color / light state: ${markdownValue(row.colorState)}`,
+              `Blocking / layout: ${markdownValue(row.blocking)}`,
+              "",
+              "Continuity risks:",
+              markdownList(row.riskFlags, "No automatic risks flagged yet."),
+            ].join("\n"),
+          ),
+        ].join("\n\n")
+      : "";
 
     const sceneBlocks = sceneBreakdowns
       .map((scene) => {
@@ -4385,6 +4582,7 @@ export function ProjectWorkspace({
       projectSummary,
       characterProfileBlocks,
       locationProfileBlocks,
+      continuityMatrixBlocks,
       documentBlocks,
       versionBlocks,
       "## Scene Packets",
@@ -4440,6 +4638,7 @@ export function ProjectWorkspace({
       "Project Roadmap",
       characterProfiles.length ? "Character Continuity Cards" : "",
       locationProfiles.length ? "Location Continuity Cards" : "",
+      continuityRows.length ? "Cross-Scene Continuity Matrix" : "",
       ...docSections.map((section) => section.label),
       versions.length ? "Version History" : "",
       sceneBreakdowns.length ? "Scene Packets" : "",
@@ -4600,6 +4799,40 @@ export function ProjectWorkspace({
                         <section><h4>Sound</h4>${htmlList(profile.soundNotes)}</section>
                         <section><h4>Layout / Blocking</h4>${htmlList(profile.blockingNotes)}</section>
                         <section><h4>Missing Anchors</h4>${htmlList(profile.missing, "None flagged")}</section>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `
+      : "";
+    const continuityMatrixSection = continuityRows.length
+      ? `
+          <section class="packet-section">
+            <div class="section-label">Cross-Scene Continuity Matrix</div>
+            <h2>Scene handoffs and continuity risks.</h2>
+            <p class="lede">What must stay fixed across character identity, wardrobe, props, location layout, light, sound, and object state before generated shots are approved.</p>
+            <div class="character-export-grid">
+              ${continuityRows
+                .map(
+                  (row) => `
+                    <article class="character-export-card">
+                      <div class="character-export-head">
+                        <span>${row.readiness}% mapped</span>
+                        <h3>${htmlValue(row.sceneLabel)}</h3>
+                      </div>
+                      <p>Previous handoff: ${htmlValue(row.previousSceneLabel)}</p>
+                      <div class="details-grid compact">
+                        <section><h4>Location / Time</h4>${htmlParagraphs(`${row.location || "Not mapped"} / ${row.timeOfDay || "Not mapped"}`)}</section>
+                        <section><h4>Characters</h4>${htmlList(row.characters)}</section>
+                        <section><h4>Props</h4>${htmlList(row.props)}</section>
+                        <section><h4>Wardrobe</h4>${htmlList(row.wardrobe)}</section>
+                        <section><h4>Set Dressing</h4>${htmlList(row.setDressing)}</section>
+                        <section><h4>Sound / Light</h4>${htmlParagraphs([row.soundState, row.colorState].filter(Boolean).join(" / "))}</section>
+                        <section><h4>Blocking</h4>${htmlParagraphs(row.blocking)}</section>
+                        <section><h4>Risks</h4>${htmlList(row.riskFlags, "No automatic risks flagged yet.")}</section>
                       </div>
                     </article>
                   `,
@@ -5149,7 +5382,7 @@ export function ProjectWorkspace({
       <section class="cover">
         <div class="cover-top">
           <div class="brand">MiseForge Production Packet</div>
-          <div class="cover-mark">SB</div>
+          <div class="cover-mark">MF</div>
         </div>
         <div>
           <p class="cover-kicker">Pre-production command packet</p>
@@ -5184,6 +5417,7 @@ export function ProjectWorkspace({
       </section>
       ${characterProfileSection}
       ${locationProfileSection}
+      ${continuityMatrixSection}
       ${documentSections}
       ${versionSections}
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
@@ -6064,24 +6298,153 @@ export function ProjectWorkspace({
             </div>
           ) : null}
           {activeStepId === "continuity" ? (
-            <div className="bible-tool-card">
-              <div>
-                <span>Cross-scene continuity</span>
-                <strong>Track the things that break AI films between shots.</strong>
-                <p>
-                  Build a tracker from scene packets, then fill character state, prop ownership,
-                  wardrobe changes, location state, lighting, sound, and generation risks.
-                </p>
+            <>
+              <div className="bible-tool-card">
+                <div>
+                  <span>Cross-scene continuity</span>
+                  <strong>Track the things that break AI films between shots.</strong>
+                  <p>
+                    Build a tracker from scene packets, then fill character state, prop ownership,
+                    wardrobe changes, location state, lighting, sound, and generation risks.
+                  </p>
+                </div>
+                <div className="dialogue-actions">
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={buildContinuityTrackerTemplate}
+                    disabled={!entitlement.isPro}
+                  >
+                    {entitlement.isPro ? "Build Continuity Tracker" : "Pro: Build Continuity Tracker"}
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => void copyContinuityPromptAnchor()}
+                    disabled={!entitlement.isPro}
+                  >
+                    {entitlement.isPro ? "Copy continuity prompt" : "Pro: continuity prompt"}
+                  </button>
+                </div>
               </div>
-              <button
-                className="button"
-                type="button"
-                onClick={buildContinuityTrackerTemplate}
-                disabled={!entitlement.isPro}
-              >
-                {entitlement.isPro ? "Build Continuity Tracker" : "Pro: Build Continuity Tracker"}
-              </button>
-            </div>
+              <div className="continuity-studio">
+                <div className="tool-heading">
+                  <div>
+                    <h4>Continuity matrix</h4>
+                    <p>
+                      Scene handoffs, missing anchors, recurring objects, wardrobe, set dressing,
+                      and location states that need to stay consistent before images and animation.
+                    </p>
+                  </div>
+                  <span>{continuityRows.length ? `${continuityRows.length} scene handoff${continuityRows.length === 1 ? "" : "s"}` : "Needs scene packets"}</span>
+                </div>
+                <div className="continuity-stat-grid">
+                  <article className="continuity-stat-card">
+                    <span>Scene handoffs</span>
+                    <strong>{continuityRows.length}</strong>
+                  </article>
+                  <article className="continuity-stat-card">
+                    <span>Characters</span>
+                    <strong>{characterProfiles.length}</strong>
+                  </article>
+                  <article className="continuity-stat-card">
+                    <span>Locations</span>
+                    <strong>{locationProfiles.length}</strong>
+                  </article>
+                  <article className="continuity-stat-card">
+                    <span>Tracked items</span>
+                    <strong>{continuityItemProfiles.length}</strong>
+                  </article>
+                </div>
+                {continuityRows.length ? (
+                  <div className="continuity-row-list">
+                    {continuityRows.slice(0, 8).map((row) => (
+                      <article className="continuity-row-card" key={row.id}>
+                        <div className="continuity-row-head">
+                          <div>
+                            <span>{row.readiness}% mapped</span>
+                            <strong>{row.sceneLabel}</strong>
+                          </div>
+                          <button className="button secondary" type="button" onClick={() => openBoardScene(row.id)}>
+                            Edit source scene
+                          </button>
+                        </div>
+                        <div className="continuity-row-meta">
+                          <div>
+                            <span>Previous</span>
+                            <strong>{row.previousSceneLabel}</strong>
+                          </div>
+                          <div>
+                            <span>Location / time</span>
+                            <strong>
+                              {row.location || "Not mapped"} / {row.timeOfDay || "Not mapped"}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Characters</span>
+                            <strong>{row.characters.length ? row.characters.slice(0, 4).join(", ") : "Not mapped"}</strong>
+                          </div>
+                          <div>
+                            <span>Props</span>
+                            <strong>{row.props.length ? row.props.slice(0, 4).join(", ") : "Not mapped"}</strong>
+                          </div>
+                          <div>
+                            <span>Wardrobe</span>
+                            <strong>{row.wardrobe.length ? row.wardrobe.slice(0, 4).join(", ") : "Not mapped"}</strong>
+                          </div>
+                          <div>
+                            <span>Sound / light</span>
+                            <strong>{row.soundState || row.colorState || "Not mapped"}</strong>
+                          </div>
+                        </div>
+                        <div className="continuity-risk-list">
+                          {(row.riskFlags.length ? row.riskFlags : ["No automatic risks flagged yet."]).map((risk) => (
+                            <span key={risk}>{risk}</span>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="continuity-empty-state">
+                    <strong>No scene handoffs yet.</strong>
+                    <p>
+                      Save a scene packet first. MiseForge will use those scene packets to map
+                      cross-scene character, prop, wardrobe, location, sound, and lighting risks.
+                    </p>
+                    <button className="button" type="button" onClick={() => setActiveStepId("breakdown")}>
+                      Open Scene Breakdown
+                    </button>
+                  </div>
+                )}
+                <div className="tool-heading compact">
+                  <div>
+                    <h4>Props, wardrobe, and set dressing</h4>
+                    <p>Recurring physical details that can break visual consistency if they drift between scenes.</p>
+                  </div>
+                  <span>{continuityItemProfiles.length ? `${continuityItemProfiles.length} tracked` : "No items yet"}</span>
+                </div>
+                {continuityItemProfiles.length ? (
+                  <div className="continuity-item-grid">
+                    {continuityItemProfiles.slice(0, 12).map((item) => (
+                      <article className="continuity-item-card" key={item.id}>
+                        <span>{item.type}</span>
+                        <strong>{item.label}</strong>
+                        <p>{item.risk}</p>
+                        <div>
+                          <small>Scenes</small>
+                          <p>{item.sceneLabels.slice(0, 4).join(", ")}</p>
+                        </div>
+                        <div>
+                          <small>Locations</small>
+                          <p>{item.locations.length ? item.locations.join(", ") : "Not mapped"}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : null}
           {activeStepId === "schedule" ? (
             <div className="bible-tool-card">
