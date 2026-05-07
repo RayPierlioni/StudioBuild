@@ -1,6 +1,12 @@
-# StudioBuild Vercel App
+# MiseForge Vercel App
 
-This is the Vercel-ready foundation for the real dynamic StudioBuild app.
+This is the Vercel-ready foundation for the real dynamic MiseForge app.
+
+Public domain:
+
+```text
+https://miseforge.com
+```
 
 The GitHub Pages demo stays online while this folder becomes the production architecture for:
 
@@ -41,7 +47,7 @@ Never commit real values for:
 
 - `/` - public product landing page with the no-cost Fix a Scene Free parser and Prompt Compiler
 - `/api/health` - basic app health check
-- `/api/db-status` - confirms the app can reach the StudioBuild Supabase auth service
+- `/api/db-status` - confirms the app can reach the MiseForge Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
 - `/api/billing/checkout` - opens Founder Pro subscription checkout for signed-in users
 - `/api/billing/webhook` - receives billing events and updates subscription access
@@ -49,7 +55,7 @@ Never commit real values for:
 - `/api/projects/[projectId]` - authenticated single-project loader
 - `/api/projects/[projectId]/documents` - saves editable stage drafts per project
 - `/app/projects/[projectId]` - project command center route
-- `/api/generate` - protected StudioBuild AI route for treatments, scripts, breakdowns, prompt
+- `/api/generate` - protected MiseForge AI route for treatments, scripts, breakdowns, prompt
   plans, dialogue polish, improvement passes, structure passes, and insert shots
 
 Successful project saves show the saved Supabase project ID in the browser so the database write can
@@ -94,7 +100,7 @@ The project command center now includes a Sound Design Map stage. Founder Pro an
 generate scene-by-scene room tone, foley, dialogue space, silence, animation handoff, edit notes,
 and final sound checklist guidance from scene packets, prompt cards, bibles, and workflow tools.
 
-The app now includes a dynamic StudioBuild Guide robot. The guide changes its advice by workflow
+The app now includes a dynamic MiseForge Guide robot. The guide changes its advice by workflow
 stage, opens a small chat when clicked, and answers practical or philosophical questions about
 story, dialogue, breakdowns, bibles, shots, sound, continuity, pricing, and next production moves.
 
@@ -103,7 +109,7 @@ production index, readiness page, roadmap cards, scene status chips, refined sho
 prompt-card sections for image, animation, and sound handoff.
 
 The public landing page now leads with the workflow-first product model: parse a rough scene, show
-production readiness, generate a bring-your-own-AI prompt, and offer hosted StudioBuild AI as a
+production readiness, generate a bring-your-own-AI prompt, and offer hosted MiseForge AI as a
 credit-based convenience path.
 
 Founder Pro pricing is now positioned as `$12.99/month`. Set

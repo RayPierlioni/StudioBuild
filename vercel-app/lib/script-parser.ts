@@ -365,7 +365,7 @@ export function buildScenePacketDocument(
 ) {
   const toolStack = options.toolStack?.trim() || "Tool stack not specified";
   const lines = [
-    "# StudioBuild Scene Packet",
+    "# MiseForge Scene Packet",
     "",
     `Production readiness: ${parsed.readinessScore}%`,
     `Scenes: ${parsed.scenes.length}`,

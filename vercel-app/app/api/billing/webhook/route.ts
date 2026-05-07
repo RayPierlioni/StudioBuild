@@ -31,7 +31,7 @@ function periodEnd(subscription: Stripe.Subscription) {
 
 async function saveSubscription(record: SubscriptionRecord) {
   if (!record.userId && !record.email) {
-    throw new Error("Stripe event did not include a StudioBuild user reference.");
+    throw new Error("Stripe event did not include a MiseForge user reference.");
   }
 
   const supabase = getSupabaseAdminClient();

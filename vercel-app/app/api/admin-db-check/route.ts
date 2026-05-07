@@ -17,7 +17,7 @@ export async function GET() {
           checkedAt: new Date().toISOString(),
           serviceRoleValid: false,
           profilesTableReachable: false,
-          error: "StudioBuild admin database check could not complete.",
+          error: "MiseForge admin database check could not complete.",
         },
         { status: 502 },
       );
@@ -29,7 +29,7 @@ export async function GET() {
       checkedAt: new Date().toISOString(),
       serviceRoleValid: true,
       profilesTableReachable: true,
-      note: "StudioBuild server checks are passing.",
+      note: "MiseForge server checks are passing.",
     });
   } catch (error) {
     return Response.json(
@@ -39,7 +39,7 @@ export async function GET() {
         checkedAt: new Date().toISOString(),
         serviceRoleValid: false,
         profilesTableReachable: false,
-        error: "StudioBuild admin database check could not complete.",
+        error: "MiseForge admin database check could not complete.",
       },
       { status: 500 },
     );

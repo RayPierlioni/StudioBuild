@@ -198,7 +198,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
     <main className="detail-shell">
       <div className="detail-topbar">
         <a className="brand-link" href="/">
-          STUDIOBUILD
+          MISEFORGE
         </a>
         <a className="button secondary" href="/app">
           All Projects
@@ -210,7 +210,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           <p className="subtle">Opening project...</p>
         ) : !session ? (
           <div className="auth-box">
-            <p>Sign in with Google to open this StudioBuild project.</p>
+            <p>Sign in with Google to open this MiseForge project.</p>
             <button className="button" type="button" onClick={signInWithGoogle}>
               Sign in with Google
             </button>

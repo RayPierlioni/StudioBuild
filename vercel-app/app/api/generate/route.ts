@@ -428,7 +428,7 @@ async function callOpenAI({
       {
         ok: false,
         status: "generation_unavailable",
-        message: "StudioBuild generation is not available yet. Use the prompt workflow for now, or try again shortly.",
+        message: "MiseForge generation is not available yet. Use the prompt workflow for now, or try again shortly.",
       },
       { status: 503 },
     );
@@ -444,7 +444,7 @@ async function callOpenAI({
     body: JSON.stringify({
       model,
       reasoning: { effort: "medium" },
-      instructions: `You are StudioBuild, an elite filmmaker's development partner: part Hollywood script doctor, part producer, part script supervisor, part AI pre-production strategist.
+      instructions: `You are MiseForge, an elite filmmaker's development partner: part Hollywood script doctor, part producer, part script supervisor, part AI pre-production strategist.
 
 Write at an industry-professional level. Be concrete, visual, useful, and specific. Do not sound like generic AI copy. Do not mention that you are an AI. Do not apologize. Do not explain the task back.
 
@@ -463,7 +463,7 @@ Output only the finished artifact the user can work with immediately.`,
       {
         ok: false,
         status: "openai_error",
-        message: "StudioBuild generation could not finish that request. Try a shorter passage or use the prompt workflow.",
+        message: "MiseForge generation could not finish that request. Try a shorter passage or use the prompt workflow.",
       },
       { status: response.status },
     );
@@ -580,7 +580,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           status: "premium_required",
-          message: "StudioBuild generation is included with admin access or Founder Pro.",
+          message: "MiseForge generation is included with admin access or Founder Pro.",
         },
         { status: 402 },
       );
@@ -664,8 +664,8 @@ export async function POST(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error && error.message.toLowerCase().includes("supabase")
-        ? "Sign in again before using this StudioBuild tool."
-        : "StudioBuild could not complete that request. Please try again shortly.";
+        ? "Sign in again before using this MiseForge tool."
+        : "MiseForge could not complete that request. Please try again shortly.";
 
     return Response.json(
       {

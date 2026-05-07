@@ -47,7 +47,7 @@ export function SceneFixDemo() {
           <p className="eyebrow">Fix a Scene Free</p>
           <h2>Paste a rough scene. Leave with a production plan.</h2>
           <p>
-            StudioBuild reads the scene like a production-minded script supervisor: it finds what is
+            MiseForge reads the scene like a production-minded script supervisor: it finds what is
             missing, maps the production problem, and turns the next step into a usable scene plan.
           </p>
         </div>
@@ -129,7 +129,7 @@ export function SceneFixDemo() {
             Copy Expert Prompt
           </button>
           <a className="button secondary" href="/app">
-            Open StudioBuild Workspace
+            Open MiseForge Workspace
           </a>
         </div>
         {copyStatus ? <p className="status success">{copyStatus}</p> : null}

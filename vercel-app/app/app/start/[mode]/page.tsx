@@ -30,7 +30,7 @@ const startModes: Record<
     eyebrow: "Script intake",
     title: "Bring the pages in.",
     subtitle:
-      "Use this path when you already have script pages and want StudioBuild to help organize the work ahead.",
+      "Use this path when you already have script pages and want MiseForge to help organize the work ahead.",
     steps: [
       "Create a project shell for the script.",
       "Paste or import the script fragment.",
@@ -64,7 +64,7 @@ export default async function StartModePage({ params }: RouteContext) {
     assetCount: 0,
     body: copy.subtitle,
     chips: copy.steps.slice(0, 3),
-    eyebrow: "StudioBuild Guide",
+    eyebrow: "MiseForge Guide",
     nextAction: copy.steps[0],
     planLabel: "Free",
     projectTitle: "New film",

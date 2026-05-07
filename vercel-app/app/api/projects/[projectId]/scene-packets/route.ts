@@ -236,7 +236,7 @@ export async function POST(request: Request, context: RouteContext) {
             ok: false,
             entitlement,
             error:
-              "Free StudioBuild includes 1 saved scene-packet preview. Founder Pro unlocks full-script parsing, complete scene breakdowns, shot lists, prompt cards, and premium packet export.",
+              "Free MiseForge includes 1 saved scene-packet preview. Founder Pro unlocks full-script parsing, complete scene breakdowns, shot lists, prompt cards, and premium packet export.",
           },
           { status: 402 },
         );

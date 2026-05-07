@@ -37,9 +37,9 @@ const dashboardGuideContext: GuideAssistantContext = {
   activeStageLabel: "Dashboard",
   assetCount: 0,
   body:
-    "Pick the way your film enters StudioBuild, then I will keep explaining why each production layer matters and what to do next.",
+    "Pick the way your film enters MiseForge, then I will keep explaining why each production layer matters and what to do next.",
   chips: ["Idea", "Script", "Breakdown"],
-  eyebrow: "StudioBuild Guide",
+  eyebrow: "MiseForge Guide",
   nextAction: "Choose idea, script, or breakdown start path",
   planLabel: "Free",
   projectTitle: "New film",
@@ -54,7 +54,7 @@ export default function AppHome() {
     <main className="app-shell command-app-shell">
       <header className="app-topbar command-topbar">
         <a className="brand-link" href="/">
-          STUDIOBUILD
+          MISEFORGE
         </a>
         <nav aria-label="App navigation">
           <a href="/">Landing</a>
@@ -64,14 +64,14 @@ export default function AppHome() {
         </nav>
       </header>
 
-      <section className="command-layout" aria-label="StudioBuild command center">
+      <section className="command-layout" aria-label="MiseForge command center">
         <aside className="command-sidebar" aria-label="Pre-production pipeline">
           <div className="sidebar-brand-block">
             <span>Production spine</span>
             <strong>Build the film in order.</strong>
             <p>Move from story discipline into the production details that keep an AI film consistent.</p>
           </div>
-          <nav className="pipeline-nav" aria-label="StudioBuild pipeline">
+          <nav className="pipeline-nav" aria-label="MiseForge pipeline">
             {pipelineStages.map(([stage, detail], index) => (
               <a href="#workspace-dashboard" key={stage}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
@@ -84,17 +84,17 @@ export default function AppHome() {
 
         <section id="workspace-dashboard" className="command-main">
           <div className="command-main-head">
-            <p className="eyebrow">StudioBuild command center</p>
+            <p className="eyebrow">MiseForge command center</p>
             <h1>Start the project, then build the production system around it.</h1>
             <p>
-              Create a project shell, open a saved film, or pick a guided path. StudioBuild keeps
+              Create a project shell, open a saved film, or pick a guided path. MiseForge keeps
               the work organized from first idea through production packet.
             </p>
           </div>
           <StudioWorkspace />
         </section>
 
-        <aside className="command-guide-panel" aria-label="StudioBuild guide">
+        <aside className="command-guide-panel" aria-label="MiseForge guide">
           <MiniPhilosopherGuide compact context={dashboardGuideContext} routes={guidePaths} />
         </aside>
       </section>

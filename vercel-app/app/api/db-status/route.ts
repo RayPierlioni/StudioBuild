@@ -50,7 +50,7 @@ export async function GET() {
         service: "studiobuild-database",
         checkedAt: new Date().toISOString(),
         databaseClientReady: false,
-        error: "StudioBuild database check could not complete.",
+        error: "MiseForge database check could not complete.",
       },
       { status: 500 },
     );

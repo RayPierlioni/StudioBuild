@@ -61,14 +61,14 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
           }
 
           if (!data.session) {
-            throw new Error("No StudioBuild session was found.");
+            throw new Error("No MiseForge session was found.");
           }
         }
 
         window.location.replace(next);
       } catch {
         if (isMounted) {
-          setMessage("StudioBuild could not finish sign-in. Return to the app and try Google sign-in again.");
+          setMessage("MiseForge could not finish sign-in. Return to the app and try Google sign-in again.");
         }
       }
     }

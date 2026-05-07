@@ -284,7 +284,7 @@ const startModeCopy: Record<
 > = {
   dashboard: {
     eyebrow: "Live workspace",
-    heading: "Your StudioBuild dashboard.",
+    heading: "Your MiseForge dashboard.",
     helper: "Create a project, open a saved film, or move into the production pipeline.",
     starterLabel: "Starter idea",
     starterPlaceholder: "Paste the rough idea, opening beat, or script fragment here.",
@@ -293,7 +293,7 @@ const startModeCopy: Record<
   idea: {
     eyebrow: "Idea start",
     heading: "Start from the first spark.",
-    helper: "Begin with a premise, tone, genre, and logline. StudioBuild will help turn it into a workable film path.",
+    helper: "Begin with a premise, tone, genre, and logline. MiseForge will help turn it into a workable film path.",
     starterLabel: "Idea seed",
     starterPlaceholder: "Describe the film idea, central character, world, conflict, or first image you cannot stop thinking about.",
     submitLabel: "Create Idea Project",
@@ -301,7 +301,7 @@ const startModeCopy: Record<
   script: {
     eyebrow: "Script intake",
     heading: "Bring in pages you already have.",
-    helper: "Create a project shell first, then paste or import your script pages so StudioBuild can organize the next production steps.",
+    helper: "Create a project shell first, then paste or import your script pages so MiseForge can organize the next production steps.",
     starterLabel: "Script fragment",
     starterPlaceholder: "Paste the opening scene, rough pages, or script section you want to improve and break down.",
     submitLabel: "Create Script Project",
@@ -544,7 +544,7 @@ function slugFileName(value: string) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 64) || "studiobuild-production-packet"
+      .slice(0, 64) || "miseforge-production-packet"
   );
 }
 
@@ -924,7 +924,7 @@ function buildGuideAnswer(question: string, context: GuideAssistantContext) {
     return [
       "A location needs rules before it needs beauty.",
       "Map the layout, practical lights, time-of-day behavior, color palette, sound texture, dressing, and what changes between scenes.",
-      "AI tools can generate impressive spaces, but StudioBuild helps make the same space behave like the same place twice.",
+      "AI tools can generate impressive spaces, but MiseForge helps make the same space behave like the same place twice.",
       stageLine,
     ].join("\n\n");
   }
@@ -1056,7 +1056,7 @@ export function MiniPhilosopherGuide({
     <div className={`guide-assistant${compact ? " compact" : ""}${minimal ? " minimal" : ""}`}>
       <button
         aria-expanded={isChatOpen}
-        aria-label={isChatOpen ? "Close StudioBuild guide chat" : "Open StudioBuild guide chat"}
+        aria-label={isChatOpen ? "Close MiseForge guide chat" : "Open MiseForge guide chat"}
         className="guide-character guide-character-button small"
         type="button"
         onClick={() => setIsChatOpen((current) => !current)}
@@ -1102,7 +1102,7 @@ export function MiniPhilosopherGuide({
       ) : null}
 
       {isChatOpen ? (
-        <section className="guide-chat-panel" aria-label="StudioBuild guide chat">
+        <section className="guide-chat-panel" aria-label="MiseForge guide chat">
           <div className="guide-chat-heading">
             <span>Mini philosopher robot</span>
             <strong>Ask about life, dialogue, or what to fix next.</strong>
@@ -1221,7 +1221,7 @@ function ProUnlockPanel({
       <section className={compact ? "pro-panel compact active" : "pro-panel active"}>
         <div>
           <span>{entitlement.planLabel} access</span>
-          <strong>Full StudioBuild workflow unlocked.</strong>
+          <strong>Full MiseForge workflow unlocked.</strong>
           <p>
             Admin and subscribed users can use character bibles, location bibles, the production
             board, shot lists, prompt cards, version history, premium exports, and multiple projects.
@@ -1423,7 +1423,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     const billing = new URLSearchParams(window.location.search).get("billing");
 
     if (billing === "return") {
-      setMessage("Billing settings saved. Your StudioBuild access will refresh automatically.");
+      setMessage("Billing settings saved. Your MiseForge access will refresh automatically.");
     }
   }, []);
 
@@ -1619,7 +1619,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       </div>
 
       {isLoadingSession ? (
-        <p className="subtle">Opening secure StudioBuild workspace...</p>
+        <p className="subtle">Opening secure MiseForge workspace...</p>
       ) : !session ? (
         <div className="auth-box">
           <p>
@@ -1722,7 +1722,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
 
               {hasReachedFreeProjectLimit ? (
                 <p className="status error">
-                  Free StudioBuild includes 1 project. Founder Pro unlocks multiple films and the
+                  Free MiseForge includes 1 project. Founder Pro unlocks multiple films and the
                   full production workflow for $12.99/month.
                 </p>
               ) : null}
@@ -2060,7 +2060,7 @@ export function ProjectWorkspace({
       assetCount: productionAssets.length,
       body: `${guideNote.teaching} Current readiness is ${readiness.score}%. Next: ${readiness.next}.`,
       chips: activeChips,
-      eyebrow: "StudioBuild Guide",
+      eyebrow: "MiseForge Guide",
       nextAction: readiness.next,
       planLabel: entitlement.planLabel,
       projectTitle: project.title,
@@ -2234,7 +2234,7 @@ export function ProjectWorkspace({
   function buildLoglineLabTemplate() {
     const seed = drafts.idea.trim() || draftText.trim() || project.logline || project.notes || "";
     const content = [
-      `# Logline Lab - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Logline Lab - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -2305,7 +2305,7 @@ export function ProjectWorkspace({
 
     const source = drafts.idea.trim() || drafts.script.trim() || project.logline || project.notes || "";
     const content = [
-      `# Treatment Blueprint - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Treatment Blueprint - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -2525,7 +2525,7 @@ export function ProjectWorkspace({
     });
 
     const content = [
-      `# Character Bible - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Character Bible - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -2601,7 +2601,7 @@ export function ProjectWorkspace({
     });
 
     const content = [
-      `# Location Bible - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Location Bible - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -2670,7 +2670,7 @@ export function ProjectWorkspace({
       ? project.inspirations.map((reference) => `- ${reference}: what to borrow / what to avoid`).join("\n")
       : "- Reference 1: what to borrow / what to avoid\n- Reference 2: what to borrow / what to avoid";
     const content = [
-      `# Visual Look Book - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Visual Look Book - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -2887,7 +2887,7 @@ export function ProjectWorkspace({
           ].join("\n"),
         ];
     const content = [
-      `# Continuity Tracker - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Continuity Tracker - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -3001,7 +3001,7 @@ export function ProjectWorkspace({
         })
       : "## Shot order not available yet\n\nBuild scene packets and detailed shot lists first.";
     const content = [
-      `# Production Schedule / Generation Order - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Production Schedule / Generation Order - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -3184,7 +3184,7 @@ export function ProjectWorkspace({
       .map((asset) => `- ${asset.name}: ${asset.sound_prompt}`)
       .slice(0, 30);
     const content = [
-      `# Sound Design Map - ${project.title || "Untitled StudioBuild Project"}`,
+      `# Sound Design Map - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
@@ -3344,7 +3344,7 @@ export function ProjectWorkspace({
       `Logline: ${project.logline || "Not specified"}`,
       `Cinematic references: ${project.inspirations?.length ? project.inspirations.join(", ") : "Not specified"}`,
       `Workflow/tools: ${workflowTools || "Not specified"}`,
-      `Current StudioBuild stage: ${activeStep.label}`,
+      `Current MiseForge stage: ${activeStep.label}`,
     ].join("\n");
     const sharedRules = [
       "Do not sound generic or robotic.",
@@ -3400,7 +3400,7 @@ export function ProjectWorkspace({
 
     try {
       await navigator.clipboard.writeText(prompt);
-      setSaveStatus("Expert prompt copied. Paste it into the AI tool you already use, then bring the result back into StudioBuild.");
+      setSaveStatus("Expert prompt copied. Paste it into the AI tool you already use, then bring the result back into MiseForge.");
       setSaveError("");
     } catch {
       setSaveError("Your browser blocked copy. Select the text in the editor and copy it manually.");
@@ -3754,7 +3754,7 @@ export function ProjectWorkspace({
     ];
 
     const projectSummary = [
-      `# ${markdownValue(project.title, "Untitled StudioBuild Project")}`,
+      `# ${markdownValue(project.title, "Untitled MiseForge Project")}`,
       "",
       "## Project",
       "",
@@ -4140,7 +4140,7 @@ export function ProjectWorkspace({
             <span class="readiness-number">${readiness.score}%</span>
             <strong>${readiness.completedCount} of ${readiness.total} production checks complete</strong>
           </div>
-          <p>StudioBuild measures whether the project has enough story, scene, continuity, shot, prompt, schedule, and sound information to become a reliable production packet.</p>
+          <p>MiseForge measures whether the project has enough story, scene, continuity, shot, prompt, schedule, and sound information to become a reliable production packet.</p>
         </div>
         <div class="readiness-grid">
           ${readinessItems
@@ -4174,7 +4174,7 @@ export function ProjectWorkspace({
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${htmlValue(project.title, "StudioBuild Production Packet")}</title>
+    <title>${htmlValue(project.title, "MiseForge Production Packet")}</title>
     <style>
       :root {
         --paper: #fbfaf7;
@@ -4612,13 +4612,13 @@ export function ProjectWorkspace({
   </head>
   <body>
     <div class="print-bar">
-      <strong>StudioBuild premium production packet</strong>
+      <strong>MiseForge premium production packet</strong>
       <button onclick="window.print()">Save / Print PDF</button>
     </div>
     <main class="packet">
       <section class="cover">
         <div class="cover-top">
-          <div class="brand">StudioBuild Production Packet</div>
+          <div class="brand">MiseForge Production Packet</div>
           <div class="cover-mark">SB</div>
         </div>
         <div>
@@ -4954,7 +4954,7 @@ export function ProjectWorkspace({
             </div>
           ) : (
             <p className="asset-empty">
-              Save at least one scene packet with character names, then StudioBuild will create
+              Save at least one scene packet with character names, then MiseForge will create
               character continuity cards here.
             </p>
           )}
@@ -5237,7 +5237,7 @@ export function ProjectWorkspace({
         </section>
       )}
 
-      <div className="pipeline-strip" aria-label="StudioBuild pipeline">
+      <div className="pipeline-strip" aria-label="MiseForge pipeline">
         {pipelineSteps.map((step, index) => (
           <button
             className={step.id === activeStepId ? "pipeline-step active" : "pipeline-step"}
@@ -5438,7 +5438,7 @@ export function ProjectWorkspace({
                 <span>Dialogue discipline</span>
                 <strong>Find the lines that sound too robotic, expositional, or unplayable.</strong>
                 <p>
-                  Highlight a section or scan the script draft. StudioBuild creates a practical
+                  Highlight a section or scan the script draft. MiseForge creates a practical
                   diagnosis, rewrite rubric, and expert prompt you can use anywhere.
                 </p>
               </div>
@@ -5627,7 +5627,7 @@ export function ProjectWorkspace({
             Copy insert-shot prompt
           </button>
           <p>
-            StudioBuild keeps the next move clear: develop the idea, strengthen the writing, map the
+            MiseForge keeps the next move clear: develop the idea, strengthen the writing, map the
             production needs, and export a packet you can actually work from.
           </p>
         </aside>

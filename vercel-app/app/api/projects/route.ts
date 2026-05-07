@@ -109,7 +109,7 @@ export async function POST(request: Request) {
             ok: false,
             entitlement,
             error:
-              "Free StudioBuild includes 1 project. Founder Pro unlocks multiple projects, production boards, premium exports, shot lists, prompt cards, and version history.",
+              "Free MiseForge includes 1 project. Founder Pro unlocks multiple projects, production boards, premium exports, shot lists, prompt cards, and version history.",
           },
           { status: 402 },
         );

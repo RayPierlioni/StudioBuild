@@ -36,19 +36,19 @@ export default function Home() {
         <div className="landing-nav">
           <div className="brand">
             <img className="mark" src="/favicon.svg" alt="" />
-            <span>STUDIOBUILD</span>
+            <span>MISEFORGE</span>
           </div>
-          <nav aria-label="StudioBuild sections">
+          <nav aria-label="MiseForge sections">
             <a href="#fix-scene">Demo</a>
             <a href="#pricing">Pricing</a>
             <a href="/app">Open App</a>
           </nav>
         </div>
         <div className="hero-copy">
-          <p className="kicker">Pre-production for AI filmmakers</p>
+          <p className="kicker">Build the film before you generate the frame.</p>
           <h1>Make AI scripts stop sounding like AI.</h1>
           <p>
-            StudioBuild turns rough AI film ideas and scripts into treatments, scene breakdowns,
+            MiseForge turns rough AI film ideas and scripts into treatments, scene breakdowns,
             shot plans, and prompt-ready production packets so your film has story logic before you
             generate a single shot.
           </p>
@@ -60,7 +60,7 @@ export default function Home() {
               Open App
             </a>
           </div>
-          <div className="hero-chips" aria-label="StudioBuild focus">
+          <div className="hero-chips" aria-label="MiseForge focus">
             <span>Remove AI voice</span>
             <span>Build scene logic</span>
             <span>Map production needs</span>
@@ -78,7 +78,7 @@ export default function Home() {
         <SceneFixDemo />
 
         <article className="panel" id="what-you-get">
-          <p className="eyebrow">What StudioBuild Gives You</p>
+          <p className="eyebrow">What MiseForge Gives You</p>
           <h2>Concrete film outputs, not another blank prompt box.</h2>
           <div className="deliverable-grid">
             {deliverables.map(([input, output]) => (
@@ -104,7 +104,7 @@ export default function Home() {
         </article>
 
         <article className="panel pricing-panel" id="pricing">
-          <p className="eyebrow">Pricing Direction</p>
+          <p className="eyebrow">Plans</p>
           <h2>Start free. Upgrade when the workflow saves real time.</h2>
           <p>
             Start with one project and a scene-packet preview. Upgrade when you want the complete
