@@ -3,11 +3,38 @@ import { getStripeClient } from "../../../../lib/stripe";
 
 export const dynamic = "force-dynamic";
 
+const FALLBACK_SITE_URL = "https://miseforge.com";
+const ALLOWED_SITE_HOSTS = new Set([
+  "miseforge.com",
+  "www.miseforge.com",
+  "studio-build-raypierlionis-projects.vercel.app",
+  "studio-build-git-main-raypierlionis-projects.vercel.app",
+]);
+
+function normalizeAllowedBaseUrl(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const url = new URL(value);
+    const isLocalhost = url.hostname === "localhost";
+    const isVercelPreview = url.hostname.endsWith("-raypierlionis-projects.vercel.app");
+    const isAllowedHost = ALLOWED_SITE_HOSTS.has(url.hostname) || isVercelPreview || isLocalhost;
+    const isAllowedProtocol = url.protocol === "https:" || isLocalhost;
+
+    return isAllowedHost && isAllowedProtocol ? url.origin : "";
+  } catch {
+    return "";
+  }
+}
+
 function getBaseUrl(request: Request) {
   return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    request.headers.get("origin") ||
-    new URL(request.url).origin
+    normalizeAllowedBaseUrl(request.headers.get("origin")) ||
+    normalizeAllowedBaseUrl(new URL(request.url).origin) ||
+    normalizeAllowedBaseUrl(process.env.NEXT_PUBLIC_SITE_URL) ||
+    FALLBACK_SITE_URL
   );
 }
 
