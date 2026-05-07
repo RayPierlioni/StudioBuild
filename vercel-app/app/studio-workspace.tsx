@@ -369,6 +369,31 @@ type GenerationQueueItem = {
   status: string;
 };
 
+type SoundLayerCard = {
+  detail: string;
+  id: string;
+  isReady: boolean;
+  items: string[];
+  label: string;
+  status: string;
+};
+
+type SoundScenePlan = {
+  animationHandoff: string;
+  blockers: string[];
+  dialogueRule: string;
+  foleyRule: string;
+  id: string;
+  label: string;
+  locationTime: string;
+  priority: "High" | "Medium" | "Low";
+  readiness: number;
+  roomTone: string;
+  silenceRule: string;
+  soundPromptCount: number;
+  status: string;
+};
+
 type VisualSceneProfile = {
   cameraRule: string;
   colorState: string;
@@ -3176,6 +3201,203 @@ export function ProjectWorkspace({
       .slice(0, 8);
   }, [assetsBySceneId, sceneBreakdowns, scheduleLockPhases]);
   const scheduleReadyCount = scheduleLockPhases.filter((phase) => phase.isReady).length;
+  const soundScenePlans = useMemo<SoundScenePlan[]>(() => {
+    return [...sceneBreakdowns]
+      .sort((first, second) => first.scene_number - second.scene_number)
+      .map((scene) => {
+        const sceneAssets = assetsBySceneId[scene.id] ?? [];
+        const soundPromptCount = sceneAssets.filter((asset) => hasText(asset.sound_prompt)).length;
+        const animationPromptCount = sceneAssets.filter((asset) => hasText(asset.animation_prompt)).length;
+        const dialogueLikely = hasList(scene.characters) || /\b[A-Z][A-Z0-9' -]{1,}\n/.test(drafts.script);
+        const heroProp = firstListItem(scene.props, "the key prop");
+        const blockers = [
+          hasText(scene.location) ? "" : "location",
+          hasText(scene.time_of_day) ? "" : "time of day",
+          hasText(scene.sound_notes) ? "" : "room tone",
+          hasList(scene.props) ? "" : "foley props",
+          hasText(scene.blocking) ? "" : "movement and blocking",
+          soundPromptCount ? "" : "sound prompt",
+          animationPromptCount ? "" : "animation handoff",
+        ].filter((value): value is string => Boolean(value));
+        const readinessChecks = [
+          hasText(scene.location),
+          hasText(scene.time_of_day),
+          hasText(scene.sound_notes),
+          hasList(scene.props),
+          hasText(scene.blocking),
+          soundPromptCount > 0,
+          animationPromptCount > 0,
+        ];
+        const priority: SoundScenePlan["priority"] =
+          blockers.length >= 4 ? "High" : blockers.length >= 2 ? "Medium" : "Low";
+
+        return {
+          animationHandoff: animationPromptCount
+            ? `${animationPromptCount} animation prompt${animationPromptCount === 1 ? "" : "s"} need sync, perspective, foley, breath, and dialogue timing checks.`
+            : "No animation handoff yet. Add timing, movement, sync risk, and what each visible action should sound like.",
+          blockers,
+          dialogueRule: dialogueLikely
+            ? "Protect intelligibility, breath, pause points, overlaps, off-screen space, and the silence before or after major decisions."
+            : "No obvious dialogue handoff yet. Decide whether silence, breath, or off-screen texture should carry the beat.",
+          foleyRule: scene.props?.length
+            ? `${scene.props.slice(0, 4).join(", ")} need close handling texture, ownership, and continuity.`
+            : `Build foley around ${heroProp}, clothing movement, footsteps, surfaces, and contact sounds.`,
+          id: scene.id,
+          label: sceneBoardLabel(scene),
+          locationTime: `${scene.location || "Unmapped location"} / ${scene.time_of_day || "unmapped time"}`,
+          priority,
+          readiness: Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100),
+          roomTone: scene.sound_notes
+            ? scene.sound_notes
+            : `Define base ambience, distance texture, practical hum, air, and silence behavior for ${scene.location || "this space"}.`,
+          silenceRule:
+            scene.tone || scene.color_palette
+              ? `Use silence to support ${scene.tone || scene.color_palette}; do not let music explain the emotion.`
+              : "Name where the scene needs silence, restraint, or a sound drop instead of score.",
+          soundPromptCount,
+          status: `${soundPromptCount} sound / ${animationPromptCount} animation prompts`,
+        };
+      });
+  }, [assetsBySceneId, drafts.script, sceneBreakdowns]);
+  const soundLayerCards = useMemo<SoundLayerCard[]>(() => {
+    const sceneSoundCount = sceneBreakdowns.filter((scene) => hasText(scene.sound_notes)).length;
+    const propSoundCount = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? [])).length;
+    const locationSoundCount = locationProfiles.filter((profile) => profile.soundNotes.length > 0).length;
+    const soundPromptCount = productionAssets.filter((asset) => hasText(asset.sound_prompt)).length;
+    const animationPromptCount = productionAssets.filter((asset) => hasText(asset.animation_prompt)).length;
+    const dialogueReady = hasText(drafts.dialogue_notes) || sceneBreakdowns.some((scene) => hasList(scene.characters));
+    const soundContinuityReady = continuityRows.some((row) => hasText(row.soundState));
+
+    return [
+      {
+        detail: "Base ambience, air, practical hum, exterior bleed, and silence behavior for every space.",
+        id: "room-tone",
+        isReady: sceneBreakdowns.length > 0 && sceneSoundCount === sceneBreakdowns.length,
+        items: [
+          `${sceneSoundCount} of ${sceneBreakdowns.length || 0} scenes include sound notes.`,
+          `${locationSoundCount} location profile${locationSoundCount === 1 ? "" : "s"} include sound texture.`,
+          "Room tone should continue under dialogue and cuts.",
+        ],
+        label: "Room tone",
+        status: `${sceneSoundCount} scene${sceneSoundCount === 1 ? "" : "s"} mapped`,
+      },
+      {
+        detail: "Specific handling sounds for props, wardrobe, footsteps, doors, surfaces, and body movement.",
+        id: "foley",
+        isReady: propSoundCount > 0 && sceneBreakdowns.some((scene) => hasList(scene.props)),
+        items: [
+          `${propSoundCount} prop or motif sound source${propSoundCount === 1 ? "" : "s"}.`,
+          "Give hero props emotional meaning through sound.",
+          "Avoid generic whooshes unless motivated by visible movement.",
+        ],
+        label: "Foley and props",
+        status: `${propSoundCount} sources`,
+      },
+      {
+        detail: "Dialogue space, pauses, breath, overlap, off-screen texture, and when silence replaces explanation.",
+        id: "dialogue-silence",
+        isReady: dialogueReady && hasText(drafts.dialogue_notes),
+        items: [
+          drafts.dialogue_notes ? "Dialogue notes started." : "Run or write dialogue notes.",
+          "Mark breath, pauses, overlaps, and moments that should not be scored.",
+          "Keep room tone alive under lines.",
+        ],
+        label: "Dialogue and silence",
+        status: dialogueReady ? "Dialogue source detected" : "Needs dialogue pass",
+      },
+      {
+        detail: "Every animated shot needs sounds tied to visible motion, camera perspective, sync, and dialogue timing.",
+        id: "animation-handoff",
+        isReady: soundPromptCount > 0 && animationPromptCount > 0,
+        items: [
+          `${animationPromptCount} animation prompt${animationPromptCount === 1 ? "" : "s"}.`,
+          `${soundPromptCount} sound prompt${soundPromptCount === 1 ? "" : "s"}.`,
+          "Approve stills, then sync sound to the animation plan.",
+        ],
+        label: "Animation handoff",
+        status: `${soundPromptCount} sound rows`,
+      },
+      {
+        detail: "Sound state must match location, prop, wardrobe, and emotional continuity across scenes.",
+        id: "sound-continuity",
+        isReady: soundContinuityReady && hasText(drafts.continuity_tracker),
+        items: [
+          soundContinuityReady ? "Continuity rows include sound state." : "Add sound state to continuity rows.",
+          drafts.continuity_tracker ? "Continuity tracker started." : "Build the continuity tracker.",
+          "Check room tone and prop sounds across adjacent scenes.",
+        ],
+        label: "Mix continuity",
+        status: soundContinuityReady ? "Sound state started" : "Needs sound state",
+      },
+      {
+        detail: "The export should include a sound thesis, scene map, prompt rows, animation handoff, and final mix checklist.",
+        id: "sound-export",
+        isReady: hasText(drafts.sound_map) && soundPromptCount > 0,
+        items: [
+          drafts.sound_map ? "Sound map document started." : "Build the Sound Design Map.",
+          `${soundPromptCount} prompt-card sound row${soundPromptCount === 1 ? "" : "s"}.`,
+          "Final packet should tell the editor what must be heard.",
+        ],
+        label: "Sound export",
+        status: hasText(drafts.sound_map) ? "Document started" : "Needs sound map",
+      },
+    ];
+  }, [continuityRows, drafts, locationProfiles, productionAssets, sceneBreakdowns]);
+  const soundReadyCount = soundLayerCards.filter((layer) => layer.isReady).length;
+  const soundPriorityQueue = useMemo<
+    Array<{
+      id: string;
+      label: string;
+      nextAction: string;
+      priority: SoundScenePlan["priority"];
+      status: string;
+      type: string;
+    }>
+  >(() => {
+    const priorityWeight: Record<SoundScenePlan["priority"], number> = {
+      High: 0,
+      Medium: 1,
+      Low: 2,
+    };
+    const globalItems: Array<{
+      id: string;
+      label: string;
+      nextAction: string;
+      priority: SoundScenePlan["priority"];
+      status: string;
+      type: string;
+    }> = soundLayerCards
+      .filter((layer) => !layer.isReady)
+      .map((layer, index) => ({
+        id: `sound-layer-${layer.id}`,
+        label: layer.label,
+        nextAction: layer.items[0] ?? layer.detail,
+        priority: index < 2 ? "High" : "Medium",
+        status: layer.status,
+        type: "Sound layer",
+      }));
+    const sceneItems: Array<{
+      id: string;
+      label: string;
+      nextAction: string;
+      priority: SoundScenePlan["priority"];
+      status: string;
+      type: string;
+    }> = soundScenePlans.map((plan) => ({
+      id: `sound-scene-${plan.id}`,
+      label: plan.label,
+      nextAction: plan.blockers.length
+        ? `Fill ${plan.blockers.slice(0, 3).join(", ")}.`
+        : "Review sound continuity and export this scene.",
+      priority: plan.priority,
+      status: `${plan.readiness}% ready`,
+      type: "Scene sound",
+    }));
+
+    return [...globalItems, ...sceneItems]
+      .sort((first, second) => priorityWeight[first.priority] - priorityWeight[second.priority])
+      .slice(0, 6);
+  }, [soundLayerCards, soundScenePlans]);
   const storyDiagnostics = useMemo<StoryDiagnostic[]>(() => {
     const source = [project.logline, drafts.idea, drafts.treatment, drafts.story, drafts.synopsis, draftText]
       .join("\n")
@@ -5136,56 +5358,53 @@ export function ProjectWorkspace({
     }
 
     const sceneRows = sceneBreakdowns.length
-      ? sceneBreakdowns.map((scene) => {
-          const sceneAssets = assetsBySceneId[scene.id] ?? [];
-          const soundAssets = sceneAssets.filter((asset) => hasText(asset.sound_prompt));
-          const dialogueAssets = sceneAssets.filter((asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt));
-
-          return [
-            `## ${sceneBoardLabel(scene)}`,
-            "",
-            `Location / time: ${scene.location || "Not mapped yet"} / ${scene.time_of_day || "Not mapped yet"}`,
-            `Scene tone: ${scene.tone || scene.color_palette || project.tone || "Not filled yet"}`,
-            `Existing sound notes: ${scene.sound_notes || "Not filled yet"}`,
-            `Prompt cards with sound: ${soundAssets.length}`,
-            `Animation/dialogue handoff rows: ${dialogueAssets.length}`,
-            "",
-            "Room tone:",
-            "- Base ambience:",
-            "- Distance texture:",
-            "- Interior/exterior bleed:",
-            "- Silence rule:",
-            "",
-            "Practical sound list:",
-            "- Footsteps / movement:",
-            "- Clothing / body sounds:",
-            "- Props:",
-            "- Doors / surfaces / appliances / environment:",
-            "",
-            "Dialogue handling:",
-            "- Dialogue present:",
-            "- Breath and pause points:",
-            "- Off-screen or overlapping lines:",
-            "- Processing needs:",
-            "- Words or moments that need silence instead of score:",
-            "",
-            "Foley and effects:",
-            "- Required foley:",
-            "- Designed effects:",
-            "- Sounds to avoid:",
-            "",
-            "Animation handoff:",
-            "- Movement that must create sound:",
-            "- Camera movement that affects sound perspective:",
-            "- Sync risks:",
-            "",
-            "Edit notes:",
-            "- Lead-in sound:",
-            "- Button / cut point:",
-            "- Tail-out sound:",
-            "- Continuity risk:",
-          ].join("\n");
-        })
+      ? soundScenePlans
+          .map((plan) =>
+            [
+              `## ${plan.label}`,
+              "",
+              `Readiness: ${plan.readiness}%`,
+              `Priority: ${plan.priority}`,
+              `Location / time: ${plan.locationTime}`,
+              `Current blockers: ${plan.blockers.length ? plan.blockers.join(", ") : "No major sound blockers flagged"}`,
+              `Prompt-card sound rows: ${plan.soundPromptCount}`,
+              "",
+              "Room tone:",
+              `- ${plan.roomTone}`,
+              "- Base ambience:",
+              "- Distance texture:",
+              "- Interior/exterior bleed:",
+              "- Practical hum or air:",
+              "- Silence behavior:",
+              "",
+              "Foley and practical sounds:",
+              `- ${plan.foleyRule}`,
+              "- Footsteps / movement:",
+              "- Clothing / body sounds:",
+              "- Doors / surfaces / appliances / environment:",
+              "- Sounds to avoid:",
+              "",
+              "Dialogue and silence:",
+              `- ${plan.dialogueRule}`,
+              `- ${plan.silenceRule}`,
+              "- Breath and pause points:",
+              "- Off-screen or overlapping lines:",
+              "- Processing needs:",
+              "",
+              "Animation handoff:",
+              `- ${plan.animationHandoff}`,
+              "- Movement that must create sound:",
+              "- Camera movement that affects sound perspective:",
+              "- Sync risks:",
+              "",
+              "Edit notes:",
+              "- Lead-in sound:",
+              "- Button / cut point:",
+              "- Tail-out sound:",
+              "- Continuity risk:",
+            ].join("\n"),
+          )
+          .join("\n\n")
       : [
           "## Scene 1",
           "",
@@ -5211,6 +5430,32 @@ export function ProjectWorkspace({
           "- Processing needs:",
           "- Words or moments that need silence instead of score:",
         ].join("\n");
+    const layerRows = soundLayerCards
+      .map((layer, index) =>
+        [
+          `## Layer ${index + 1}: ${layer.label}`,
+          "",
+          `Status: ${layer.isReady ? "Ready" : "Needs work"} - ${layer.status}`,
+          layer.detail,
+          "",
+          "Checklist:",
+          ...layer.items.map((item) => `- ${item}`),
+        ].join("\n"),
+      )
+      .join("\n\n");
+    const queueRows = soundPriorityQueue.length
+      ? soundPriorityQueue
+          .map((item, index) =>
+            [
+              `${index + 1}. ${item.label}`,
+              `   Type: ${item.type}`,
+              `   Priority: ${item.priority}`,
+              `   Status: ${item.status}`,
+              `   Next action: ${item.nextAction}`,
+            ].join("\n"),
+          )
+          .join("\n\n")
+      : "No active sound blockers. Review the mix continuity and export checklist.";
     const propSounds = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? [])).slice(0, 16);
     const locationSounds = locationBibleNames.length
       ? locationBibleNames.map((location) => `- ${location}: room tone, floor texture, air, practical hum, distant life, and silence behavior.`)
@@ -5229,6 +5474,14 @@ export function ProjectWorkspace({
       "",
       "Purpose:",
       "Make sound a planned production layer before animation, dialogue timing, editing, and final packet export.",
+      "",
+      "# Sound Layer Board",
+      "",
+      layerRows,
+      "",
+      "# Do First Sound Queue",
+      "",
+      queueRows,
       "",
       "# Sound Thesis",
       "",
@@ -5257,6 +5510,14 @@ export function ProjectWorkspace({
       "# Scene-by-Scene Sound Map",
       "",
       sceneRows,
+      "",
+      "# Mix Continuity Rules",
+      "",
+      "- Room tone must match location, time of day, and scene pressure across cuts.",
+      "- Prop sounds should maintain the same material, weight, owner, and emotional meaning.",
+      "- Character movement should preserve wardrobe texture, fatigue, injury, breath, and distance.",
+      "- Dialogue should sit inside the scene space, not float above it.",
+      "- Silence should be intentional and tracked, especially before and after decisions.",
       "",
       "# Existing Prompt Sound Rows",
       "",
@@ -5291,7 +5552,7 @@ export function ProjectWorkspace({
     loadGeneratedDocument({
       content,
       docType: "sound_map",
-      status: "Sound Design Map prepared. Review the sound plan, then save the Sound Map stage.",
+      status: "Sound Design Map prepared. Review layers, queue, scene map, and export checks, then save.",
       stepId: "sound",
     });
   }
@@ -5407,7 +5668,7 @@ export function ProjectWorkspace({
       schedule:
         "Create a production schedule with lock gates, a do-first queue, dependency-based generation order, scene priority, shot generation sequence, image-before-animation review gates, sound handoff, continuity checks, and export gates.",
       sound:
-        "Create a sound design map with room tone, practical sounds, prop foley, dialogue and silence rules, animation handoff, edit notes, and final sound checklist.",
+        "Create a sound design map with a sound layer board, do-first sound queue, room tone, practical sounds, prop foley, dialogue and silence rules, animation handoff, mix continuity, edit notes, and final export checklist.",
       insert_shot:
         "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
       structure:
@@ -7950,12 +8211,101 @@ export function ProjectWorkspace({
               handoff, and export checks so generated scenes feel physically present.
             </p>
           </div>
-          <strong>{hasText(drafts.sound_map) ? "Mapped" : "Needs sound"}</strong>
+          <strong>
+            {soundReadyCount} of {soundLayerCards.length} sound layers ready
+          </strong>
+        </div>
+        <div className="sound-layer-grid">
+          {soundLayerCards.map((layer) => (
+            <article className={layer.isReady ? "sound-layer-card ready" : "sound-layer-card"} key={layer.id}>
+              <span>{layer.isReady ? "Ready" : "Sound layer"}</span>
+              <strong>{layer.label}</strong>
+              <p>{layer.detail}</p>
+              <small>{layer.status}</small>
+              <ul>
+                {layer.items.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+        <div className="sound-queue-list">
+          <div className="queue-heading">
+            <div>
+              <span>Do first sound queue</span>
+              <strong>Fix the sounds that will break continuity first.</strong>
+            </div>
+            <small>{soundPriorityQueue.length ? `${soundPriorityQueue.length} active items` : "No sound blockers"}</small>
+          </div>
+          {soundPriorityQueue.length ? (
+            soundPriorityQueue.map((item) => (
+              <article className={`sound-queue-item priority-${item.priority.toLowerCase()}`} key={item.id}>
+                <div>
+                  <span>{item.type}</span>
+                  <strong>{item.label}</strong>
+                  <p>{item.nextAction}</p>
+                </div>
+                <aside>
+                  <small>{item.priority}</small>
+                  <em>{item.status}</em>
+                </aside>
+              </article>
+            ))
+          ) : (
+            <article className="sound-queue-item priority-low">
+              <div>
+                <span>Ready</span>
+                <strong>Review the final mix checklist</strong>
+                <p>Sound blockers are clear. Build the Sound Design Map and include it in the production packet.</p>
+              </div>
+              <aside>
+                <small>Low</small>
+                <em>Ready for export</em>
+              </aside>
+            </article>
+          )}
+        </div>
+        <div className="sound-scene-grid">
+          {soundScenePlans.length ? (
+            soundScenePlans.slice(0, 6).map((plan) => (
+              <article className={`sound-scene-card priority-${plan.priority.toLowerCase()}`} key={plan.id}>
+                <div>
+                  <span>{plan.priority} priority</span>
+                  <strong>{plan.label}</strong>
+                </div>
+                <small>{plan.readiness}% sound-ready</small>
+                <p>{plan.roomTone}</p>
+                <dl>
+                  <div>
+                    <dt>Foley</dt>
+                    <dd>{plan.foleyRule}</dd>
+                  </div>
+                  <div>
+                    <dt>Dialogue / silence</dt>
+                    <dd>{plan.dialogueRule}</dd>
+                  </div>
+                  <div>
+                    <dt>Animation handoff</dt>
+                    <dd>{plan.animationHandoff}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))
+          ) : (
+            <article className="sound-scene-card empty">
+              <div>
+                <span>No scenes yet</span>
+                <strong>Build scene packets first.</strong>
+              </div>
+              <p>Sound mapping becomes useful once there is at least one scene with location, blocking, props, and tone.</p>
+            </article>
+          )}
         </div>
         <div className="sound-grid">
           <article className={hasText(drafts.sound_map) ? "sound-card active" : "sound-card"}>
             <span>Sound Design Map</span>
-            <strong>Room tone, foley, silence, dialogue, and handoff notes</strong>
+            <strong>{hasText(drafts.sound_map) ? "Sound map document saved" : "Room tone, foley, silence, dialogue, and handoff notes"}</strong>
             <p>
               Build scene-by-scene sound direction that supports animation, dialogue timing, and
               final edit decisions without defaulting to generic music.
@@ -8671,10 +9021,10 @@ export function ProjectWorkspace({
             <div className="bible-tool-card">
               <div>
                 <span>Sound discipline</span>
-                <strong>Map the room tone, foley, dialogue space, and silence before final export.</strong>
+                <strong>Map sound layers, scene blockers, dialogue space, and mix continuity before final export.</strong>
                 <p>
                   Build the sound plan from scene packets, prompt cards, locations, props, and
-                  workflow tools so animation and edit passes know what must be heard.
+                  workflow tools so animation, sound design, and edit passes know what must be heard and what must stay quiet.
                 </p>
               </div>
               <div className="dialogue-actions">

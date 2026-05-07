@@ -1719,6 +1719,211 @@ textarea:focus {
   line-height: 1.3;
 }
 
+.sound-layer-grid,
+.sound-scene-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.sound-layer-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sound-scene-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sound-layer-card,
+.sound-scene-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(251, 245, 242, 0.58)),
+    white;
+}
+
+.sound-layer-card.ready,
+.sound-scene-card.priority-low {
+  border-color: rgba(102, 127, 118, 0.28);
+  background:
+    linear-gradient(145deg, rgba(237, 241, 240, 0.92), rgba(255, 255, 255, 0.58)),
+    white;
+}
+
+.sound-scene-card.priority-high {
+  border-color: rgba(182, 93, 104, 0.35);
+}
+
+.sound-scene-card.priority-medium {
+  border-color: rgba(197, 151, 100, 0.34);
+}
+
+.sound-layer-card span,
+.sound-scene-card span,
+.sound-queue-list span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sound-layer-card strong,
+.sound-scene-card strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--deep);
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.sound-layer-card p,
+.sound-scene-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sound-layer-card small,
+.sound-scene-card > small {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(182, 93, 104, 0.22);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sound-layer-card.ready small,
+.sound-scene-card.priority-low > small {
+  border-color: rgba(102, 127, 118, 0.26);
+  color: #49675d;
+}
+
+.sound-layer-card ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 17px;
+  color: var(--deep);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.sound-queue-list {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid rgba(52, 47, 45, 0.1);
+  padding-top: 14px;
+}
+
+.sound-queue-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(237, 241, 240, 0.52)),
+    white;
+}
+
+.sound-queue-item.priority-high {
+  border-color: rgba(182, 93, 104, 0.35);
+}
+
+.sound-queue-item.priority-medium {
+  border-color: rgba(197, 151, 100, 0.34);
+}
+
+.sound-queue-item.priority-low {
+  border-color: rgba(102, 127, 118, 0.28);
+}
+
+.sound-queue-item strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--deep);
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.sound-queue-item p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sound-queue-item aside {
+  display: grid;
+  justify-items: end;
+  min-width: 130px;
+  gap: 6px;
+  text-align: right;
+}
+
+.sound-queue-item aside small {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(182, 93, 104, 0.1);
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sound-queue-item.priority-low aside small {
+  background: rgba(102, 127, 118, 0.12);
+  color: #49675d;
+}
+
+.sound-queue-item aside em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.sound-scene-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.sound-scene-card p,
+.sound-scene-card dl {
+  grid-column: 1 / -1;
+}
+
+.sound-scene-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.sound-scene-card dt {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sound-scene-card dd {
+  margin: 3px 0 0;
+  color: var(--deep);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .bible-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3523,6 +3728,8 @@ code {
     .schedule-lock-grid,
     .schedule-grid,
     .sound-grid,
+    .sound-layer-grid,
+    .sound-scene-grid,
     .character-card-grid,
     .character-sheet-grid,
     .location-sheet-grid,
@@ -3559,11 +3766,13 @@ code {
   }
 
   .generation-queue-item,
+  .sound-queue-item,
   .queue-heading {
     display: grid;
   }
 
-  .generation-queue-item aside {
+  .generation-queue-item aside,
+  .sound-queue-item aside {
     justify-items: start;
     min-width: 0;
     text-align: left;
