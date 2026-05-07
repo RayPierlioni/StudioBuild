@@ -29,6 +29,7 @@ type StageId =
   | "continuity"
   | "breakdown"
   | "schedule"
+  | "sound"
   | "production";
 type DocType =
   | "idea"
@@ -42,7 +43,8 @@ type DocType =
   | "dialogue_notes"
   | "continuity_tracker"
   | "breakdown_notes"
-  | "production_schedule";
+  | "production_schedule"
+  | "sound_map";
 export type StartMode = "dashboard" | "idea" | "script" | "breakdown";
 type GenerateMode =
   | "treatment"
@@ -53,6 +55,7 @@ type GenerateMode =
   | "dialogue"
   | "lookbook"
   | "schedule"
+  | "sound"
   | "insert_shot"
   | "structure";
 
@@ -221,6 +224,7 @@ const proFeatureList = [
   "Continuity tracker",
   "Detailed shot lists",
   "Production schedule",
+  "Sound Design Map",
   "Insert-shot prompt cards",
   "Image, animation, sound prompts",
   "Premium PDF packet export",
@@ -373,6 +377,15 @@ const pipelineSteps: Array<{
     description: "Choose the smartest generation order and production sprint plan.",
     placeholder:
       "Build a production schedule with story locks, asset locks, scene order, shot generation order, tool handoffs, and export gates.",
+  },
+  {
+    id: "sound",
+    projectStage: "sound",
+    docType: "sound_map",
+    label: "Sound Map",
+    description: "Plan room tone, practical sounds, dialogue space, silence, and effects.",
+    placeholder:
+      "Build a sound design map with room tone, foley, dialogue handling, silence, effects, animation handoff, and edit notes for every scene.",
   },
   {
     id: "production",
@@ -1462,6 +1475,7 @@ export function ProjectWorkspace({
     continuity_tracker: "",
     breakdown_notes: "",
     production_schedule: "",
+    sound_map: "",
   });
   const [workflowTools, setWorkflowTools] = useState("");
   const [versionLabel, setVersionLabel] = useState("");
@@ -1529,6 +1543,7 @@ export function ProjectWorkspace({
       completionLine("Animation plus sound prompts generated", animationPromptCount > 0),
       completionLine("Insert or prompt cards created", promptAssets.length > 0),
       completionLine("Production schedule started", hasText(drafts.production_schedule)),
+      completionLine("Sound design map started", hasText(drafts.sound_map)),
       completionLine("Production packet ready to export", sceneBreakdowns.length > 0 && productionAssets.length > 0),
     ];
     const completedCount = checks.filter((check) => check.isComplete).length;
@@ -2574,6 +2589,172 @@ export function ProjectWorkspace({
     });
   }
 
+  function buildSoundMapTemplate() {
+    if (!requirePro("Sound Design Map")) {
+      return;
+    }
+
+    const sceneRows = sceneBreakdowns.length
+      ? sceneBreakdowns.map((scene) => {
+          const sceneAssets = assetsBySceneId[scene.id] ?? [];
+          const soundAssets = sceneAssets.filter((asset) => hasText(asset.sound_prompt));
+          const dialogueAssets = sceneAssets.filter((asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt));
+
+          return [
+            `## ${sceneBoardLabel(scene)}`,
+            "",
+            `Location / time: ${scene.location || "Not mapped yet"} / ${scene.time_of_day || "Not mapped yet"}`,
+            `Scene tone: ${scene.tone || scene.color_palette || project.tone || "Not filled yet"}`,
+            `Existing sound notes: ${scene.sound_notes || "Not filled yet"}`,
+            `Prompt cards with sound: ${soundAssets.length}`,
+            `Animation/dialogue handoff rows: ${dialogueAssets.length}`,
+            "",
+            "Room tone:",
+            "- Base ambience:",
+            "- Distance texture:",
+            "- Interior/exterior bleed:",
+            "- Silence rule:",
+            "",
+            "Practical sound list:",
+            "- Footsteps / movement:",
+            "- Clothing / body sounds:",
+            "- Props:",
+            "- Doors / surfaces / appliances / environment:",
+            "",
+            "Dialogue handling:",
+            "- Dialogue present:",
+            "- Breath and pause points:",
+            "- Off-screen or overlapping lines:",
+            "- Processing needs:",
+            "- Words or moments that need silence instead of score:",
+            "",
+            "Foley and effects:",
+            "- Required foley:",
+            "- Designed effects:",
+            "- Sounds to avoid:",
+            "",
+            "Animation handoff:",
+            "- Movement that must create sound:",
+            "- Camera movement that affects sound perspective:",
+            "- Sync risks:",
+            "",
+            "Edit notes:",
+            "- Lead-in sound:",
+            "- Button / cut point:",
+            "- Tail-out sound:",
+            "- Continuity risk:",
+          ].join("\n");
+        })
+      : [
+          "## Scene 1",
+          "",
+          "Location / time: Not mapped yet",
+          "Scene tone: Not filled yet",
+          "",
+          "Room tone:",
+          "- Base ambience:",
+          "- Distance texture:",
+          "- Interior/exterior bleed:",
+          "- Silence rule:",
+          "",
+          "Practical sound list:",
+          "- Footsteps / movement:",
+          "- Clothing / body sounds:",
+          "- Props:",
+          "- Doors / surfaces / appliances / environment:",
+          "",
+          "Dialogue handling:",
+          "- Dialogue present:",
+          "- Breath and pause points:",
+          "- Off-screen or overlapping lines:",
+          "- Processing needs:",
+          "- Words or moments that need silence instead of score:",
+        ].join("\n");
+    const propSounds = uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.props ?? [])).slice(0, 16);
+    const locationSounds = locationBibleNames.length
+      ? locationBibleNames.map((location) => `- ${location}: room tone, floor texture, air, practical hum, distant life, and silence behavior.`)
+      : ["- Primary Location: room tone, floor texture, air, practical hum, distant life, and silence behavior."];
+    const promptSoundRows = productionAssets
+      .filter((asset) => hasText(asset.sound_prompt))
+      .map((asset) => `- ${asset.name}: ${asset.sound_prompt}`)
+      .slice(0, 30);
+    const content = [
+      `# Sound Design Map - ${project.title || "Untitled StudioBuild Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Workflow/tools: ${workflowTools || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Make sound a planned production layer before animation, dialogue timing, editing, and final packet export.",
+      "",
+      "# Sound Thesis",
+      "",
+      "- The film should sound like:",
+      "- The audience should feel this pressure in the room tone:",
+      "- Silence should be used when:",
+      "- Music should only appear when:",
+      "- Sounds to avoid:",
+      "",
+      "# Location Sound Anchors",
+      "",
+      ...locationSounds,
+      "",
+      "# Character Sound Anchors",
+      "",
+      ...(characterBibleNames.length
+        ? characterBibleNames.map((name) => `- ${name}: breath, movement, clothing texture, vocal space, and emotional silence.`)
+        : ["- Primary Character: breath, movement, clothing texture, vocal space, and emotional silence."]),
+      "",
+      "# Prop And Foley Anchors",
+      "",
+      propSounds.length
+        ? propSounds.map((prop) => `- ${prop}: close sound, handling texture, emotional meaning, and continuity risk.`).join("\n")
+        : "- Primary prop: close sound, handling texture, emotional meaning, and continuity risk.",
+      "",
+      "# Scene-by-Scene Sound Map",
+      "",
+      sceneRows,
+      "",
+      "# Existing Prompt Sound Rows",
+      "",
+      promptSoundRows.length ? promptSoundRows.join("\n") : "- No generated sound prompts yet.",
+      "",
+      "# Dialogue And Silence Rules",
+      "",
+      "- Keep dialogue intelligible but not sterile.",
+      "- Preserve room tone under every line.",
+      "- Use breath, cloth, hands, and object sounds to replace over-explained emotion.",
+      "- Use silence before or after decisions.",
+      "- Avoid music under scenes where sound design can carry the pressure.",
+      "",
+      "# Animation Sound Handoff",
+      "",
+      "- Every animated shot needs a sound layer tied to visible motion.",
+      "- Camera movement should change sonic perspective only when motivated.",
+      "- Prop movement should have specific foley, not generic whooshes.",
+      "- Character movement should include breath, cloth, and contact sounds.",
+      "- Dialogue timing must leave space for pauses and reaction beats.",
+      "",
+      "# Export Checklist",
+      "",
+      "- Every scene has room tone.",
+      "- Every key prop has a sound identity.",
+      "- Every location has a sound anchor.",
+      "- Every dialogue scene has pause/silence notes.",
+      "- Every animation prompt has sound or dialogue handoff notes.",
+      "- Music is absent unless the story specifically requires it.",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "sound_map",
+      status: "Sound Design Map prepared. Review the sound plan, then save the Sound Map stage.",
+      stepId: "sound",
+    });
+  }
+
   function selectedTextareaText() {
     const textarea = textareaRef.current;
 
@@ -2684,6 +2865,8 @@ export function ProjectWorkspace({
         "Create a visual look book with a film-wide visual thesis, palette, lighting grammar, camera grammar, character and location anchors, recurring motifs, negative prompts, and tool-specific consistency rules.",
       schedule:
         "Create a production schedule and generation order with story locks, character/location/look locks, scene priority, shot generation sequence, tool handoff, continuity checks, and export gates.",
+      sound:
+        "Create a sound design map with room tone, practical sounds, prop foley, dialogue and silence rules, animation handoff, edit notes, and final sound checklist.",
       insert_shot:
         "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
       structure:
@@ -2782,6 +2965,7 @@ export function ProjectWorkspace({
       drafts.treatment.trim() ||
       drafts.look_book.trim() ||
       drafts.production_schedule.trim() ||
+      drafts.sound_map.trim() ||
       drafts.story.trim()
     );
   }
@@ -3060,6 +3244,7 @@ export function ProjectWorkspace({
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Schedule", value: drafts.production_schedule },
+      { label: "Sound Design Map", value: drafts.sound_map },
       { label: "Production Notes", value: drafts.story },
     ];
 
@@ -3195,6 +3380,7 @@ export function ProjectWorkspace({
       { label: "Continuity Tracker", value: drafts.continuity_tracker },
       { label: "Breakdown Notes", value: drafts.breakdown_notes },
       { label: "Production Schedule", value: drafts.production_schedule },
+      { label: "Sound Design Map", value: drafts.sound_map },
       { label: "Production Notes", value: drafts.story },
     ].filter((section) => section.value.trim());
 
@@ -3925,6 +4111,59 @@ export function ProjectWorkspace({
         </div>
       </section>
 
+      <section className="sound-board" aria-label="Sound design map">
+        <div className="board-heading">
+          <div>
+            <span>Sound design</span>
+            <h4>Plan what the film hears before the edit exposes what is missing.</h4>
+            <p>
+              The Sound Design Map tracks room tone, foley, dialogue space, silence, animation
+              handoff, and export checks so generated scenes feel physically present.
+            </p>
+          </div>
+          <strong>{hasText(drafts.sound_map) ? "Mapped" : "Needs sound"}</strong>
+        </div>
+        <div className="sound-grid">
+          <article className={hasText(drafts.sound_map) ? "sound-card active" : "sound-card"}>
+            <span>Sound Design Map</span>
+            <strong>Room tone, foley, silence, dialogue, and handoff notes</strong>
+            <p>
+              Build scene-by-scene sound direction that supports animation, dialogue timing, and
+              final edit decisions without defaulting to generic music.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("sound")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildSoundMapTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Sound Map" : "Pro: build sound map"}
+              </button>
+            </div>
+          </article>
+          <article className="sound-card">
+            <span>Scene Sound Coverage</span>
+            <strong>{sceneBreakdowns.filter((scene) => hasText(scene.sound_notes)).length} of {sceneBreakdowns.length || 0} scene{sceneBreakdowns.length === 1 ? "" : "s"}</strong>
+            <p>
+              Scene packets with sound notes become the first layer of the map: location texture,
+              close physical sounds, dialogue pressure, and silence.
+            </p>
+          </article>
+          <article className="sound-card">
+            <span>Prompt Sound Rows</span>
+            <strong>{productionAssets.filter((asset) => hasText(asset.sound_prompt)).length} sound prompt{productionAssets.filter((asset) => hasText(asset.sound_prompt)).length === 1 ? "" : "s"}</strong>
+            <p>
+              Prompt-card sound rows tell animation and edit tools what must be heard, what should
+              stay quiet, and what sync risks need checking.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <div className="export-panel" aria-label="Production packet export">
         <div>
           <span>Production packet</span>
@@ -4187,6 +4426,31 @@ export function ProjectWorkspace({
               </div>
             </div>
           ) : null}
+          {activeStepId === "sound" ? (
+            <div className="bible-tool-card">
+              <div>
+                <span>Sound discipline</span>
+                <strong>Map the room tone, foley, dialogue space, and silence before final export.</strong>
+                <p>
+                  Build the sound plan from scene packets, prompt cards, locations, props, and
+                  workflow tools so animation and edit passes know what must be heard.
+                </p>
+              </div>
+              <div className="dialogue-actions">
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildSoundMapTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Sound Map" : "Pro: Build Sound Map"}
+                </button>
+                <button className="button secondary" type="button" onClick={() => copyExpertPrompt("sound")}>
+                  Copy sound map prompt
+                </button>
+              </div>
+            </div>
+          ) : null}
           {activeStepId === "script" || activeStepId === "dialogue" ? (
             <div className="dialogue-tool-card">
               <div>
@@ -4368,6 +4632,9 @@ export function ProjectWorkspace({
           </button>
           <button type="button" onClick={() => copyExpertPrompt("schedule")}>
             Copy schedule prompt
+          </button>
+          <button type="button" onClick={() => copyExpertPrompt("sound")}>
+            Copy sound map prompt
           </button>
           <button type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
             {isSavingPacket ? "Saving scene packet..." : "Parse + save scene packet"}

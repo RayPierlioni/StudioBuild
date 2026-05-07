@@ -14,6 +14,7 @@ const allowedDocTypes = new Set([
   "continuity_tracker",
   "breakdown_notes",
   "production_schedule",
+  "sound_map",
 ]);
 const allowedStages = new Set([
   "idea",
@@ -28,6 +29,7 @@ const allowedStages = new Set([
   "continuity",
   "breakdown",
   "schedule",
+  "sound",
 ]);
 
 type RouteContext = {

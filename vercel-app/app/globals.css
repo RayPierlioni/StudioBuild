@@ -1258,7 +1258,8 @@ textarea:focus {
 .story-lab-board,
 .bible-board,
 .visual-board,
-.schedule-board {
+.schedule-board,
+.sound-board {
   display: grid;
   gap: 14px;
   border: 1px solid rgba(52, 47, 45, 0.12);
@@ -1272,7 +1273,8 @@ textarea:focus {
 .story-lab-grid,
 .bible-grid,
 .visual-grid,
-.schedule-grid {
+.schedule-grid,
+.sound-grid {
   display: grid;
   gap: 10px;
 }
@@ -1293,10 +1295,15 @@ textarea:focus {
   grid-template-columns: 1.1fr 0.95fr 0.95fr;
 }
 
+.sound-grid {
+  grid-template-columns: 1.1fr 0.95fr 0.95fr;
+}
+
 .story-lab-card,
 .bible-card,
 .visual-card,
 .schedule-card,
+.sound-card,
 .story-tool-card,
 .bible-tool-card {
   border: 1px solid rgba(52, 47, 45, 0.1);
@@ -1310,7 +1317,8 @@ textarea:focus {
 .story-lab-card.active,
 .bible-card.active,
 .visual-card.active,
-.schedule-card.active {
+.schedule-card.active,
+.sound-card.active {
   border-color: rgba(102, 127, 118, 0.26);
   background:
     linear-gradient(145deg, rgba(237, 241, 240, 0.92), rgba(255, 255, 255, 0.54)),
@@ -1321,6 +1329,7 @@ textarea:focus {
 .bible-card span,
 .visual-card span,
 .schedule-card span,
+.sound-card span,
 .story-tool-card span,
 .bible-tool-card span {
   color: var(--accent-dark);
@@ -1334,6 +1343,7 @@ textarea:focus {
 .bible-card strong,
 .visual-card strong,
 .schedule-card strong,
+.sound-card strong,
 .story-tool-card strong,
 .bible-tool-card strong {
   display: block;
@@ -1347,6 +1357,7 @@ textarea:focus {
 .bible-card p,
 .visual-card p,
 .schedule-card p,
+.sound-card p,
 .story-tool-card p,
 .bible-tool-card p {
   margin: 10px 0 0;
@@ -2570,6 +2581,7 @@ code {
     .bible-grid,
     .visual-grid,
     .schedule-grid,
+    .sound-grid,
     .story-tool-card,
     .dialogue-tool-card,
     .dialogue-flag-grid,
