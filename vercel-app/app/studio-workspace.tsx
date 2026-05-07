@@ -229,6 +229,7 @@ type CharacterContinuityProfile = {
   appearances: SceneBreakdown[];
   coCharacters: string[];
   locations: string[];
+  missing: string[];
   name: string;
   productionAssets: ProductionAsset[];
   props: string[];
@@ -2006,18 +2007,22 @@ export function ProjectWorkspace({
       const toneNotes = uniqueSorted(appearances.map((scene) => scene.tone || scene.color_palette)).slice(0, 8);
       const soundNotes = uniqueSorted(appearances.map((scene) => scene.sound_notes)).slice(0, 5);
       const readinessChecks = [
-        appearances.length > 0,
-        wardrobe.length > 0,
-        props.length > 0,
-        locations.length > 0,
-        coCharacters.length > 0,
-        characterAssets.some((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt)),
+        { label: "scene appearances", ready: appearances.length > 0 },
+        { label: "wardrobe baseline", ready: wardrobe.length > 0 },
+        { label: "carried props", ready: props.length > 0 },
+        { label: "location map", ready: locations.length > 0 },
+        { label: "relationship map", ready: coCharacters.length > 0 },
+        {
+          label: "prompt rows",
+          ready: characterAssets.some((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt)),
+        },
       ];
 
       return {
         appearances,
         coCharacters,
         locations,
+        missing: readinessChecks.filter((check) => !check.ready).map((check) => check.label),
         name,
         productionAssets: characterAssets.sort((first, second) => {
           const firstScene = sceneById.get(first.scene_breakdown_id)?.scene_number ?? 999;
@@ -2025,7 +2030,7 @@ export function ProjectWorkspace({
           return firstScene - secondScene || first.order_index - second.order_index;
         }),
         props,
-        readiness: Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100),
+        readiness: Math.round((readinessChecks.filter((check) => check.ready).length / readinessChecks.length) * 100),
         sceneLabels: appearances.map(sceneBoardLabel),
         soundNotes,
         toneNotes,
@@ -2541,11 +2546,19 @@ export function ProjectWorkspace({
       ? characterProfiles
       : [
           {
-            appearances: [],
-            coCharacters: [],
-            locations: [],
+             appearances: [],
+             coCharacters: [],
+             locations: [],
             name: "Primary Character",
             productionAssets: [],
+            missing: [
+              "scene appearances",
+              "wardrobe baseline",
+              "carried props",
+              "location map",
+              "relationship map",
+              "prompt rows",
+            ],
             props: [],
             readiness: 0,
             sceneLabels: [],
@@ -2670,6 +2683,131 @@ export function ProjectWorkspace({
       status: `${profiles.length} character bible section${profiles.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
       stepId: "characters",
     });
+  }
+
+  function buildCharacterProfileSheet(profile: CharacterContinuityProfile) {
+    if (!requirePro("Character profile sheets")) {
+      return;
+    }
+
+    const sheet = [
+      `# Character Profile - ${profile.name}`,
+      "",
+      `Project: ${project.title || "Untitled MiseForge Project"}`,
+      `Continuity readiness: ${profile.readiness}%`,
+      `Scene appearances: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+      `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
+      "",
+      "## Identity Lock",
+      "",
+      "- Face, age, build, and silhouette:",
+      "- Hair and grooming:",
+      "- Eyes / expression baseline:",
+      "- Posture, walk, hands, and recurring physical behavior:",
+      "- Distinguishing texture, scar, object, or visual detail:",
+      "",
+      "## Wardrobe Lock",
+      "",
+      `- Detected wardrobe: ${profile.wardrobe.length ? profile.wardrobe.join(", ") : "Not mapped yet"}`,
+      "- Baseline costume:",
+      "- Scene-specific changes:",
+      "- What must never drift:",
+      "- What can change because of story state:",
+      "",
+      "## Prop and Object Continuity",
+      "",
+      `- Props near character: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+      "- Objects carried into scenes:",
+      "- Objects handed off or lost:",
+      "- Close-up / insert-shot risks:",
+      "",
+      "## Voice and Performance",
+      "",
+      "- Speech rhythm:",
+      "- Status behavior:",
+      "- Silence behavior:",
+      "- What this character avoids saying directly:",
+      "- Dialogue words, cliches, or exposition habits to avoid:",
+      "",
+      "## Relationship Map",
+      "",
+      `- Shares scenes with: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+      "- Power dynamics:",
+      "- Secrets, debts, grudges, loyalties:",
+      "- How the relationship changes by the final scene:",
+      "",
+      "## Scene State Map",
+      "",
+      profile.appearances.length
+        ? profile.appearances
+            .map((scene) =>
+              [
+                `### ${sceneBoardLabel(scene)}`,
+                "",
+                `- Location: ${scene.location || "Not mapped yet"}`,
+                `- Wardrobe: ${listText(scene.wardrobe, "Not filled yet")}`,
+                `- Props: ${listText(scene.props, "Not filled yet")}`,
+                `- Tone: ${scene.tone || scene.color_palette || "Not filled yet"}`,
+                "- Emotional state entering:",
+                "- Emotional state leaving:",
+                "- Continuity risk:",
+              ].join("\n"),
+            )
+            .join("\n\n")
+        : "### Scene 1\n\n- Emotional state entering:\n- Emotional state leaving:\n- Wardrobe:\n- Props:\n- Continuity risk:",
+      "",
+      "## Reusable Prompt Anchor",
+      "",
+      buildCharacterPromptAnchor(profile),
+    ].join("\n");
+    const currentBible = drafts.character_bible.trim();
+    const content = currentBible && !currentBible.includes(`# Character Profile - ${profile.name}`)
+      ? `${currentBible}\n\n---\n\n${sheet}`
+      : sheet;
+
+    loadGeneratedDocument({
+      content,
+      docType: "character_bible",
+      status: `${profile.name} profile sheet prepared. Fill identity, wardrobe, voice, relationship, and scene-state locks, then save.`,
+      stepId: "characters",
+    });
+  }
+
+  function buildCharacterPromptAnchor(profile: CharacterContinuityProfile) {
+    return [
+      "Use this exact character continuity anchor whenever generating images, animation, dialogue, or sound for this character.",
+      "",
+      `Character: ${profile.name}`,
+      `Project: ${project.title || "Untitled MiseForge Project"}`,
+      `Genre/tone: ${project.genre || "Not specified"} / ${project.tone || "Not specified"}`,
+      `Scene appearances: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+      `Locations: ${profile.locations.length ? profile.locations.join(", ") : "Not mapped yet"}`,
+      `Wardrobe continuity: ${profile.wardrobe.length ? profile.wardrobe.join(", ") : "Not mapped yet"}`,
+      `Props carried or nearby: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+      `Relationship context: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+      `Tone / sound anchors: ${[...profile.toneNotes, ...profile.soundNotes].filter(Boolean).join("; ") || "Not mapped yet"}`,
+      "",
+      "Rules:",
+      "- Keep face, age, build, silhouette, wardrobe baseline, hair, posture, and carried props consistent.",
+      "- Do not invent new clothes, props, injuries, facial details, or emotional state changes unless the scene bible says so.",
+      "- Preserve performance rhythm and subtext. Avoid generic AI dialogue and direct emotional explanation.",
+      "- If a prompt conflicts with this anchor, rewrite the prompt to protect continuity.",
+      `- Missing anchors to fill next: ${profile.missing.length ? profile.missing.join(", ") : "none"}.`,
+    ].join("\n");
+  }
+
+  async function copyCharacterPromptAnchor(profile: CharacterContinuityProfile) {
+    if (!requirePro("Character consistency prompts")) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildCharacterPromptAnchor(profile));
+      setSaveStatus(`${profile.name} consistency prompt copied.`);
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Build the profile sheet and copy the prompt anchor from the editor.");
+    }
   }
 
   function buildLocationBibleTemplate() {
@@ -3917,6 +4055,7 @@ export function ProjectWorkspace({
               `Continuity readiness: ${profile.readiness}%`,
               `Scene appearances: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
               `Shared scenes with: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+              `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
               "",
               "Wardrobe:",
               markdownList(profile.wardrobe),
@@ -4188,6 +4327,7 @@ export function ProjectWorkspace({
                         <section><h4>Relationships</h4>${htmlList(profile.coCharacters)}</section>
                         <section><h4>Locations</h4>${htmlList(profile.locations)}</section>
                         <section><h4>Tone / Sound</h4>${htmlList([...profile.toneNotes, ...profile.soundNotes])}</section>
+                        <section><h4>Missing Anchors</h4>${htmlList(profile.missing, "None flagged")}</section>
                       </div>
                     </article>
                   `,
@@ -5416,24 +5556,109 @@ export function ProjectWorkspace({
             </div>
           ) : null}
           {activeStepId === "characters" ? (
-            <div className="bible-tool-card">
-              <div>
-                <span>Character continuity</span>
-                <strong>Make every recurring person reusable across images, animation, and dialogue.</strong>
-                <p>
-                  Use the scene packets to start a bible, then fill the visual anchor, wardrobe,
-                  speech pattern, carried props, and continuity risks.
-                </p>
+            <>
+              <div className="bible-tool-card">
+                <div>
+                  <span>Character continuity</span>
+                  <strong>Make every recurring person reusable across images, animation, and dialogue.</strong>
+                  <p>
+                    Use the scene packets to start a bible, then fill the visual anchor, wardrobe,
+                    speech pattern, carried props, and continuity risks.
+                  </p>
+                </div>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildCharacterBibleTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Character Bible" : "Pro: Build Character Bible"}
+                </button>
               </div>
-              <button
-                className="button"
-                type="button"
-                onClick={buildCharacterBibleTemplate}
-                disabled={!entitlement.isPro}
-              >
-                {entitlement.isPro ? "Build Character Bible" : "Pro: Build Character Bible"}
-              </button>
-            </div>
+              <div className="character-bible-studio" aria-label="Character bible sheets">
+                <div className="tool-heading">
+                  <div>
+                    <h4>Character sheets</h4>
+                    <p>
+                      Build one reusable profile per character so visual identity, wardrobe, props,
+                      voice, relationships, and scene state stop drifting between generated shots.
+                    </p>
+                  </div>
+                  <span>{characterProfiles.length ? `${characterProfiles.length} detected` : "Start manually"}</span>
+                </div>
+                {characterProfiles.length ? (
+                  <div className="character-sheet-grid">
+                    {characterProfiles.map((profile) => (
+                      <article className="character-sheet-card" key={profile.name}>
+                        <div className="character-profile-head">
+                          <div>
+                            <span>{profile.readiness}% ready</span>
+                            <strong>{profile.name}</strong>
+                          </div>
+                          <small>{profile.appearances.length} scene{profile.appearances.length === 1 ? "" : "s"}</small>
+                        </div>
+                        <dl className="character-sheet-list">
+                          <div>
+                            <dt>Visual source</dt>
+                            <dd>{profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}</dd>
+                          </div>
+                          <div>
+                            <dt>Wardrobe</dt>
+                            <dd>{profile.wardrobe.length ? profile.wardrobe.slice(0, 4).join(", ") : "Needs baseline"}</dd>
+                          </div>
+                          <div>
+                            <dt>Props</dt>
+                            <dd>{profile.props.length ? profile.props.slice(0, 4).join(", ") : "Needs carried objects"}</dd>
+                          </div>
+                          <div>
+                            <dt>Relationships</dt>
+                            <dd>{profile.coCharacters.length ? profile.coCharacters.join(", ") : "Needs relationship map"}</dd>
+                          </div>
+                        </dl>
+                        <div className="missing-anchor-row">
+                          <span>Missing</span>
+                          <p>{profile.missing.length ? profile.missing.join(", ") : "No major anchors flagged."}</p>
+                        </div>
+                        <div className="bible-actions">
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => buildCharacterProfileSheet(profile)}
+                            disabled={!entitlement.isPro}
+                          >
+                            {entitlement.isPro ? "Build profile sheet" : "Pro: profile sheet"}
+                          </button>
+                          <button
+                            className="button secondary"
+                            type="button"
+                            onClick={() => void copyCharacterPromptAnchor(profile)}
+                            disabled={!entitlement.isPro}
+                          >
+                            {entitlement.isPro ? "Copy consistency prompt" : "Pro: consistency prompt"}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="character-empty-studio">
+                    <strong>No characters have been detected yet.</strong>
+                    <p>
+                      Save a scene packet with character names, or start a manual Primary Character
+                      profile and fill the identity locks yourself.
+                    </p>
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={buildCharacterBibleTemplate}
+                      disabled={!entitlement.isPro}
+                    >
+                      {entitlement.isPro ? "Start Primary Character Bible" : "Pro: start character bible"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           ) : null}
           {activeStepId === "locations" ? (
             <div className="bible-tool-card">
