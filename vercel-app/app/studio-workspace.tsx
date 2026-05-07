@@ -207,6 +207,13 @@ type DialogueCharacterVoice = {
   risk: string;
 };
 
+type StoryDiagnostic = {
+  detail: string;
+  isReady: boolean;
+  label: string;
+  next: string;
+};
+
 type DialogueScan = {
   averageWordsPerLine: number;
   characterCount: number;
@@ -1189,6 +1196,10 @@ function buildCharacterVoices(entries: DialogueLineEntry[]) {
     })
     .sort((first, second) => second.lineCount - first.lineCount)
     .slice(0, 6);
+}
+
+function storySourceHas(source: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(source));
 }
 
 function analyzeDialogueSource({
@@ -2944,6 +2955,52 @@ export function ProjectWorkspace({
       total: checks.length,
     };
   }, [drafts, productionAssets, project, sceneBreakdowns]);
+  const storyDiagnostics = useMemo<StoryDiagnostic[]>(() => {
+    const source = [project.logline, drafts.idea, drafts.treatment, drafts.story, drafts.synopsis, draftText]
+      .join("\n")
+      .toLowerCase();
+
+    return [
+      {
+        detail: project.logline || "No one-sentence movie promise has been locked yet.",
+        isReady: hasText(project.logline) || storySourceHas(source, [/\blogline\b/, /\bwhen .+ must\b/]),
+        label: "Logline promise",
+        next: "Write one sentence with protagonist, active goal, pressure, and cost.",
+      },
+      {
+        detail: "Protagonist, external want, inner need, obstacle, stakes, and irony.",
+        isReady: storySourceHas(source, [/\bprotagonist\b/, /\bexternal want\b/, /\bwant\b.+\bneed\b/, /\bstakes\b/]),
+        label: "Story engine",
+        next: "Fill the protagonist want/need and central obstacle before scenes expand.",
+      },
+      {
+        detail: "What the film argues beneath the plot.",
+        isReady: storySourceHas(source, [/\btheme statement\b/, /\bcore thesis\b/, /\breally about beneath the plot\b/]),
+        label: "Theme statement",
+        next: "Name the emotional argument so every scene can make a sharper choice.",
+      },
+      {
+        detail: "Where the main character starts, what pressure changes them, and where they end.",
+        isReady: storySourceHas(source, [/\bcharacter arc\b/, /\bprotagonist starts\b/, /\bprotagonist ends\b/, /\bwant vs\.? need\b/]),
+        label: "Character arc",
+        next: "Map start state, false strategy, pressure, midpoint shift, and final decision.",
+      },
+      {
+        detail: "Opening image, inciting incident, midpoint, low point, final choice, ending image.",
+        isReady: storySourceHas(source, [/\bact 1\b/, /\bmidpoint\b/, /\blow point\b/, /\bending image\b/, /\bact movement\b/]),
+        label: "Act path",
+        next: "Turn the idea into a beginning, escalation, reversal, collapse, and final proof.",
+      },
+      {
+        detail: "Professional prose that can become scenes, packets, shot lists, prompts, and exports.",
+        isReady: hasText(drafts.treatment) && storySourceHas(source, [/\btreatment draft\b/, /\bsequence\b/, /\bset piece\b/]),
+        label: "Treatment draft",
+        next: "Write the story in cinematic paragraphs, not just bullets.",
+      },
+    ];
+  }, [draftText, drafts, project]);
+  const storyReadyCount = storyDiagnostics.filter((item) => item.isReady).length;
+  const storySuiteScore = Math.round((storyReadyCount / storyDiagnostics.length) * 100);
   const productionBoard = useMemo(() => {
     const sceneById = new Map(sceneBreakdowns.map((scene) => [scene.id, scene]));
     const sceneItems = (field: "props" | "wardrobe" | "set_dressing") =>
@@ -3207,35 +3264,67 @@ export function ProjectWorkspace({
 
   function buildLoglineLabTemplate() {
     const seed = drafts.idea.trim() || draftText.trim() || project.logline || project.notes || "";
+    const diagnosticRows = storyDiagnostics
+      .map((item) => `- ${item.isReady ? "Ready" : "Needs work"}: ${item.label} - ${item.isReady ? item.detail : item.next}`)
+      .join("\n");
     const content = [
       `# Logline Lab - ${project.title || "Untitled MiseForge Project"}`,
       "",
       `Genre: ${project.genre || "Not specified"}`,
       `Tone: ${project.tone || "Not specified"}`,
+      `Current story suite score: ${storySuiteScore}%`,
       "",
       "## Raw Material",
       "",
       seed || "Paste the rough idea, opening image, or premise here.",
+      "",
+      "## Story Diagnostic",
+      "",
+      diagnosticRows,
+      "",
+      "## Premise Lock",
+      "",
+      "The movie is about:",
+      "- ",
+      "",
+      "The audience should lean forward because:",
+      "- ",
+      "",
+      "The first image that proves this is cinema:",
+      "- ",
       "",
       "## Story Engine",
       "",
       "Protagonist:",
       "- Who carries the movie?",
       "",
-      "Want:",
+      "External want:",
       "- What do they actively pursue?",
       "",
-      "Need:",
+      "Inner need:",
       "- What truth, wound, or limitation must change under the plot?",
       "",
-      "Obstacle:",
+      "Central obstacle:",
       "- What person, system, fear, environment, or deadline blocks them?",
       "",
       "Stakes:",
       "- What gets lost if they fail?",
       "",
+      "Central conflict:",
+      "- The story pressure comes from [want] colliding with [obstacle] while [stakes] get worse.",
+      "",
+      "Theme statement:",
+      "- This film argues that...",
+      "",
       "Hook / irony:",
       "- What makes this the same but different?",
+      "",
+      "## Want vs. Need Test",
+      "",
+      "- What the protagonist thinks will save them:",
+      "- What the story proves they actually need:",
+      "- The scene where want and need first collide:",
+      "- The final decision that proves change or refusal to change:",
       "",
       "## Logline Tests",
       "",
@@ -3244,6 +3333,7 @@ export function ProjectWorkspace({
       "- Is there pressure, cost, or contradiction?",
       "- Does the genre promise feel clear?",
       "- Does it avoid vague words like journey, destiny, truth, or darkness unless they are concrete?",
+      "- Does it imply a movie engine, not just a mood?",
       "",
       "## Logline Drafts",
       "",
@@ -3262,6 +3352,7 @@ export function ProjectWorkspace({
       "- Strengthen the active verb.",
       "- Replace abstract stakes with a visible cost.",
       "- Make the obstacle specific enough to generate scenes.",
+      "- Make the same-but-different hook clear enough that the film does not sound generic.",
     ].join("\n");
 
     loadGeneratedDocument({
@@ -3272,12 +3363,216 @@ export function ProjectWorkspace({
     });
   }
 
+  function buildStoryEngineTemplate() {
+    const source = drafts.idea.trim() || draftText.trim() || project.logline || project.notes || "";
+    const content = [
+      `# Story Engine Dossier - ${project.title || "Untitled MiseForge Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      `Story suite score: ${storySuiteScore}% (${storyReadyCount} of ${storyDiagnostics.length} story locks started)`,
+      "",
+      "Purpose:",
+      "This page turns a raw idea into a usable film engine before treatment, script, breakdowns, shot lists, and prompt cards begin.",
+      "",
+      "## Current Story Locks",
+      "",
+      storyDiagnostics
+        .map((item) => `- ${item.isReady ? "Ready" : "Needs work"}: ${item.label} - ${item.isReady ? item.detail : item.next}`)
+        .join("\n"),
+      "",
+      "## Core Premise",
+      "",
+      "In one sentence, this film is:",
+      "- ",
+      "",
+      "The world or situation:",
+      "- ",
+      "",
+      "The pressure that makes the story start now:",
+      "- ",
+      "",
+      "The visual image that proves the premise:",
+      "- ",
+      "",
+      "## Protagonist Want vs. Need",
+      "",
+      "Protagonist:",
+      "- ",
+      "",
+      "External want:",
+      "- ",
+      "",
+      "Inner need:",
+      "- ",
+      "",
+      "False strategy:",
+      "- ",
+      "",
+      "What they avoid admitting:",
+      "- ",
+      "",
+      "## Central Conflict",
+      "",
+      "Opposing force:",
+      "- ",
+      "",
+      "Why the obstacle is not easy to beat:",
+      "- ",
+      "",
+      "Escalating cost:",
+      "- ",
+      "",
+      "Deadline, trap, rule, or point of no return:",
+      "- ",
+      "",
+      "## Theme Statement",
+      "",
+      "The film argues:",
+      "- ",
+      "",
+      "The counter-argument:",
+      "- ",
+      "",
+      "How the final image proves or complicates the theme:",
+      "- ",
+      "",
+      "## Same-But-Different Promise",
+      "",
+      "Familiar cinematic pleasure:",
+      "- ",
+      "",
+      "Fresh angle:",
+      "- ",
+      "",
+      "What this film must never become:",
+      "- ",
+      "",
+      "## Scene Seeds",
+      "",
+      "1. Opening image:",
+      "   - Story purpose:",
+      "   - Production promise:",
+      "",
+      "2. First collision:",
+      "   - Story purpose:",
+      "   - Production promise:",
+      "",
+      "3. Midpoint reveal or reversal:",
+      "   - Story purpose:",
+      "   - Production promise:",
+      "",
+      "4. Final decision:",
+      "   - Story purpose:",
+      "   - Production promise:",
+      "",
+      "## Source Notes",
+      "",
+      source || "- ",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "idea",
+      status: "Story Engine Dossier prepared. Fill the story locks, then save the Idea stage.",
+      stepId: "idea",
+    });
+  }
+
+  function buildCharacterArcMapTemplate() {
+    if (!requirePro("Character Arc Map")) {
+      return;
+    }
+
+    const detectedCharacters = characterBibleNames.length ? characterBibleNames : ["Protagonist", "Primary Opposition"];
+    const characterRows = detectedCharacters
+      .slice(0, 8)
+      .map((name) =>
+        [
+          `## ${name}`,
+          "",
+          "Story function:",
+          "- ",
+          "",
+          "Opening state:",
+          "- What they believe:",
+          "- What they want:",
+          "- What they fear:",
+          "- How they protect themselves:",
+          "",
+          "Pressure path:",
+          "- Inciting pressure:",
+          "- First wrong strategy:",
+          "- Midpoint shift:",
+          "- Cost or collapse:",
+          "- Final choice:",
+          "",
+          "Ending state:",
+          "- What changed:",
+          "- What did not change:",
+          "- Visual proof of the change:",
+          "",
+          "Dialogue and behavior rules:",
+          "- What they say when defensive:",
+          "- What they never say directly:",
+          "- Physical behavior that reveals pressure:",
+        ].join("\n"),
+      );
+    const content = [
+      `# Character Arc Map - ${project.title || "Untitled MiseForge Project"}`,
+      "",
+      `Genre: ${project.genre || "Not specified"}`,
+      `Tone: ${project.tone || "Not specified"}`,
+      `Logline: ${project.logline || "Not specified"}`,
+      "",
+      "Purpose:",
+      "Map emotional movement before writing scenes, so characters do not become flat prompt subjects or generic dialogue machines.",
+      "",
+      "# Film-Wide Arc Question",
+      "",
+      "- What must change emotionally for the film to feel complete?",
+      "- What pressure forces that change?",
+      "- What visual action proves it?",
+      "",
+      "# Character Arc Cards",
+      "",
+      ...characterRows,
+      "",
+      "# Relationship Pressure Map",
+      "",
+      "- Relationship that creates the most story pressure:",
+      "- What one character wants from the other:",
+      "- What the other refuses to give:",
+      "- Secret, debt, wound, or status difference:",
+      "- Scene where the relationship changes shape:",
+      "",
+      "# Production Implications",
+      "",
+      "- Wardrobe changes that should reflect arc:",
+      "- Props or objects that carry emotional state:",
+      "- Facial/performance continuity risks:",
+      "- Dialogue patterns to preserve:",
+      "- Insert shots that could externalize change:",
+    ].join("\n");
+
+    loadGeneratedDocument({
+      content,
+      docType: "treatment",
+      status: "Character Arc Map prepared. Fill character movement, then save the Treatment stage.",
+      stepId: "treatment",
+    });
+  }
+
   function buildTreatmentBlueprintTemplate() {
     if (!requirePro("Treatment Blueprint")) {
       return;
     }
 
     const source = drafts.idea.trim() || drafts.script.trim() || project.logline || project.notes || "";
+    const diagnosticRows = storyDiagnostics
+      .map((item) => `- ${item.isReady ? "Ready" : "Needs work"}: ${item.label} - ${item.isReady ? item.detail : item.next}`)
+      .join("\n");
     const content = [
       `# Treatment Blueprint - ${project.title || "Untitled MiseForge Project"}`,
       "",
@@ -3285,11 +3580,22 @@ export function ProjectWorkspace({
       `Tone: ${project.tone || "Not specified"}`,
       `Logline: ${project.logline || "Not specified"}`,
       `Cinematic references: ${project.inspirations?.length ? project.inspirations.join(", ") : "Not specified"}`,
+      `Story suite score: ${storySuiteScore}%`,
+      "",
+      "## Story Locks Before Treatment",
+      "",
+      diagnosticRows,
       "",
       "## Core Thesis",
       "",
       "What the film is really about beneath the plot:",
       "- ",
+      "",
+      "Theme statement:",
+      "- This film argues that...",
+      "",
+      "Counter-argument:",
+      "- The world, antagonist, or protagonist flaw argues that...",
       "",
       "## Cinematic Promise",
       "",
@@ -3314,6 +3620,12 @@ export function ProjectWorkspace({
       "",
       "The pressure that changes them:",
       "- ",
+      "",
+      "Want vs. need collision:",
+      "- External want:",
+      "- Inner need:",
+      "- False strategy:",
+      "- Final proof of change:",
       "",
       "## Act Movement",
       "",
@@ -3353,6 +3665,48 @@ export function ProjectWorkspace({
       "- Visual decision that proves the change:",
       "- Ending image:",
       "",
+      "## Sequence Spine",
+      "",
+      "1. Opening image and wound",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "2. Inciting pressure",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "3. First wrong strategy",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "4. Promise of the premise",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "5. Midpoint shift",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "6. Cost and collapse",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "7. Final choice",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
+      "8. Ending image",
+      "   - Story job:",
+      "   - Visual proof:",
+      "   - Production implication:",
+      "",
       "## Key Scene Set Pieces",
       "",
       "1. Scene:",
@@ -3374,6 +3728,16 @@ export function ProjectWorkspace({
       "",
       "Write the treatment here in clean, professional prose. Keep it cinematic, specific, and practical enough that each paragraph can become scenes, breakdowns, shot lists, and prompt cards.",
       "",
+      "Paragraph 1 - Opening world, protagonist, wound, and cinematic promise:",
+      "",
+      "Paragraph 2 - Inciting pressure and locked choice:",
+      "",
+      "Paragraph 3 - Act 2 promise, complications, relationships, and midpoint shift:",
+      "",
+      "Paragraph 4 - Escalating cost, collapse, and emotional reckoning:",
+      "",
+      "Paragraph 5 - Final strategy, confrontation, ending image, and thematic aftertaste:",
+      "",
       source ? `Source notes:\n${source}` : "Source notes:\n- ",
       "",
       "## Development Questions",
@@ -3382,6 +3746,8 @@ export function ProjectWorkspace({
       "- What image proves the tone?",
       "- Where does the story stop sounding generic?",
       "- Which scenes will become the strongest prompt-ready production assets?",
+      "- What must be solved before the script stage begins?",
+      "- Which character, location, prop, or sound element should become a continuity anchor?",
     ].join("\n");
 
     loadGeneratedDocument({
@@ -4738,7 +5104,7 @@ export function ProjectWorkspace({
     ].join("\n");
     const instructions: Record<GenerateMode, string> = {
       treatment:
-        "Write an industry-level treatment with cinematic prose, act movement, emotional turns, character wants, stakes, ending shape, and a same-but-different hook.",
+        "Write an industry-level treatment with premise, theme statement, protagonist want versus need, central conflict, act movement, emotional turns, sequence spine, set pieces, ending shape, and a same-but-different hook.",
       script:
         "Turn the material into screenplay-style pages with visual action, subtext, clean dialogue, playable beats, and no obvious AI voice.",
       breakdown:
@@ -4758,7 +5124,7 @@ export function ProjectWorkspace({
       insert_shot:
         "Suggest insert shots that externalize the conflict. For each insert, include purpose, visual description, image prompt, animation prompt, sound design, and continuity risks.",
       structure:
-        "Diagnose the structure. Identify missing beats, weak turns, unclear wants, low stakes, repeated information, and the next best rewrite action.",
+        "Diagnose the structure. Identify missing premise pressure, weak logline, unclear protagonist want versus need, missing theme statement, weak act turns, low stakes, repeated information, and the next best rewrite action.",
     };
 
     return [
@@ -5194,6 +5560,7 @@ export function ProjectWorkspace({
   function buildProductionPacketMarkdown() {
     const docSections: Array<{ label: string; value: string }> = [
       { label: "Idea", value: drafts.idea },
+      { label: "Synopsis", value: drafts.synopsis },
       { label: "Treatment", value: drafts.treatment },
       { label: "Character Bible", value: drafts.character_bible },
       { label: "Location Bible", value: drafts.location_bible },
@@ -5220,6 +5587,15 @@ export function ProjectWorkspace({
       markdownList(project.inspirations),
       "",
       `Workflow/tools: ${markdownValue(workflowTools, "Tool stack not specified")}`,
+      "",
+      "## Story Development Snapshot",
+      "",
+      `Story suite score: ${storySuiteScore}%`,
+      `${storyReadyCount} of ${storyDiagnostics.length} story locks started`,
+      "",
+      storyDiagnostics
+        .map((item) => `- ${item.isReady ? "Started" : "Next"}: ${item.label} - ${item.isReady ? item.detail : item.next}`)
+        .join("\n"),
     ].join("\n");
 
     const documentBlocks = docSections
@@ -5493,6 +5869,7 @@ export function ProjectWorkspace({
   function buildPremiumPacketHtml() {
     const docSections: Array<{ label: string; value: string }> = [
       { label: "Idea", value: drafts.idea },
+      { label: "Synopsis", value: drafts.synopsis },
       { label: "Treatment", value: drafts.treatment },
       { label: "Character Bible", value: drafts.character_bible },
       { label: "Location Bible", value: drafts.location_bible },
@@ -5610,6 +5987,7 @@ export function ProjectWorkspace({
     const tocItems = [
       "Cover",
       "Producer Handoff",
+      "Story Development Snapshot",
       "Production Readiness",
       "Project Roadmap",
       visualStyleRules.length ? "Visual Style Bible Snapshot" : "",
@@ -5995,6 +6373,33 @@ export function ProjectWorkspace({
             <strong>${openRiskList.length ? `${openRiskList.length} remaining risk${openRiskList.length === 1 ? "" : "s"}` : "No major automatic risks flagged."}</strong>
             ${htmlList(openRiskList, "No major automatic risks flagged.")}
           </article>
+        </div>
+      </section>
+    `;
+    const storyDiagnosticSection = `
+      <section class="packet-section">
+        <div class="section-label">Story Development Snapshot</div>
+        <h2>${storySuiteScore}% story development ready.</h2>
+        <p class="lede">A treatment only becomes useful when the premise, protagonist pressure, theme, character arc, act path, and cinematic promise are visible enough to guide production.</p>
+        <div class="handoff-hero">
+          <div>
+            <span class="readiness-number">${storySuiteScore}%</span>
+            <strong>${storyReadyCount} of ${storyDiagnostics.length} story locks started</strong>
+          </div>
+          <p>${htmlValue(project.logline, "No logline entered yet. Lock the one-sentence story promise before final export.")}</p>
+        </div>
+        <div class="gate-grid">
+          ${storyDiagnostics
+            .map(
+              (item) => `
+                <article class="${item.isReady ? "complete" : ""}">
+                  <span>${item.isReady ? "Started" : "Next"}</span>
+                  <strong>${htmlValue(item.label)}</strong>
+                  <p>${htmlValue(item.isReady ? item.detail : item.next)}</p>
+                </article>
+              `,
+            )
+            .join("")}
         </div>
       </section>
     `;
@@ -6689,6 +7094,7 @@ export function ProjectWorkspace({
       </section>
       ${producerHandoffSection}
       ${tocSection}
+      ${storyDiagnosticSection}
       ${readinessSection}
       <section class="packet-section">
         <div class="section-label">Project Overview</div>
@@ -6811,14 +7217,23 @@ export function ProjectWorkspace({
       <section className="story-lab-board" aria-label="Story development tools">
         <div className="board-heading">
           <div>
-            <span>Story development</span>
+            <span>Story development suite</span>
             <h4>Make the idea strong before the production machine starts.</h4>
             <p>
-              The Logline Lab and Treatment Blueprint turn a rough premise into a sharper story
-              engine, theme, act path, and scene-ready development plan.
+              Build the premise, theme, protagonist want versus need, central conflict, character
+              arc, act path, and treatment before scenes move into production.
             </p>
           </div>
-          <strong>{(hasText(drafts.idea) ? 1 : 0) + (hasText(drafts.treatment) ? 1 : 0)} of 2 started</strong>
+          <strong>{storySuiteScore}% story ready</strong>
+        </div>
+        <div className="story-diagnostic-grid">
+          {storyDiagnostics.map((item) => (
+            <article className={item.isReady ? "story-diagnostic-card ready" : "story-diagnostic-card"} key={item.label}>
+              <span>{item.isReady ? "Started" : "Next"}</span>
+              <strong>{item.label}</strong>
+              <p>{item.isReady ? item.detail : item.next}</p>
+            </article>
+          ))}
         </div>
         <div className="story-lab-grid">
           <article className={hasText(drafts.idea) ? "story-lab-card active" : "story-lab-card"}>
@@ -6834,6 +7249,43 @@ export function ProjectWorkspace({
               </button>
               <button className="button" type="button" onClick={buildLoglineLabTemplate}>
                 Build Logline Lab
+              </button>
+            </div>
+          </article>
+          <article className={storyDiagnostics[1]?.isReady ? "story-lab-card active" : "story-lab-card"}>
+            <span>Premise Engine</span>
+            <strong>Lock the story pressure before writing pages</strong>
+            <p>
+              Build protagonist, want, need, central conflict, stakes, theme, and same-but-different
+              promise into one usable development dossier.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("idea")}>
+                Open
+              </button>
+              <button className="button" type="button" onClick={buildStoryEngineTemplate}>
+                Build Story Engine
+              </button>
+            </div>
+          </article>
+          <article className={storyDiagnostics[3]?.isReady ? "story-lab-card active" : "story-lab-card"}>
+            <span>Theme + Arc Map</span>
+            <strong>Make characters change for a reason</strong>
+            <p>
+              Map opening state, false strategy, midpoint pressure, collapse, final choice,
+              relationship pressure, and behavior rules.
+            </p>
+            <div className="bible-actions">
+              <button className="button secondary" type="button" onClick={() => setActiveStepId("treatment")}>
+                Open
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={buildCharacterArcMapTemplate}
+                disabled={!entitlement.isPro}
+              >
+                {entitlement.isPro ? "Build Arc Map" : "Pro: Build Arc Map"}
               </button>
             </div>
           </article>
@@ -7321,16 +7773,21 @@ export function ProjectWorkspace({
           {activeStepId === "idea" ? (
             <div className="story-tool-card">
               <div>
-                <span>Logline discipline</span>
+                <span>Story engine discipline</span>
                 <strong>Make the pitch specific enough to generate the right scenes.</strong>
                 <p>
-                  Use the Logline Lab to define protagonist, want, obstacle, stakes, and hook before
-                  the project moves into treatment or script.
+                  Use the Logline Lab and Story Engine Dossier to define protagonist, want, need,
+                  obstacle, stakes, theme, and hook before the project moves into treatment or script.
                 </p>
               </div>
-              <button className="button" type="button" onClick={buildLoglineLabTemplate}>
-                Build Logline Lab
-              </button>
+              <div className="dialogue-actions">
+                <button className="button" type="button" onClick={buildLoglineLabTemplate}>
+                  Build Logline Lab
+                </button>
+                <button className="button secondary" type="button" onClick={buildStoryEngineTemplate}>
+                  Build Story Engine
+                </button>
+              </div>
             </div>
           ) : null}
           {activeStepId === "treatment" ? (
@@ -7339,18 +7796,28 @@ export function ProjectWorkspace({
                 <span>Treatment discipline</span>
                 <strong>Turn the premise into a professional story blueprint.</strong>
                 <p>
-                  Build theme, act movement, character change, set pieces, and the story questions
-                  that need answering before production planning.
+                  Build theme, act movement, character change, set pieces, character arc, and the
+                  story questions that need answering before production planning.
                 </p>
               </div>
-              <button
-                className="button"
-                type="button"
-                onClick={buildTreatmentBlueprintTemplate}
-                disabled={!entitlement.isPro}
-              >
-                {entitlement.isPro ? "Build Treatment Blueprint" : "Pro: Build Treatment Blueprint"}
-              </button>
+              <div className="dialogue-actions">
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildTreatmentBlueprintTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Treatment Blueprint" : "Pro: Build Treatment Blueprint"}
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={buildCharacterArcMapTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Arc Map" : "Pro: Build Arc Map"}
+                </button>
+              </div>
             </div>
           ) : null}
           {activeStepId === "characters" ? (
