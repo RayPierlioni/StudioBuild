@@ -1549,6 +1549,108 @@ textarea:focus {
   font-size: 12px;
 }
 
+.character-continuity-board {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(52, 47, 45, 0.1);
+  padding-top: 14px;
+}
+
+.character-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.character-profile-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(237, 241, 240, 0.56)),
+    white;
+}
+
+.character-profile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.character-profile-head span,
+.character-profile-meta span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 840;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-profile-head strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--deep);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.character-profile-head small {
+  border: 1px solid rgba(102, 127, 118, 0.22);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #49675d;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.character-profile-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.character-profile-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.character-profile-meta div {
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.character-profile-meta strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--deep);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.character-scene-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.character-scene-strip span {
+  border: 1px solid rgba(182, 93, 104, 0.16);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 250, 241, 0.68);
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 820;
+}
+
 .story-tool-card,
 .bible-tool-card {
   display: flex;
@@ -2750,6 +2852,8 @@ code {
     .visual-grid,
     .schedule-grid,
     .sound-grid,
+    .character-card-grid,
+    .character-profile-meta,
     .project-workspace > .guide-assistant,
     .guide-chat-form,
     .story-tool-card,

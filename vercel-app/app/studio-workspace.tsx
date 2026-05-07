@@ -225,6 +225,20 @@ type GuideChatMessage = {
   text: string;
 };
 
+type CharacterContinuityProfile = {
+  appearances: SceneBreakdown[];
+  coCharacters: string[];
+  locations: string[];
+  name: string;
+  productionAssets: ProductionAsset[];
+  props: string[];
+  readiness: number;
+  sceneLabels: string[];
+  soundNotes: string[];
+  toneNotes: string[];
+  wardrobe: string[];
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -1856,6 +1870,51 @@ export function ProjectWorkspace({
   const characterBibleNames = useMemo(() => {
     return uniqueSorted(sceneBreakdowns.flatMap((scene) => scene.characters ?? []));
   }, [sceneBreakdowns]);
+  const characterProfiles = useMemo<CharacterContinuityProfile[]>(() => {
+    const sceneById = new Map(sceneBreakdowns.map((scene) => [scene.id, scene]));
+
+    return characterBibleNames.map((name) => {
+      const appearances = scenesForValue(sceneBreakdowns, "characters", name);
+      const appearanceIds = new Set(appearances.map((scene) => scene.id));
+      const characterAssets = productionAssets.filter((asset) => appearanceIds.has(asset.scene_breakdown_id));
+      const wardrobe = uniqueSorted(appearances.flatMap((scene) => scene.wardrobe ?? [])).slice(0, 10);
+      const props = uniqueSorted(appearances.flatMap((scene) => scene.props ?? [])).slice(0, 10);
+      const locations = uniqueSorted(appearances.map((scene) => scene.location)).slice(0, 10);
+      const coCharacters = uniqueSorted(
+        appearances.flatMap((scene) =>
+          (scene.characters ?? []).filter((character) => character.trim().toLowerCase() !== name.trim().toLowerCase()),
+        ),
+      ).slice(0, 10);
+      const toneNotes = uniqueSorted(appearances.map((scene) => scene.tone || scene.color_palette)).slice(0, 8);
+      const soundNotes = uniqueSorted(appearances.map((scene) => scene.sound_notes)).slice(0, 5);
+      const readinessChecks = [
+        appearances.length > 0,
+        wardrobe.length > 0,
+        props.length > 0,
+        locations.length > 0,
+        coCharacters.length > 0,
+        characterAssets.some((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt)),
+      ];
+
+      return {
+        appearances,
+        coCharacters,
+        locations,
+        name,
+        productionAssets: characterAssets.sort((first, second) => {
+          const firstScene = sceneById.get(first.scene_breakdown_id)?.scene_number ?? 999;
+          const secondScene = sceneById.get(second.scene_breakdown_id)?.scene_number ?? 999;
+          return firstScene - secondScene || first.order_index - second.order_index;
+        }),
+        props,
+        readiness: Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100),
+        sceneLabels: appearances.map(sceneBoardLabel),
+        soundNotes,
+        toneNotes,
+        wardrobe,
+      };
+    });
+  }, [characterBibleNames, productionAssets, sceneBreakdowns]);
   const locationBibleNames = useMemo(() => {
     return uniqueSorted(sceneBreakdowns.map((scene) => scene.location));
   }, [sceneBreakdowns]);
@@ -2360,48 +2419,108 @@ export function ProjectWorkspace({
   }
 
   function buildCharacterBibleTemplate() {
-    const names = characterBibleNames.length ? characterBibleNames : ["Primary Character"];
-    const sections = names.map((name) => {
-      const appearances = sceneBreakdowns
-        .filter((scene) =>
-          scene.characters?.some((character) => character.trim().toLowerCase() === name.trim().toLowerCase()),
-        )
-        .map(sceneBoardLabel);
+    const profiles = characterProfiles.length
+      ? characterProfiles
+      : [
+          {
+            appearances: [],
+            coCharacters: [],
+            locations: [],
+            name: "Primary Character",
+            productionAssets: [],
+            props: [],
+            readiness: 0,
+            sceneLabels: [],
+            soundNotes: [],
+            toneNotes: [],
+            wardrobe: [],
+          },
+        ];
+    const sections = profiles.map((profile) => {
+      const promptRows = profile.productionAssets
+        .filter((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt))
+        .slice(0, 8)
+        .map((asset) => `- ${asset.name}: ${asset.image_prompt || asset.animation_prompt || asset.sound_prompt}`);
 
       return [
-        `## ${name}`,
+        `## ${profile.name}`,
         "",
-        `Scene appearances: ${appearances.length ? appearances.join(", ") : "Not mapped yet"}`,
+        `Continuity readiness: ${profile.readiness}%`,
+        `Scene appearances: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+        `Shared scenes with: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+        `Locations: ${profile.locations.length ? profile.locations.join(", ") : "Not mapped yet"}`,
         "",
-        "Role in story:",
-        "- ",
+        "### Story Function",
         "",
-        "Visual continuity:",
-        "- Face, age, body type:",
-        "- Hair:",
-        "- Wardrobe baseline:",
-        "- Wardrobe changes by act/scene:",
-        "- Props carried:",
-        "",
-        "Performance and voice:",
-        "- Wants:",
+        "- Role in story:",
+        "- External want:",
         "- Need beneath the want:",
+        "- Fear, wound, or contradiction:",
+        "- First impression:",
+        "- Final state:",
+        "",
+        "### Visual Identity Lock",
+        "",
+        "- Face, age, build, and silhouette:",
+        "- Hair and grooming:",
+        "- Eyes / expression baseline:",
+        "- Hands, posture, walk, or recurring physical behavior:",
+        "- Distinguishing marks, texture, or object:",
+        `- Wardrobe detected from scene packets: ${profile.wardrobe.length ? profile.wardrobe.join(", ") : "Not mapped yet"}`,
+        `- Props near character: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+        "",
+        "### Wardrobe Continuity",
+        "",
+        "- Wardrobe baseline:",
+        "- Scene-specific wardrobe changes:",
+        "- What must never drift:",
+        "- What can change with story state:",
+        "",
+        "### Performance and Voice",
+        "",
         "- Speech pattern:",
+        "- Rhythm, pauses, and silence:",
+        "- Status behavior:",
         "- What they never say directly:",
+        "- Dialogue words or phrases to avoid:",
         "",
-        "Relationship map:",
+        "### Relationship Map",
+        "",
+        `- Characters sharing scenes: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
         "- Allies:",
-        "- Conflict:",
+        "- Oppositions:",
         "- Power dynamic:",
+        "- Secret, pressure, or unresolved emotional debt:",
         "",
-        "Continuity risks:",
-        "- Emotional state entering each scene:",
-        "- Physical state or injury:",
-        "- Object continuity:",
+        "### Scene-by-Scene Continuity",
         "",
-        "Prompt consistency anchor:",
+        profile.appearances.length
+          ? profile.appearances
+              .map((scene) =>
+                [
+                  `- ${sceneBoardLabel(scene)}`,
+                  `  - Emotional state entering:`,
+                  `  - Emotional state leaving:`,
+                  `  - Wardrobe: ${listText(scene.wardrobe, "Not filled yet")}`,
+                  `  - Props / objects: ${listText(scene.props, "Not filled yet")}`,
+                  `  - Sound / physical texture: ${scene.sound_notes || "Not filled yet"}`,
+                  `  - Continuity risk:`,
+                ].join("\n"),
+              )
+              .join("\n")
+          : "- Scene 1: emotional state, wardrobe, props, sound, and continuity risk.",
+        "",
+        "### Prompt Consistency Anchor",
+        "",
         "- Reusable image prompt language:",
+        "- Reusable animation prompt language:",
+        "- Sound / dialogue handoff:",
         "- Negative prompt notes:",
+        "- Approved reference frame notes:",
+        "",
+        "### Existing Prompt Rows",
+        "",
+        promptRows.length ? promptRows.join("\n") : "- No prompt rows tied to this character yet.",
       ].join("\n");
     });
 
@@ -2415,13 +2534,22 @@ export function ProjectWorkspace({
       "Purpose:",
       "Keep every recurring character visually, emotionally, and vocally consistent across scenes, images, animation, and dialogue.",
       "",
+      "## Character Continuity Rules",
+      "",
+      "- Every recurring character needs a face, silhouette, wardrobe baseline, voice rule, and emotional state map.",
+      "- Every generated image should reuse the approved visual identity lock.",
+      "- Wardrobe can change only when the story or scene state explains why.",
+      "- Props carried by the character must be tracked scene to scene.",
+      "- Dialogue should preserve the character's rhythm, status behavior, and subtext.",
+      "- Prompt cards should not introduce new clothing, props, ages, hairstyles, or facial details unless the bible says so.",
+      "",
       ...sections,
     ].join("\n");
 
     loadGeneratedDocument({
       content,
       docType: "character_bible",
-      status: `${names.length} character bible section${names.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
+      status: `${profiles.length} character bible section${profiles.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
       stepId: "characters",
     });
   }
@@ -3660,6 +3788,33 @@ export function ProjectWorkspace({
           ),
         ].join("\n\n")
       : "";
+    const characterProfileBlocks = characterProfiles.length
+      ? [
+          "## Character Continuity Cards",
+          "",
+          ...characterProfiles.map((profile) =>
+            [
+              `### ${profile.name}`,
+              "",
+              `Continuity readiness: ${profile.readiness}%`,
+              `Scene appearances: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+              `Shared scenes with: ${profile.coCharacters.length ? profile.coCharacters.join(", ") : "Not mapped yet"}`,
+              "",
+              "Wardrobe:",
+              markdownList(profile.wardrobe),
+              "",
+              "Props:",
+              markdownList(profile.props),
+              "",
+              "Locations:",
+              markdownList(profile.locations),
+              "",
+              "Tone / sound anchors:",
+              markdownList([...profile.toneNotes, ...profile.soundNotes]),
+            ].join("\n"),
+          ),
+        ].join("\n\n")
+      : "";
 
     const sceneBlocks = sceneBreakdowns
       .map((scene) => {
@@ -3740,7 +3895,7 @@ export function ProjectWorkspace({
       })
       .join("\n\n");
 
-    return [projectSummary, documentBlocks, versionBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
+    return [projectSummary, characterProfileBlocks, documentBlocks, versionBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
       .filter(Boolean)
       .join("\n\n");
   }
@@ -3789,6 +3944,7 @@ export function ProjectWorkspace({
       "Cover",
       "Production Readiness",
       "Project Roadmap",
+      characterProfiles.length ? "Character Continuity Cards" : "",
       ...docSections.map((section) => section.label),
       versions.length ? "Version History" : "",
       sceneBreakdowns.length ? "Scene Packets" : "",
@@ -3891,6 +4047,38 @@ export function ProjectWorkspace({
         `;
       })
       .join("");
+    const characterProfileSection = characterProfiles.length
+      ? `
+          <section class="packet-section">
+            <div class="section-label">Character Continuity Cards</div>
+            <h2>Character identity locks.</h2>
+            <p class="lede">Visual, wardrobe, prop, relationship, and scene-state anchors for keeping recurring characters consistent across generated images and animation.</p>
+            <div class="character-export-grid">
+              ${characterProfiles
+                .map(
+                  (profile) => `
+                    <article class="character-export-card">
+                      <div class="character-export-head">
+                        <span>${profile.readiness}% ready</span>
+                        <h3>${htmlValue(profile.name)}</h3>
+                      </div>
+                      <p>${profile.sceneLabels.length} scene appearance${profile.sceneLabels.length === 1 ? "" : "s"} / ${profile.productionAssets.length} production row${profile.productionAssets.length === 1 ? "" : "s"}</p>
+                      <div class="details-grid compact">
+                        <section><h4>Scenes</h4>${htmlList(profile.sceneLabels)}</section>
+                        <section><h4>Wardrobe</h4>${htmlList(profile.wardrobe)}</section>
+                        <section><h4>Props</h4>${htmlList(profile.props)}</section>
+                        <section><h4>Relationships</h4>${htmlList(profile.coCharacters)}</section>
+                        <section><h4>Locations</h4>${htmlList(profile.locations)}</section>
+                        <section><h4>Tone / Sound</h4>${htmlList([...profile.toneNotes, ...profile.soundNotes])}</section>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `
+      : "";
 
     const documentSections = docSections
       .map(
@@ -4279,6 +4467,46 @@ export function ProjectWorkspace({
       .details-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+      .details-grid.compact {
+        grid-template-columns: repeat(2, 1fr);
+        margin-top: 14px;
+      }
+      .details-grid.compact section {
+        padding: 12px;
+      }
+      .character-export-grid {
+        display: grid;
+        gap: 14px;
+      }
+      .character-export-card {
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 18px;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(223, 231, 226, 0.44)),
+          white;
+        break-inside: avoid;
+      }
+      .character-export-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .character-export-head span {
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 999px;
+        padding: 5px 9px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .character-export-card > p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-weight: 760;
+      }
       .scene-status {
         display: flex;
         flex-wrap: wrap;
@@ -4424,6 +4652,7 @@ export function ProjectWorkspace({
           <section><h3>Workflow / Tools</h3>${htmlParagraphs(workflowTools, "Tool stack not specified.")}</section>
         </div>
       </section>
+      ${characterProfileSection}
       ${documentSections}
       ${versionSections}
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
@@ -4655,6 +4884,80 @@ export function ProjectWorkspace({
               </button>
             </div>
           </article>
+        </div>
+        <div className="character-continuity-board" aria-label="Character continuity cards">
+          <div className="tool-heading">
+            <div>
+              <h4>Character continuity cards</h4>
+              <p>
+                These cards turn detected characters into visual and production anchors for faces,
+                wardrobe, props, relationships, locations, and prompt consistency.
+              </p>
+            </div>
+            <span>{characterProfiles.length ? `${characterProfiles.length} detected` : "Needs scene packets"}</span>
+          </div>
+          {characterProfiles.length ? (
+            <div className="character-card-grid">
+              {characterProfiles.map((profile) => (
+                <article className="character-profile-card" key={profile.name}>
+                  <div className="character-profile-head">
+                    <div>
+                      <span>{profile.readiness}% continuity ready</span>
+                      <strong>{profile.name}</strong>
+                    </div>
+                    <small>{profile.appearances.length} scene{profile.appearances.length === 1 ? "" : "s"}</small>
+                  </div>
+                  <p>
+                    {profile.coCharacters.length
+                      ? `Shares scenes with ${profile.coCharacters.join(", ")}.`
+                      : "No relationship map detected yet."}
+                  </p>
+                  <div className="character-profile-meta">
+                    <div>
+                      <span>Wardrobe</span>
+                      <strong>{profile.wardrobe.length ? profile.wardrobe.slice(0, 3).join(", ") : "Not mapped"}</strong>
+                    </div>
+                    <div>
+                      <span>Props</span>
+                      <strong>{profile.props.length ? profile.props.slice(0, 3).join(", ") : "Not mapped"}</strong>
+                    </div>
+                    <div>
+                      <span>Locations</span>
+                      <strong>{profile.locations.length ? profile.locations.slice(0, 3).join(", ") : "Not mapped"}</strong>
+                    </div>
+                    <div>
+                      <span>Prompt rows</span>
+                      <strong>{profile.productionAssets.length}</strong>
+                    </div>
+                  </div>
+                  <div className="character-scene-strip">
+                    {profile.sceneLabels.slice(0, 4).map((sceneLabel) => (
+                      <span key={sceneLabel}>{sceneLabel}</span>
+                    ))}
+                    {profile.sceneLabels.length > 4 ? <span>+{profile.sceneLabels.length - 4} more</span> : null}
+                  </div>
+                  <div className="bible-actions">
+                    <button className="button secondary" type="button" onClick={() => setActiveStepId("characters")}>
+                      Open bible
+                    </button>
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={buildCharacterBibleTemplate}
+                      disabled={!entitlement.isPro}
+                    >
+                      {entitlement.isPro ? "Refresh Bible" : "Pro: refresh bible"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="asset-empty">
+              Save at least one scene packet with character names, then StudioBuild will create
+              character continuity cards here.
+            </p>
+          )}
         </div>
       </section>
 

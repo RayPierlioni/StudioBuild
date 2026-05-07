@@ -65,6 +65,11 @@ The project command center now includes Character Bible and Location Bible stage
 admin users can generate starter bibles from saved scene packets, then edit and save them as
 project documents.
 
+The Character Bible workflow now includes visible character continuity cards. Each detected
+character can show scene appearances, wardrobe anchors, prop anchors, locations, relationship
+context, prompt rows, and a continuity readiness score, and those cards are included in production
+packet exports.
+
 The project command center now includes a Dialogue / AI Voice Scanner stage. The scanner runs
 without hosted AI calls, creates a dialogue discipline score, flags robotic or expositional patterns,
 writes a rewrite rubric, and saves the report as a project document.
