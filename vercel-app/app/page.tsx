@@ -24,7 +24,7 @@ const pricingCards = [
     "$12.99/mo",
     "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, visual look books, continuity tracker, sound maps, AI voice scans, full-script parsing, production board, shot lists, production scheduling, prompt cards, version history, and premium PDF packets.",
   ],
-  ["Project Pass", "$9/project", "One production packet for filmmakers who think in films, not weeks."],
+  ["Project Pass", "$9/project", "Try one film before committing: one complete production packet for filmmakers who think in projects."],
 ];
 
 export default function Home() {
@@ -45,8 +45,8 @@ export default function Home() {
           </nav>
         </div>
         <div className="hero-copy">
-          <p className="kicker">Build the film before you generate the frame.</p>
-          <h1>Make AI scripts stop sounding like AI.</h1>
+          <p className="kicker">Make AI scripts stop sounding like AI.</p>
+          <h1>Build the film before you generate the frame.</h1>
           <p>
             MiseForge turns rough AI film ideas and scripts into treatments, scene breakdowns,
             shot plans, and prompt-ready production packets so your film has story logic before you
@@ -113,7 +113,10 @@ export default function Home() {
           </p>
           <div className="pricing-grid">
             {pricingCards.map(([name, price, text]) => (
-              <article className="pricing-card" key={name}>
+              <article
+                className={`pricing-card${name === "Founder Pro" ? " featured" : ""}${name === "Project Pass" ? " project-pass" : ""}`}
+                key={name}
+              >
                 <span>{name}</span>
                 <strong>{price}</strong>
                 <p>{text}</p>

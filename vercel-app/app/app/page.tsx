@@ -83,8 +83,12 @@ export default function AppHome() {
           </div>
           <nav className="pipeline-nav" aria-label="MiseForge pipeline">
             {pipelineStages.map(({ detail, mode, stage }, index) => (
-              <a href={`/app/start/${mode}`} key={stage}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
+              <a
+                className={index === 0 ? "active" : index < 5 ? "complete" : "upcoming"}
+                href={`/app/start/${mode}`}
+                key={stage}
+              >
+                <span className="pipeline-index">{String(index + 1).padStart(2, "0")}</span>
                 <strong>{stage}</strong>
                 <small>{detail}</small>
               </a>

@@ -2369,7 +2369,14 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       </div>
 
       {isLoadingSession ? (
-        <p className="subtle">Opening secure MiseForge workspace...</p>
+        <div className="workspace-skeleton" aria-label="Loading MiseForge workspace">
+          <div className="skeleton-card large" />
+          <div className="skeleton-grid">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
       ) : !session ? (
         <div className="auth-box">
           <p>
@@ -3590,6 +3597,38 @@ export function ProjectWorkspace({
     readiness.score,
     readiness.total,
     sceneBreakdowns.length,
+  ]);
+
+  const completedStageIds = useMemo(() => {
+    const completed = new Set<StageId>();
+    const hasShotRows = productionAssets.some((asset) => asset.asset_type === "shot");
+    const hasPromptRows = productionAssets.some(
+      (asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+    );
+
+    if (hasText(project.logline) || hasText(drafts.idea)) completed.add("idea");
+    if (hasText(drafts.treatment)) completed.add("treatment");
+    if (hasText(drafts.character_bible) || characterProfiles.length > 0) completed.add("characters");
+    if (hasText(drafts.location_bible) || locationProfiles.length > 0) completed.add("locations");
+    if (hasText(drafts.look_book) || visualStyleRules.length > 0) completed.add("lookbook");
+    if (hasText(drafts.script)) completed.add("script");
+    if (hasText(drafts.dialogue_notes) || dialogueScan) completed.add("dialogue");
+    if (hasText(drafts.continuity_tracker)) completed.add("continuity");
+    if (sceneBreakdowns.length > 0) completed.add("breakdown");
+    if (hasText(drafts.production_schedule)) completed.add("schedule");
+    if (hasText(drafts.sound_map)) completed.add("sound");
+    if (hasShotRows || hasPromptRows || productionAssets.length > 0) completed.add("production");
+
+    return completed;
+  }, [
+    characterProfiles.length,
+    dialogueScan,
+    drafts,
+    locationProfiles.length,
+    productionAssets,
+    project.logline,
+    sceneBreakdowns.length,
+    visualStyleRules.length,
   ]);
 
   useEffect(() => {
@@ -8496,22 +8535,29 @@ export function ProjectWorkspace({
       )}
 
       <div className="pipeline-strip" aria-label="MiseForge pipeline">
-        {pipelineSteps.map((step, index) => (
-          <button
-            className={step.id === activeStepId ? "pipeline-step active" : "pipeline-step"}
-            key={step.id}
-            type="button"
-            onClick={() => {
-              setActiveStepId(step.id);
-              setSaveStatus("");
-              setSaveError("");
-            }}
-          >
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{step.label}</strong>
-            <small>{step.description}</small>
-          </button>
-        ))}
+        {pipelineSteps.map((step, index) => {
+          const isActive = step.id === activeStepId;
+          const isComplete = completedStageIds.has(step.id);
+          const stateLabel = isActive ? "Current room" : isComplete ? "Started" : "Ready";
+
+          return (
+            <button
+              className={`pipeline-step${isActive ? " active" : ""}${isComplete ? " complete" : ""}`}
+              key={step.id}
+              type="button"
+              onClick={() => {
+                setActiveStepId(step.id);
+                setSaveStatus("");
+                setSaveError("");
+              }}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{step.label}</strong>
+              <small>{step.description}</small>
+              <em>{stateLabel}</em>
+            </button>
+          );
+        })}
       </div>
 
       <div className="workspace-tools">
