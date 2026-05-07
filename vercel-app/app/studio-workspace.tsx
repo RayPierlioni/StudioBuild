@@ -5084,6 +5084,11 @@ export function ProjectWorkspace({
         hasText(scene.sound_notes) &&
         hasText(scene.blocking),
     ).length;
+    const packetDate = new Date().toLocaleDateString(undefined, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
     const readinessItems = [
       { label: "Story documents", value: `${docSections.length} saved` },
       { label: "Scene packets", value: `${sceneBreakdowns.length} mapped` },
@@ -5094,8 +5099,81 @@ export function ProjectWorkspace({
       { label: "Animation / sound prompts", value: `${animationSoundPromptCount} ready` },
       { label: "Sound mapped scenes", value: `${soundSceneCount} of ${sceneBreakdowns.length || 0}` },
     ];
+    const exportGates = [
+      {
+        detail: project.logline || "Logline not entered yet.",
+        isReady: hasText(project.logline),
+        label: "Story spine",
+      },
+      {
+        detail: characterProfiles.length
+          ? `${characterProfiles.length} character identity card${characterProfiles.length === 1 ? "" : "s"}`
+          : "Character bible not mapped yet.",
+        isReady: characterProfiles.length > 0,
+        label: "Character identity",
+      },
+      {
+        detail: locationProfiles.length
+          ? `${locationProfiles.length} location identity card${locationProfiles.length === 1 ? "" : "s"}`
+          : "Location bible not mapped yet.",
+        isReady: locationProfiles.length > 0,
+        label: "Location identity",
+      },
+      {
+        detail: visualStyleRules.length
+          ? `${visualStyleRules.length} visual rule card${visualStyleRules.length === 1 ? "" : "s"}`
+          : "Style bible not started yet.",
+        isReady: visualStyleRules.some((rule) => rule.readiness > 0),
+        label: "Visual language",
+      },
+      {
+        detail: continuityRows.length
+          ? `${continuityRows.length} scene handoff${continuityRows.length === 1 ? "" : "s"}`
+          : "Continuity tracker not mapped yet.",
+        isReady: continuityRows.length > 0,
+        label: "Continuity handoff",
+      },
+      {
+        detail: shotCount ? `${shotCount} detailed shot row${shotCount === 1 ? "" : "s"}` : "Detailed shot lists not built yet.",
+        isReady: shotCount > 0,
+        label: "Shot plan",
+      },
+      {
+        detail: imagePromptCount
+          ? `${imagePromptCount} image prompt${imagePromptCount === 1 ? "" : "s"} ready`
+          : "Image prompts not generated yet.",
+        isReady: imagePromptCount > 0,
+        label: "Image prompts",
+      },
+      {
+        detail: animationSoundPromptCount
+          ? `${animationSoundPromptCount} animation/sound prompt${animationSoundPromptCount === 1 ? "" : "s"} ready`
+          : "Animation and sound prompts not generated yet.",
+        isReady: animationSoundPromptCount > 0,
+        label: "Animation and sound",
+      },
+    ];
+    const openRiskList = [
+      sceneBreakdowns.length ? "" : "No scene packets are saved yet.",
+      characterProfiles.length ? "" : "Character identity locks still need to be mapped.",
+      locationProfiles.length ? "" : "Location layout, light, and sound locks still need to be mapped.",
+      shotCount ? "" : "Detailed shot lists still need to be built.",
+      imagePromptCount ? "" : "Image prompts still need to be generated from approved shot rows.",
+      animationSoundPromptCount ? "" : "Animation and sound prompts still need to be generated after image prompts.",
+    ].filter((value): value is string => Boolean(value));
+    const coverageItems = [
+      { label: "Readiness", value: `${readiness.score}%`, detail: `${readiness.completedCount} of ${readiness.total} checks` },
+      { label: "Scenes", value: `${sceneBreakdowns.length}`, detail: `${completeSceneCount} complete` },
+      { label: "Characters", value: `${characterProfiles.length}`, detail: "identity cards" },
+      { label: "Locations", value: `${locationProfiles.length}`, detail: "location cards" },
+      { label: "Style Rules", value: `${visualStyleRules.length}`, detail: "visual anchors" },
+      { label: "Continuity", value: `${continuityRows.length}`, detail: "scene handoffs" },
+      { label: "Shots", value: `${shotCount}`, detail: "shot rows" },
+      { label: "Prompts", value: `${imagePromptCount + animationSoundPromptCount}`, detail: "image/animation/sound" },
+    ];
     const tocItems = [
       "Cover",
+      "Producer Handoff",
       "Production Readiness",
       "Project Roadmap",
       visualStyleRules.length ? "Visual Style Bible Snapshot" : "",
@@ -5432,6 +5510,58 @@ export function ProjectWorkspace({
         </div>
       </section>
     `;
+    const producerHandoffSection = `
+      <section class="packet-section handoff-page">
+        <div class="section-label">Producer Handoff</div>
+        <h2>This is the working plan for the film.</h2>
+        <p class="lede">A premium production packet should tell a creator what has been locked, what still needs attention, and what can move into image, animation, sound, edit, and festival-ready refinement.</p>
+        <div class="handoff-hero">
+          <div>
+            <span class="readiness-number">${readiness.score}%</span>
+            <strong>${htmlValue(readiness.next)}</strong>
+          </div>
+          <p>${htmlValue(project.logline, "No logline entered yet. Add the project spine before final export.")}</p>
+        </div>
+        <div class="coverage-grid">
+          ${coverageItems
+            .map(
+              (item) => `
+                <article>
+                  <span>${htmlValue(item.label)}</span>
+                  <strong>${htmlValue(item.value)}</strong>
+                  <p>${htmlValue(item.detail)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="gate-grid">
+          ${exportGates
+            .map(
+              (gate) => `
+                <article class="${gate.isReady ? "complete" : ""}">
+                  <span>${gate.isReady ? "Ready" : "Needs Work"}</span>
+                  <strong>${htmlValue(gate.label)}</strong>
+                  <p>${htmlValue(gate.detail)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="handoff-grid">
+          <article>
+            <span>Production Strength</span>
+            <strong>${htmlValue(readiness.completedCount ? `${readiness.completedCount} production checks are complete.` : "The project shell is ready to be filled.")}</strong>
+            <p>MiseForge has converted saved project data into bibles, packets, shot rows, prompts, and exportable production decisions.</p>
+          </article>
+          <article>
+            <span>Open Risks</span>
+            <strong>${openRiskList.length ? `${openRiskList.length} remaining risk${openRiskList.length === 1 ? "" : "s"}` : "No major automatic risks flagged."}</strong>
+            ${htmlList(openRiskList, "No major automatic risks flagged.")}
+          </article>
+        </div>
+      </section>
+    `;
     const readinessSection = `
       <section class="packet-section readiness-page">
         <div class="section-label">Production Readiness</div>
@@ -5484,6 +5614,7 @@ export function ProjectWorkspace({
         --muted: #6d655f;
         --line: #ddd4cb;
         --accent: #9d4853;
+        --accent-deep: #74343d;
         --accent-soft: #f5dde1;
         --deep: #1d1a1c;
         --soft: #f0e7de;
@@ -5526,7 +5657,9 @@ export function ProjectWorkspace({
       .packet {
         width: min(980px, calc(100% - 32px));
         margin: 24px auto;
-        box-shadow: 0 34px 110px rgba(28, 23, 20, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 34px 110px rgba(28, 23, 20, 0.24);
       }
       .cover,
       .packet-section {
@@ -5543,9 +5676,10 @@ export function ProjectWorkspace({
         min-height: 1100px;
         color: white;
         background:
-          radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.18), transparent 20%),
-          linear-gradient(135deg, rgba(18, 18, 18, 0.95), rgba(65, 50, 49, 0.82)),
-          linear-gradient(90deg, rgba(157, 72, 83, 0.4), transparent 44%, rgba(223, 231, 226, 0.2)),
+          radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.2), transparent 19%),
+          radial-gradient(circle at 12% 86%, rgba(157, 72, 83, 0.38), transparent 34%),
+          linear-gradient(135deg, rgba(14, 14, 14, 0.98), rgba(50, 42, 42, 0.9)),
+          linear-gradient(90deg, rgba(157, 72, 83, 0.46), transparent 44%, rgba(223, 231, 226, 0.18)),
           #171717;
       }
       .cover-top {
@@ -5571,12 +5705,29 @@ export function ProjectWorkspace({
         color: rgba(255, 255, 255, 0.84);
         font-weight: 900;
       }
+      .cover-title-block {
+        display: grid;
+        gap: 16px;
+      }
       .cover-kicker {
         margin: 0 0 14px;
         color: rgba(255, 255, 255, 0.7);
         font-size: 12px;
         font-weight: 900;
         letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .packet-code {
+        display: inline-flex;
+        width: fit-content;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        padding: 8px 11px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
       }
       .cover h1 {
@@ -5591,13 +5742,35 @@ export function ProjectWorkspace({
         color: rgba(255, 255, 255, 0.78);
         font-size: 20px;
       }
+      .cover-footer {
+        display: grid;
+        gap: 18px;
+      }
+      .cover-footer-line {
+        height: 1px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.48), transparent);
+      }
+      .cover-footer-meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        color: rgba(255, 255, 255, 0.68);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
       .cover-grid,
       .meta-grid,
       .details-grid,
       .prompt-grid,
       .readiness-grid,
       .toc-grid,
-      .roadmap-strip {
+      .roadmap-strip,
+      .coverage-grid,
+      .gate-grid,
+      .handoff-grid {
         display: grid;
         gap: 12px;
       }
@@ -5649,6 +5822,20 @@ export function ProjectWorkspace({
         line-height: 1;
         letter-spacing: 0;
       }
+      .packet-section::before {
+        content: "MiseForge";
+        display: block;
+        width: fit-content;
+        margin-bottom: 22px;
+        border: 1px solid rgba(157, 72, 83, 0.16);
+        border-radius: 999px;
+        padding: 5px 9px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
       .packet-section h3,
       .packet-section h4 {
         margin: 0 0 8px;
@@ -5661,8 +5848,93 @@ export function ProjectWorkspace({
         font-size: 18px;
       }
       .contents-page h2,
-      .readiness-page h2 {
+      .readiness-page h2,
+      .handoff-page h2 {
         max-width: 720px;
+      }
+      .handoff-hero {
+        display: grid;
+        grid-template-columns: 0.76fr 1.24fr;
+        gap: 18px;
+        align-items: center;
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 10px;
+        padding: 24px;
+        background:
+          linear-gradient(135deg, rgba(29, 26, 28, 0.96), rgba(116, 52, 61, 0.88)),
+          var(--deep);
+        color: white;
+      }
+      .handoff-hero .readiness-number {
+        color: white;
+      }
+      .handoff-hero strong,
+      .handoff-hero p {
+        color: rgba(255, 255, 255, 0.78);
+      }
+      .coverage-grid {
+        grid-template-columns: repeat(4, 1fr);
+        margin-top: 18px;
+      }
+      .coverage-grid article,
+      .gate-grid article,
+      .handoff-grid article {
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.68);
+      }
+      .coverage-grid span,
+      .gate-grid span,
+      .handoff-grid span {
+        display: block;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .coverage-grid strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--deep);
+        font-size: 34px;
+        line-height: 1;
+      }
+      .coverage-grid p,
+      .gate-grid p,
+      .handoff-grid p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .gate-grid {
+        grid-template-columns: repeat(2, 1fr);
+        margin-top: 18px;
+      }
+      .gate-grid article.complete {
+        border-color: rgba(77, 115, 100, 0.22);
+        background:
+          linear-gradient(145deg, rgba(223, 231, 226, 0.7), rgba(255, 255, 255, 0.72)),
+          white;
+      }
+      .gate-grid strong,
+      .handoff-grid strong {
+        display: block;
+        margin-top: 7px;
+        color: var(--deep);
+        font-size: 18px;
+        line-height: 1.14;
+      }
+      .handoff-grid {
+        grid-template-columns: repeat(2, 1fr);
+        margin-top: 18px;
+      }
+      .handoff-grid ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 12px;
       }
       .toc-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -5919,7 +6191,12 @@ export function ProjectWorkspace({
         .packet {
           width: 100%;
           margin: 0;
+          border-radius: 0;
+          overflow: visible;
           box-shadow: none;
+        }
+        .packet-section::before {
+          margin-bottom: 14px;
         }
         .cover,
         .packet-section {
@@ -5949,20 +6226,32 @@ export function ProjectWorkspace({
           <div class="brand">MiseForge Production Packet</div>
           <div class="cover-mark">MF</div>
         </div>
-        <div>
-          <p class="cover-kicker">Pre-production command packet</p>
-          <h1>${htmlValue(project.title, "Untitled Project")}</h1>
-          <p class="subtitle">${htmlValue(project.logline, "A production-ready packet built for AI filmmaking workflow.")}</p>
+        <div class="cover-title-block">
+          <span class="packet-code">Founder production packet / ${packetDate}</span>
+          <div>
+            <p class="cover-kicker">Pre-production command packet</p>
+            <h1>${htmlValue(project.title, "Untitled Project")}</h1>
+            <p class="subtitle">${htmlValue(project.logline, "A production-ready packet built for AI filmmaking workflow.")}</p>
+          </div>
         </div>
-        <div class="cover-grid">
-          <div><b>Genre</b><span>${htmlValue(project.genre)}</span></div>
-          <div><b>Tone</b><span>${htmlValue(project.tone)}</span></div>
-          <div><b>Readiness</b><span>${readiness.score}%</span></div>
-          <div><b>Scenes</b><span>${sceneBreakdowns.length}</span></div>
-          <div><b>Shots</b><span>${shotCount}</span></div>
-          <div><b>Prompt Cards</b><span>${promptCardCount}</span></div>
+        <div class="cover-footer">
+          <div class="cover-grid">
+            <div><b>Genre</b><span>${htmlValue(project.genre)}</span></div>
+            <div><b>Tone</b><span>${htmlValue(project.tone)}</span></div>
+            <div><b>Readiness</b><span>${readiness.score}%</span></div>
+            <div><b>Scenes</b><span>${sceneBreakdowns.length}</span></div>
+            <div><b>Shots</b><span>${shotCount}</span></div>
+            <div><b>Prompt Cards</b><span>${promptCardCount}</span></div>
+          </div>
+          <div class="cover-footer-line"></div>
+          <div class="cover-footer-meta">
+            <span>MiseForge</span>
+            <span>${packetDate}</span>
+            <span>${readiness.score}% ready</span>
+          </div>
         </div>
       </section>
+      ${producerHandoffSection}
       ${tocSection}
       ${readinessSection}
       <section class="packet-section">
