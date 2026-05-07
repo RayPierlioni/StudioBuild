@@ -1,7 +1,7 @@
 export function GET() {
   return Response.json({
     ok: true,
-    service: "studiobuild-app",
+    service: "miseforge-app",
     checkedAt: new Date().toISOString(),
   });
 }

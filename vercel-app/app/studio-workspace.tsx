@@ -1143,7 +1143,7 @@ function sceneBoardLabel(scene: SceneBreakdown) {
 }
 
 function versionStorageKey(projectId: string) {
-  return `studiobuild:versions:${projectId}`;
+  return `miseforge:versions:${projectId}`;
 }
 
 function createVersionId() {

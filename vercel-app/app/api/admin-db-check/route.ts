@@ -13,7 +13,7 @@ export async function GET() {
       return Response.json(
         {
           ok: false,
-          service: "studiobuild-admin-check",
+          service: "miseforge-admin-check",
           checkedAt: new Date().toISOString(),
           serviceRoleValid: false,
           profilesTableReachable: false,
@@ -25,7 +25,7 @@ export async function GET() {
 
     return Response.json({
       ok: true,
-      service: "studiobuild-admin-check",
+      service: "miseforge-admin-check",
       checkedAt: new Date().toISOString(),
       serviceRoleValid: true,
       profilesTableReachable: true,
@@ -35,7 +35,7 @@ export async function GET() {
     return Response.json(
       {
         ok: false,
-        service: "studiobuild-admin-check",
+        service: "miseforge-admin-check",
         checkedAt: new Date().toISOString(),
         serviceRoleValid: false,
         profilesTableReachable: false,

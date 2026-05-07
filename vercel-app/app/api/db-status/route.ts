@@ -30,7 +30,7 @@ export async function GET() {
     return Response.json(
       {
         ok: response.ok,
-        service: "studiobuild-database",
+        service: "miseforge-database",
         checkedAt: new Date().toISOString(),
         databaseClientReady: true,
         auth: {
@@ -47,7 +47,7 @@ export async function GET() {
     return Response.json(
       {
         ok: false,
-        service: "studiobuild-database",
+        service: "miseforge-database",
         checkedAt: new Date().toISOString(),
         databaseClientReady: false,
         error: "MiseForge database check could not complete.",
