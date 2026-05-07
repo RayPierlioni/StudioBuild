@@ -350,6 +350,25 @@ type VisualStyleRule = {
   title: string;
 };
 
+type GenerationLockPhase = {
+  detail: string;
+  id: string;
+  isReady: boolean;
+  items: string[];
+  label: string;
+  status: string;
+};
+
+type GenerationQueueItem = {
+  blocker: string;
+  id: string;
+  kind: string;
+  label: string;
+  nextAction: string;
+  priority: "High" | "Medium" | "Low";
+  status: string;
+};
+
 type VisualSceneProfile = {
   cameraRule: string;
   colorState: string;
@@ -2955,6 +2974,208 @@ export function ProjectWorkspace({
       total: checks.length,
     };
   }, [drafts, productionAssets, project, sceneBreakdowns]);
+  const scheduleLockPhases = useMemo<GenerationLockPhase[]>(() => {
+    const averageCharacterReadiness = characterProfiles.length
+      ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
+      : 0;
+    const averageLocationReadiness = locationProfiles.length
+      ? Math.round(locationProfiles.reduce((total, profile) => total + profile.readiness, 0) / locationProfiles.length)
+      : 0;
+    const averageLookReadiness = visualStyleRules.length
+      ? Math.round(visualStyleRules.reduce((total, rule) => total + rule.readiness, 0) / visualStyleRules.length)
+      : 0;
+    const averageContinuityReadiness = continuityRows.length
+      ? Math.round(continuityRows.reduce((total, row) => total + row.readiness, 0) / continuityRows.length)
+      : 0;
+    const completeScenePackets = sceneBreakdowns.filter(
+      (scene) =>
+        hasText(scene.summary) &&
+        hasList(scene.characters) &&
+        hasList(scene.props) &&
+        hasList(scene.wardrobe) &&
+        hasText(scene.sound_notes) &&
+        hasText(scene.blocking),
+    ).length;
+    const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
+    const imagePromptAssets = productionAssets.filter((asset) => hasText(asset.image_prompt));
+    const animationSoundAssets = productionAssets.filter(
+      (asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+    );
+
+    return [
+      {
+        detail: "The premise, tone, logline, treatment, and scene intent are stable enough to protect every later choice.",
+        id: "story-lock",
+        isReady:
+          hasText(project.logline) &&
+          hasText(project.genre) &&
+          hasText(project.tone) &&
+          (hasText(drafts.idea) || hasText(drafts.treatment) || hasText(drafts.story)),
+        items: [
+          project.logline ? `Logline: ${project.logline}` : "Write the one-sentence movie promise.",
+          drafts.treatment ? "Treatment or story notes are started." : "Start the treatment blueprint.",
+          project.tone ? `Tone locked as ${project.tone}.` : "Name the emotional tone.",
+        ],
+        label: "Story lock",
+        status: hasText(project.logline) ? "Story spine started" : "Needs premise spine",
+      },
+      {
+        detail: "Faces, wardrobe, carried props, speech patterns, and location rules are anchored before image generation.",
+        id: "identity-lock",
+        isReady: characterProfiles.length > 0 && averageCharacterReadiness >= 60 && locationProfiles.length > 0 && averageLocationReadiness >= 60,
+        items: [
+          `${characterProfiles.length} character bible profile${characterProfiles.length === 1 ? "" : "s"} at ${averageCharacterReadiness}% average.`,
+          `${locationProfiles.length} location bible profile${locationProfiles.length === 1 ? "" : "s"} at ${averageLocationReadiness}% average.`,
+          "Fill visual anchors before final still frames.",
+        ],
+        label: "Character and location lock",
+        status: `${averageCharacterReadiness}% character / ${averageLocationReadiness}% location`,
+      },
+      {
+        detail: "The film-wide palette, lighting grammar, camera grammar, negative prompts, and tool adapters are defined.",
+        id: "look-lock",
+        isReady: hasText(drafts.look_book) && averageLookReadiness >= 55,
+        items: [
+          drafts.look_book ? "Look book document started." : "Build the visual look book.",
+          `${averageLookReadiness}% average look-rule readiness.`,
+          workflowTools || "Add image, animation, sound, and edit tools.",
+        ],
+        label: "Visual language lock",
+        status: `${averageLookReadiness}% look ready`,
+      },
+      {
+        detail: "Cross-scene props, wardrobe, light, sound state, geography, and emotional handoffs have been checked.",
+        id: "continuity-lock",
+        isReady: continuityRows.length > 0 && averageContinuityReadiness >= 70 && hasText(drafts.continuity_tracker),
+        items: [
+          `${continuityRows.length} continuity row${continuityRows.length === 1 ? "" : "s"} mapped.`,
+          `${averageContinuityReadiness}% average continuity readiness.`,
+          drafts.continuity_tracker ? "Continuity tracker document started." : "Build the continuity tracker.",
+        ],
+        label: "Continuity lock",
+        status: `${averageContinuityReadiness}% continuity`,
+      },
+      {
+        detail: "Scene packets include enough production data to become a real shot list and prompt plan.",
+        id: "scene-lock",
+        isReady: sceneBreakdowns.length > 0 && completeScenePackets === sceneBreakdowns.length,
+        items: [
+          `${sceneBreakdowns.length} scene packet${sceneBreakdowns.length === 1 ? "" : "s"} saved.`,
+          `${completeScenePackets} scene packet${completeScenePackets === 1 ? "" : "s"} include core fields.`,
+          "Fill purpose, characters, props, wardrobe, sound, and blocking.",
+        ],
+        label: "Scene packet lock",
+        status: `${completeScenePackets} of ${sceneBreakdowns.length || 0} complete`,
+      },
+      {
+        detail: "A detailed shot list exists before image prompts expand into expensive generation work.",
+        id: "shot-lock",
+        isReady: shotAssets.length > 0,
+        items: [
+          `${shotAssets.length} detailed shot row${shotAssets.length === 1 ? "" : "s"} built.`,
+          "Shots should include type, purpose, visual action, and dialogue/sound handoff.",
+          "Insert shots come after scene geography is stable.",
+        ],
+        label: "Shot-list lock",
+        status: `${shotAssets.length} shots`,
+      },
+      {
+        detail: "Still-image anchors exist before animation, sound, and final packet export.",
+        id: "image-lock",
+        isReady: imagePromptAssets.length > 0,
+        items: [
+          `${imagePromptAssets.length} image prompt${imagePromptAssets.length === 1 ? "" : "s"} ready.`,
+          "Approve character, wardrobe, prop, and location continuity in stills first.",
+          "Regenerate failed stills before animation begins.",
+        ],
+        label: "Image prompt lock",
+        status: `${imagePromptAssets.length} image prompts`,
+      },
+      {
+        detail: "Animation, sound design, dialogue timing, and export notes are ready for the final production packet.",
+        id: "handoff-lock",
+        isReady: animationSoundAssets.length > 0 && hasText(drafts.sound_map) && hasText(drafts.production_schedule),
+        items: [
+          `${animationSoundAssets.length} animation or sound handoff row${animationSoundAssets.length === 1 ? "" : "s"} ready.`,
+          drafts.sound_map ? "Sound map started." : "Build the sound design map.",
+          drafts.production_schedule ? "Production schedule started." : "Build the production schedule.",
+        ],
+        label: "Animation, sound, and export lock",
+        status: hasText(drafts.production_schedule) ? "Export path started" : "Needs schedule",
+      },
+    ];
+  }, [
+    characterProfiles,
+    continuityRows,
+    drafts,
+    locationProfiles,
+    productionAssets,
+    project,
+    sceneBreakdowns,
+    visualStyleRules,
+    workflowTools,
+  ]);
+  const generationQueue = useMemo<GenerationQueueItem[]>(() => {
+    const priorityWeight: Record<GenerationQueueItem["priority"], number> = {
+      High: 0,
+      Medium: 1,
+      Low: 2,
+    };
+    const lockItems = scheduleLockPhases
+      .filter((phase) => !phase.isReady)
+      .map<GenerationQueueItem>((phase, index) => ({
+        blocker: phase.items.slice(0, 2).join(" "),
+        id: `lock-${phase.id}`,
+        kind: "Lock gate",
+        label: phase.label,
+        nextAction: phase.items[0] ?? phase.detail,
+        priority: index < 3 ? "High" : "Medium",
+        status: phase.status,
+      }));
+    const sceneItems = sceneBreakdowns.map<GenerationQueueItem>((scene) => {
+      const sceneAssets = assetsBySceneId[scene.id] ?? [];
+      const shotCount = sceneAssets.filter((asset) => asset.asset_type === "shot").length;
+      const imagePromptCount = sceneAssets.filter((asset) => hasText(asset.image_prompt)).length;
+      const animationSoundCount = sceneAssets.filter(
+        (asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+      ).length;
+      const missing = [
+        hasText(scene.summary) ? "" : "purpose",
+        hasList(scene.characters) ? "" : "characters",
+        hasList(scene.props) ? "" : "props",
+        hasList(scene.wardrobe) ? "" : "wardrobe",
+        hasText(scene.sound_notes) ? "" : "sound",
+        hasText(scene.blocking) ? "" : "blocking",
+        hasText(scene.color_palette || scene.tone) ? "" : "look",
+      ].filter((value): value is string => Boolean(value));
+      const priority: GenerationQueueItem["priority"] =
+        missing.length >= 3 || !shotCount ? "High" : !imagePromptCount || !animationSoundCount ? "Medium" : "Low";
+      const nextAction = missing.length
+        ? `Fill ${missing.slice(0, 3).join(", ")} before prompt work.`
+        : !shotCount
+          ? "Build the detailed shot list before insert expansion."
+          : !imagePromptCount
+            ? "Generate image prompts for approved shots."
+            : !animationSoundCount
+              ? "Generate animation, sound, and dialogue handoff prompts."
+              : "Review continuity and prepare this scene for export.";
+
+      return {
+        blocker: missing.length ? missing.join(", ") : "No core field blocker.",
+        id: `scene-${scene.id}`,
+        kind: "Scene",
+        label: sceneBoardLabel(scene),
+        nextAction,
+        priority,
+        status: `${shotCount} shots / ${imagePromptCount} image / ${animationSoundCount} motion-sound`,
+      };
+    });
+
+    return [...lockItems, ...sceneItems]
+      .sort((first, second) => priorityWeight[first.priority] - priorityWeight[second.priority])
+      .slice(0, 8);
+  }, [assetsBySceneId, sceneBreakdowns, scheduleLockPhases]);
+  const scheduleReadyCount = scheduleLockPhases.filter((phase) => phase.isReady).length;
   const storyDiagnostics = useMemo<StoryDiagnostic[]>(() => {
     const source = [project.logline, drafts.idea, drafts.treatment, drafts.story, drafts.synopsis, draftText]
       .join("\n")
@@ -4722,6 +4943,7 @@ export function ProjectWorkspace({
             "7. Check continuity against character bible, location bible, look book, and tracker.",
           ].join("\n");
         })
+        .join("\n\n")
       : [
           "## No scene packets yet",
           "",
@@ -4748,7 +4970,35 @@ export function ProjectWorkspace({
 
           return [`## ${sceneBoardLabel(scene)}`, "", ...shots].join("\n");
         })
+        .join("\n\n")
       : "## Shot order not available yet\n\nBuild scene packets and detailed shot lists first.";
+    const lockRows = scheduleLockPhases
+      .map((phase, index) =>
+        [
+          `## Gate ${index + 1}: ${phase.label}`,
+          "",
+          `Status: ${phase.isReady ? "Ready" : "Needs work"} - ${phase.status}`,
+          phase.detail,
+          "",
+          "Checklist:",
+          ...phase.items.map((item) => `- ${item}`),
+        ].join("\n"),
+      )
+      .join("\n\n");
+    const queueRows = generationQueue.length
+      ? generationQueue
+          .map((item, index) =>
+            [
+              `${index + 1}. ${item.label}`,
+              `   Type: ${item.kind}`,
+              `   Priority: ${item.priority}`,
+              `   Status: ${item.status}`,
+              `   Blocker: ${item.blocker}`,
+              `   Next action: ${item.nextAction}`,
+            ].join("\n"),
+          )
+          .join("\n\n")
+      : "No active blockers. Review the export gates and produce the final packet.";
     const content = [
       `# Production Schedule / Generation Order - ${project.title || "Untitled MiseForge Project"}`,
       "",
@@ -4777,6 +5027,14 @@ export function ProjectWorkspace({
       `- Scene Packets: ${sceneBreakdowns.length}`,
       `- Production Assets: ${productionAssets.length}`,
       "",
+      "# Production Lock Gates",
+      "",
+      lockRows,
+      "",
+      "# Do First Queue",
+      "",
+      queueRows,
+      "",
       "# Generation Principles",
       "",
       "1. Lock the story, character look, location rules, and visual language before generating final shots.",
@@ -4785,23 +5043,52 @@ export function ProjectWorkspace({
       "4. Add sound and dialogue timing after the animation plan is stable.",
       "5. Export only after continuity, look, and prompt cards agree with each other.",
       "",
-      "# Phase 1: Story And Continuity Locks",
+      "# Generation Order By Dependency",
       "",
-      "- Finalize logline and treatment blueprint.",
-      "- Fill character bible anchors for face, wardrobe, props, speech, and emotional state.",
-      "- Fill location bible anchors for layout, lighting, color, dressing, and ambient sound.",
-      "- Fill the visual look book with palette, camera grammar, lighting grammar, and negative prompts.",
-      "- Fill the continuity tracker before final generation.",
+      "1. Story spine: logline, treatment, theme, protagonist want/need, and scene purpose.",
+      "2. Identity bibles: recurring characters, wardrobe, props, locations, and layout anchors.",
+      "3. Visual bible: palette, camera grammar, lighting grammar, motifs, and negative prompts.",
+      "4. Continuity matrix: cross-scene prop, wardrobe, time, light, sound, and emotional handoffs.",
+      "5. Scene packets: purpose, emotional turn, characters, props, wardrobe, blocking, tone, and sound.",
+      "6. Detailed shot lists: shot number, type, angle, movement, visual action, dialogue, and handoff notes.",
+      "7. Image anchors: establish approved stills for locations, characters, coverage, and inserts.",
+      "8. Animation: animate only approved stills and protect eyelines, props, wardrobe, and camera grammar.",
+      "9. Sound: add room tone, practical foley, silence, dialogue timing, and no music unless story-required.",
+      "10. Edit and export: review continuity, regenerate failures, then export the production packet.",
       "",
-      "# Phase 2: Scene Priority Order",
+      "# Scene Priority Order",
       "",
       sceneRows,
       "",
-      "# Phase 3: Shot Generation Order",
+      "# Shot Generation Order",
       "",
       shotRows,
       "",
-      "# Phase 4: Tool Handoff",
+      "# Review Gates",
+      "",
+      "Before image generation:",
+      "- Story, character, location, visual, and continuity locks are ready enough to prevent drift.",
+      "- Scene packets have purpose, emotional turn, blocking, props, wardrobe, and sound notes.",
+      "",
+      "Before animation:",
+      "- Still images have approved character look, wardrobe, props, location layout, and lighting direction.",
+      "- Insert shots only expand after the main scene geography is stable.",
+      "",
+      "Before sound:",
+      "- Animation timing, dialogue presence, room tone, prop foley, and silence choices are mapped.",
+      "- Music is excluded unless the story specifically requires it.",
+      "",
+      "Before export:",
+      "- The production schedule, sound map, shot lists, prompt cards, and continuity tracker agree with each other.",
+      "",
+      "# Stop Doing Until Ready",
+      "",
+      "- Do not generate final images until the story, identity, visual, and continuity locks are clear.",
+      "- Do not animate a shot until the still frame has been approved.",
+      "- Do not create insert-shot variations until the core shot list explains why that insert matters.",
+      "- Do not export a production packet until missing scene fields and high-risk continuity notes are resolved.",
+      "",
+      "# Tool Handoff",
       "",
       "Image generation:",
       "- Generate approved still frames for locations, characters, core coverage, and inserts.",
@@ -4817,12 +5104,12 @@ export function ProjectWorkspace({
       "",
       "# Suggested Production Sprint",
       "",
-      "Day 1: Lock logline, treatment, character bible, location bible, and look book.",
-      "Day 2: Save scene packets and fill continuity gaps.",
-      "Day 3: Build shot lists for the highest-value scenes.",
-      "Day 4: Generate still-image anchors and approve continuity.",
-      "Day 5: Generate animation and sound/dialogue prompts for approved shots.",
-      "Day 6: Review continuity, regenerate only failed assets, then export the production packet.",
+      "Sprint 0: Lock logline, treatment, theme, character bible, location bible, and look book.",
+      "Sprint 1: Save scene packets and fill continuity gaps.",
+      "Sprint 2: Build shot lists for the highest-value scenes.",
+      "Sprint 3: Generate still-image anchors and approve continuity.",
+      "Sprint 4: Generate animation and sound/dialogue prompts for approved shots.",
+      "Sprint 5: Review continuity, regenerate only failed assets, then export the production packet.",
       "",
       "# Export Gates",
       "",
@@ -4838,7 +5125,7 @@ export function ProjectWorkspace({
     loadGeneratedDocument({
       content,
       docType: "production_schedule",
-      status: "Production Schedule prepared. Review the order, then save the Schedule stage.",
+      status: "Generation order prepared. Review the lock gates, then save the Schedule stage.",
       stepId: "schedule",
     });
   }
@@ -5118,7 +5405,7 @@ export function ProjectWorkspace({
       lookbook:
         "Create a visual look book with a film-wide visual thesis, palette, lighting grammar, camera grammar, character and location anchors, recurring motifs, negative prompts, and tool-specific consistency rules.",
       schedule:
-        "Create a production schedule and generation order with story locks, character/location/look locks, scene priority, shot generation sequence, tool handoff, continuity checks, and export gates.",
+        "Create a production schedule with lock gates, a do-first queue, dependency-based generation order, scene priority, shot generation sequence, image-before-animation review gates, sound handoff, continuity checks, and export gates.",
       sound:
         "Create a sound design map with room tone, practical sounds, prop foley, dialogue and silence rules, animation handoff, edit notes, and final sound checklist.",
       insert_shot:
@@ -7557,12 +7844,65 @@ export function ProjectWorkspace({
               scene priority, shot order, tool handoff, continuity checks, and export gates.
             </p>
           </div>
-          <strong>{hasText(drafts.production_schedule) ? "Scheduled" : "Needs order"}</strong>
+          <strong>
+            {scheduleReadyCount} of {scheduleLockPhases.length} locks ready
+          </strong>
+        </div>
+        <div className="schedule-lock-grid">
+          {scheduleLockPhases.map((phase) => (
+            <article className={phase.isReady ? "schedule-lock-card ready" : "schedule-lock-card"} key={phase.id}>
+              <span>{phase.isReady ? "Ready" : "Lock gate"}</span>
+              <strong>{phase.label}</strong>
+              <p>{phase.detail}</p>
+              <small>{phase.status}</small>
+              <ul>
+                {phase.items.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+        <div className="generation-queue-list">
+          <div className="queue-heading">
+            <div>
+              <span>Do first queue</span>
+              <strong>Dependency-aware next work</strong>
+            </div>
+            <small>{generationQueue.length ? `${generationQueue.length} active items` : "No active blockers"}</small>
+          </div>
+          {generationQueue.length ? (
+            generationQueue.map((item) => (
+              <article className={`generation-queue-item priority-${item.priority.toLowerCase()}`} key={item.id}>
+                <div>
+                  <span>{item.kind}</span>
+                  <strong>{item.label}</strong>
+                  <p>{item.nextAction}</p>
+                </div>
+                <aside>
+                  <small>{item.priority}</small>
+                  <em>{item.status}</em>
+                </aside>
+              </article>
+            ))
+          ) : (
+            <article className="generation-queue-item priority-low">
+              <div>
+                <span>Ready</span>
+                <strong>Review export gates</strong>
+                <p>All major blockers are clear. Build the schedule document, review it, then export the packet.</p>
+              </div>
+              <aside>
+                <small>Low</small>
+                <em>Ready for packet</em>
+              </aside>
+            </article>
+          )}
         </div>
         <div className="schedule-grid">
           <article className={hasText(drafts.production_schedule) ? "schedule-card active" : "schedule-card"}>
             <span>Production Schedule</span>
-            <strong>{readiness.next}</strong>
+            <strong>{hasText(drafts.production_schedule) ? "Schedule document saved" : readiness.next}</strong>
             <p>
               Build an ordered plan that shows which bibles, scene packets, shot lists, prompt
               cards, and exports should happen first.
@@ -8306,10 +8646,10 @@ export function ProjectWorkspace({
             <div className="bible-tool-card">
               <div>
                 <span>Production order</span>
-                <strong>Turn the film into a practical generation and review sequence.</strong>
+                <strong>Turn the film into lock gates, a do-first queue, and a practical generation sequence.</strong>
                 <p>
                   Build the schedule after story, bible, look, continuity, and scene-packet work
-                  have started. It will show what to lock first and what should wait.
+                  have started. It will show what to lock first, what should happen next, and what should wait.
                 </p>
               </div>
               <div className="dialogue-actions">
