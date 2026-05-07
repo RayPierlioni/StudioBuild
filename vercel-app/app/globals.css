@@ -1651,7 +1651,8 @@ textarea:focus {
   font-weight: 820;
 }
 
-.character-bible-studio {
+.character-bible-studio,
+.location-bible-studio {
   display: grid;
   gap: 12px;
   border: 1px solid rgba(52, 47, 45, 0.1);
@@ -1662,14 +1663,17 @@ textarea:focus {
     white;
 }
 
-.character-sheet-grid {
+.character-sheet-grid,
+.location-sheet-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .character-sheet-card,
-.character-empty-studio {
+.character-empty-studio,
+.location-sheet-card,
+.location-empty-studio {
   display: grid;
   gap: 12px;
   border: 1px solid rgba(52, 47, 45, 0.1);
@@ -1703,14 +1707,16 @@ textarea:focus {
 
 .character-sheet-list dd,
 .missing-anchor-row p,
-.character-empty-studio p {
+.character-empty-studio p,
+.location-empty-studio p {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
 }
 
-.character-empty-studio strong {
+.character-empty-studio strong,
+.location-empty-studio strong {
   color: var(--deep);
   font-size: 17px;
 }
@@ -2918,6 +2924,7 @@ code {
     .sound-grid,
     .character-card-grid,
     .character-sheet-grid,
+    .location-sheet-grid,
     .character-profile-meta,
     .project-workspace > .guide-assistant,
     .guide-chat-form,

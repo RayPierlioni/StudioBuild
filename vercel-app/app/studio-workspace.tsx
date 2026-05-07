@@ -240,6 +240,23 @@ type CharacterContinuityProfile = {
   wardrobe: string[];
 };
 
+type LocationContinuityProfile = {
+  blockingNotes: string[];
+  characters: string[];
+  colorNotes: string[];
+  missing: string[];
+  name: string;
+  productionAssets: ProductionAsset[];
+  props: string[];
+  readiness: number;
+  sceneLabels: string[];
+  scenes: SceneBreakdown[];
+  setDressing: string[];
+  soundNotes: string[];
+  timeOfDays: string[];
+  wardrobe: string[];
+};
+
 const freeEntitlement: AccessEntitlement = {
   isAdmin: false,
   isPro: false,
@@ -2041,6 +2058,57 @@ export function ProjectWorkspace({
   const locationBibleNames = useMemo(() => {
     return uniqueSorted(sceneBreakdowns.map((scene) => scene.location));
   }, [sceneBreakdowns]);
+  const locationProfiles = useMemo<LocationContinuityProfile[]>(() => {
+    const sceneById = new Map(sceneBreakdowns.map((scene) => [scene.id, scene]));
+
+    return locationBibleNames.map((name) => {
+      const normalizedName = name.trim().toLowerCase();
+      const scenes = sceneBreakdowns.filter((scene) => scene.location?.trim().toLowerCase() === normalizedName);
+      const sceneIds = new Set(scenes.map((scene) => scene.id));
+      const locationAssets = productionAssets.filter((asset) => sceneIds.has(asset.scene_breakdown_id));
+      const setDressing = uniqueSorted(scenes.flatMap((scene) => scene.set_dressing ?? [])).slice(0, 12);
+      const props = uniqueSorted(scenes.flatMap((scene) => scene.props ?? [])).slice(0, 12);
+      const wardrobe = uniqueSorted(scenes.flatMap((scene) => scene.wardrobe ?? [])).slice(0, 12);
+      const characters = uniqueSorted(scenes.flatMap((scene) => scene.characters ?? [])).slice(0, 12);
+      const timeOfDays = uniqueSorted(scenes.map((scene) => scene.time_of_day)).slice(0, 8);
+      const colorNotes = uniqueSorted(scenes.map((scene) => scene.color_palette || scene.tone)).slice(0, 8);
+      const soundNotes = uniqueSorted(scenes.map((scene) => scene.sound_notes)).slice(0, 8);
+      const blockingNotes = uniqueSorted(scenes.map((scene) => scene.blocking)).slice(0, 8);
+      const readinessChecks = [
+        { label: "scene usage", ready: scenes.length > 0 },
+        { label: "time-of-day rules", ready: timeOfDays.length > 0 },
+        { label: "layout or blocking", ready: blockingNotes.length > 0 },
+        { label: "set dressing", ready: setDressing.length > 0 },
+        { label: "sound texture", ready: soundNotes.length > 0 },
+        { label: "color and lighting", ready: colorNotes.length > 0 },
+        {
+          label: "prompt rows",
+          ready: locationAssets.some((asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt)),
+        },
+      ];
+
+      return {
+        blockingNotes,
+        characters,
+        colorNotes,
+        missing: readinessChecks.filter((check) => !check.ready).map((check) => check.label),
+        name,
+        productionAssets: locationAssets.sort((first, second) => {
+          const firstScene = sceneById.get(first.scene_breakdown_id)?.scene_number ?? 999;
+          const secondScene = sceneById.get(second.scene_breakdown_id)?.scene_number ?? 999;
+          return firstScene - secondScene || first.order_index - second.order_index;
+        }),
+        props,
+        readiness: Math.round((readinessChecks.filter((check) => check.ready).length / readinessChecks.length) * 100),
+        sceneLabels: scenes.map(sceneBoardLabel),
+        scenes,
+        setDressing,
+        soundNotes,
+        timeOfDays,
+        wardrobe,
+      };
+    });
+  }, [locationBibleNames, productionAssets, sceneBreakdowns]);
   const readiness = useMemo(() => {
     const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
     const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
@@ -2875,6 +2943,131 @@ export function ProjectWorkspace({
       status: `${names.length} location bible section${names.length === 1 ? "" : "s"} prepared. Review, fill details, then save.`,
       stepId: "locations",
     });
+  }
+
+  function buildLocationProfileSheet(profile: LocationContinuityProfile) {
+    if (!requirePro("Location profile sheets")) {
+      return;
+    }
+
+    const sheet = [
+      `# Location Profile - ${profile.name}`,
+      "",
+      `Project: ${project.title || "Untitled MiseForge Project"}`,
+      `Continuity readiness: ${profile.readiness}%`,
+      `Scene usage: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+      `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
+      "",
+      "## Spatial Layout Lock",
+      "",
+      "- Entrances and exits:",
+      "- Key zones:",
+      "- Camera-safe directions:",
+      "- Blocking lanes:",
+      "- Where characters can hide, cross, enter, or reveal information:",
+      "",
+      "## Light, Color, and Atmosphere",
+      "",
+      `- Time-of-day rules: ${profile.timeOfDays.length ? profile.timeOfDays.join(", ") : "Not mapped yet"}`,
+      `- Detected color / tone notes: ${profile.colorNotes.length ? profile.colorNotes.join("; ") : "Not mapped yet"}`,
+      "- Practical light sources:",
+      "- Shadow behavior:",
+      "- Weather, air, dust, smoke, haze, or texture:",
+      "- What must never appear in this location:",
+      "",
+      "## Set Dressing and Prop Geography",
+      "",
+      `- Set dressing detected: ${profile.setDressing.length ? profile.setDressing.join(", ") : "Not mapped yet"}`,
+      `- Props used here: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+      "- Fixed background details:",
+      "- Moveable objects:",
+      "- Insert-shot opportunities:",
+      "- Continuity risks:",
+      "",
+      "## Sound Identity",
+      "",
+      `- Detected sound notes: ${profile.soundNotes.length ? profile.soundNotes.join("; ") : "Not mapped yet"}`,
+      "- Room tone:",
+      "- Floor / wall / air texture:",
+      "- Distant life:",
+      "- Practical hums, machines, weather, or exterior bleed:",
+      "- Silence behavior:",
+      "",
+      "## Scene-by-Scene Location State",
+      "",
+      profile.scenes.length
+        ? profile.scenes
+            .map((scene) =>
+              [
+                `### ${sceneBoardLabel(scene)}`,
+                "",
+                `- Time: ${scene.time_of_day || "Not mapped yet"}`,
+                `- Characters present: ${listText(scene.characters, "Not filled yet")}`,
+                `- Set dressing: ${listText(scene.set_dressing, "Not filled yet")}`,
+                `- Props: ${listText(scene.props, "Not filled yet")}`,
+                `- Blocking: ${scene.blocking || "Not filled yet"}`,
+                `- Sound: ${scene.sound_notes || "Not filled yet"}`,
+                "- What changed since the previous scene here:",
+                "- What must stay fixed:",
+              ].join("\n"),
+            )
+            .join("\n\n")
+        : "### Scene 1\n\n- Time:\n- Characters present:\n- Set dressing:\n- Props:\n- Blocking:\n- Sound:\n- What changed:\n- What must stay fixed:",
+      "",
+      "## Reusable Prompt Anchor",
+      "",
+      buildLocationPromptAnchor(profile),
+    ].join("\n");
+    const currentBible = drafts.location_bible.trim();
+    const content = currentBible && !currentBible.includes(`# Location Profile - ${profile.name}`)
+      ? `${currentBible}\n\n---\n\n${sheet}`
+      : sheet;
+
+    loadGeneratedDocument({
+      content,
+      docType: "location_bible",
+      status: `${profile.name} profile sheet prepared. Fill layout, light, dressing, sound, and scene-state locks, then save.`,
+      stepId: "locations",
+    });
+  }
+
+  function buildLocationPromptAnchor(profile: LocationContinuityProfile) {
+    return [
+      "Use this exact location continuity anchor whenever generating images, animation, sound, or shot-list prompts for this location.",
+      "",
+      `Location: ${profile.name}`,
+      `Project: ${project.title || "Untitled MiseForge Project"}`,
+      `Genre/tone: ${project.genre || "Not specified"} / ${project.tone || "Not specified"}`,
+      `Scene usage: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+      `Time-of-day rules: ${profile.timeOfDays.length ? profile.timeOfDays.join(", ") : "Not mapped yet"}`,
+      `Characters appearing here: ${profile.characters.length ? profile.characters.join(", ") : "Not mapped yet"}`,
+      `Set dressing: ${profile.setDressing.length ? profile.setDressing.join(", ") : "Not mapped yet"}`,
+      `Props in this location: ${profile.props.length ? profile.props.join(", ") : "Not mapped yet"}`,
+      `Wardrobe seen here: ${profile.wardrobe.length ? profile.wardrobe.join(", ") : "Not mapped yet"}`,
+      `Color / light anchors: ${profile.colorNotes.length ? profile.colorNotes.join("; ") : "Not mapped yet"}`,
+      `Sound anchors: ${profile.soundNotes.length ? profile.soundNotes.join("; ") : "Not mapped yet"}`,
+      "",
+      "Rules:",
+      "- Preserve layout, scale, entrance positions, practical lights, color family, set dressing, and room tone.",
+      "- Do not invent new background objects, windows, weather, light sources, or architectural features unless the scene state calls for it.",
+      "- Keep blocking and eyelines physically possible inside the established space.",
+      "- If a prompt conflicts with this anchor, rewrite the prompt to protect location continuity.",
+      `- Missing anchors to fill next: ${profile.missing.length ? profile.missing.join(", ") : "none"}.`,
+    ].join("\n");
+  }
+
+  async function copyLocationPromptAnchor(profile: LocationContinuityProfile) {
+    if (!requirePro("Location consistency prompts")) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildLocationPromptAnchor(profile));
+      setSaveStatus(`${profile.name} location consistency prompt copied.`);
+      setSaveError("");
+    } catch {
+      setSaveError("Your browser blocked copy. Build the location sheet and copy the prompt anchor from the editor.");
+    }
   }
 
   function buildLookBookTemplate() {
@@ -4072,6 +4265,42 @@ export function ProjectWorkspace({
           ),
         ].join("\n\n")
       : "";
+    const locationProfileBlocks = locationProfiles.length
+      ? [
+          "## Location Continuity Cards",
+          "",
+          ...locationProfiles.map((profile) =>
+            [
+              `### ${profile.name}`,
+              "",
+              `Continuity readiness: ${profile.readiness}%`,
+              `Scene usage: ${profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}`,
+              `Missing anchors: ${profile.missing.length ? profile.missing.join(", ") : "None flagged"}`,
+              "",
+              "Time-of-day rules:",
+              markdownList(profile.timeOfDays),
+              "",
+              "Set dressing:",
+              markdownList(profile.setDressing),
+              "",
+              "Props:",
+              markdownList(profile.props),
+              "",
+              "Characters:",
+              markdownList(profile.characters),
+              "",
+              "Color / light anchors:",
+              markdownList(profile.colorNotes),
+              "",
+              "Sound anchors:",
+              markdownList(profile.soundNotes),
+              "",
+              "Blocking / layout notes:",
+              markdownList(profile.blockingNotes),
+            ].join("\n"),
+          ),
+        ].join("\n\n")
+      : "";
 
     const sceneBlocks = sceneBreakdowns
       .map((scene) => {
@@ -4152,7 +4381,15 @@ export function ProjectWorkspace({
       })
       .join("\n\n");
 
-    return [projectSummary, characterProfileBlocks, documentBlocks, versionBlocks, "## Scene Packets", sceneBlocks || "No scene packets saved yet."]
+    return [
+      projectSummary,
+      characterProfileBlocks,
+      locationProfileBlocks,
+      documentBlocks,
+      versionBlocks,
+      "## Scene Packets",
+      sceneBlocks || "No scene packets saved yet.",
+    ]
       .filter(Boolean)
       .join("\n\n");
   }
@@ -4202,6 +4439,7 @@ export function ProjectWorkspace({
       "Production Readiness",
       "Project Roadmap",
       characterProfiles.length ? "Character Continuity Cards" : "",
+      locationProfiles.length ? "Location Continuity Cards" : "",
       ...docSections.map((section) => section.label),
       versions.length ? "Version History" : "",
       sceneBreakdowns.length ? "Scene Packets" : "",
@@ -4327,6 +4565,40 @@ export function ProjectWorkspace({
                         <section><h4>Relationships</h4>${htmlList(profile.coCharacters)}</section>
                         <section><h4>Locations</h4>${htmlList(profile.locations)}</section>
                         <section><h4>Tone / Sound</h4>${htmlList([...profile.toneNotes, ...profile.soundNotes])}</section>
+                        <section><h4>Missing Anchors</h4>${htmlList(profile.missing, "None flagged")}</section>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `
+      : "";
+    const locationProfileSection = locationProfiles.length
+      ? `
+          <section class="packet-section">
+            <div class="section-label">Location Continuity Cards</div>
+            <h2>Location identity locks.</h2>
+            <p class="lede">Layout, light, set dressing, sound, time-of-day, and prompt anchors for keeping recurring places consistent across generated shots.</p>
+            <div class="character-export-grid">
+              ${locationProfiles
+                .map(
+                  (profile) => `
+                    <article class="character-export-card">
+                      <div class="character-export-head">
+                        <span>${profile.readiness}% ready</span>
+                        <h3>${htmlValue(profile.name)}</h3>
+                      </div>
+                      <p>${profile.sceneLabels.length} scene use${profile.sceneLabels.length === 1 ? "" : "s"} / ${profile.productionAssets.length} production row${profile.productionAssets.length === 1 ? "" : "s"}</p>
+                      <div class="details-grid compact">
+                        <section><h4>Scenes</h4>${htmlList(profile.sceneLabels)}</section>
+                        <section><h4>Time / Light</h4>${htmlList([...profile.timeOfDays, ...profile.colorNotes])}</section>
+                        <section><h4>Set Dressing</h4>${htmlList(profile.setDressing)}</section>
+                        <section><h4>Props</h4>${htmlList(profile.props)}</section>
+                        <section><h4>Characters</h4>${htmlList(profile.characters)}</section>
+                        <section><h4>Sound</h4>${htmlList(profile.soundNotes)}</section>
+                        <section><h4>Layout / Blocking</h4>${htmlList(profile.blockingNotes)}</section>
                         <section><h4>Missing Anchors</h4>${htmlList(profile.missing, "None flagged")}</section>
                       </div>
                     </article>
@@ -4911,6 +5183,7 @@ export function ProjectWorkspace({
         </div>
       </section>
       ${characterProfileSection}
+      ${locationProfileSection}
       ${documentSections}
       ${versionSections}
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
@@ -5661,24 +5934,109 @@ export function ProjectWorkspace({
             </>
           ) : null}
           {activeStepId === "locations" ? (
-            <div className="bible-tool-card">
-              <div>
-                <span>Location continuity</span>
-                <strong>Make every recurring place feel like the same real space.</strong>
-                <p>
-                  Use scene packets to start a location bible, then fill layout, light, color,
-                  dressing, ambient sound, and what must stay consistent.
-                </p>
+            <>
+              <div className="bible-tool-card">
+                <div>
+                  <span>Location continuity</span>
+                  <strong>Make every recurring place feel like the same real space.</strong>
+                  <p>
+                    Use scene packets to start a location bible, then fill layout, light, color,
+                    dressing, ambient sound, and what must stay consistent.
+                  </p>
+                </div>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={buildLocationBibleTemplate}
+                  disabled={!entitlement.isPro}
+                >
+                  {entitlement.isPro ? "Build Location Bible" : "Pro: Build Location Bible"}
+                </button>
               </div>
-              <button
-                className="button"
-                type="button"
-                onClick={buildLocationBibleTemplate}
-                disabled={!entitlement.isPro}
-              >
-                {entitlement.isPro ? "Build Location Bible" : "Pro: Build Location Bible"}
-              </button>
-            </div>
+              <div className="location-bible-studio" aria-label="Location bible sheets">
+                <div className="tool-heading">
+                  <div>
+                    <h4>Location sheets</h4>
+                    <p>
+                      Build one reusable profile per recurring place so layout, light, dressing,
+                      props, room tone, and time-of-day rules stay coherent across scenes.
+                    </p>
+                  </div>
+                  <span>{locationProfiles.length ? `${locationProfiles.length} detected` : "Start manually"}</span>
+                </div>
+                {locationProfiles.length ? (
+                  <div className="location-sheet-grid">
+                    {locationProfiles.map((profile) => (
+                      <article className="location-sheet-card" key={profile.name}>
+                        <div className="character-profile-head">
+                          <div>
+                            <span>{profile.readiness}% ready</span>
+                            <strong>{profile.name}</strong>
+                          </div>
+                          <small>{profile.scenes.length} scene{profile.scenes.length === 1 ? "" : "s"}</small>
+                        </div>
+                        <dl className="character-sheet-list">
+                          <div>
+                            <dt>Scene usage</dt>
+                            <dd>{profile.sceneLabels.length ? profile.sceneLabels.join(", ") : "Not mapped yet"}</dd>
+                          </div>
+                          <div>
+                            <dt>Time / light</dt>
+                            <dd>{profile.timeOfDays.length ? profile.timeOfDays.join(", ") : "Needs time rules"}</dd>
+                          </div>
+                          <div>
+                            <dt>Set dressing</dt>
+                            <dd>{profile.setDressing.length ? profile.setDressing.slice(0, 5).join(", ") : "Needs fixed details"}</dd>
+                          </div>
+                          <div>
+                            <dt>Sound</dt>
+                            <dd>{profile.soundNotes.length ? profile.soundNotes.slice(0, 2).join("; ") : "Needs room tone"}</dd>
+                          </div>
+                        </dl>
+                        <div className="missing-anchor-row">
+                          <span>Missing</span>
+                          <p>{profile.missing.length ? profile.missing.join(", ") : "No major anchors flagged."}</p>
+                        </div>
+                        <div className="bible-actions">
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => buildLocationProfileSheet(profile)}
+                            disabled={!entitlement.isPro}
+                          >
+                            {entitlement.isPro ? "Build profile sheet" : "Pro: profile sheet"}
+                          </button>
+                          <button
+                            className="button secondary"
+                            type="button"
+                            onClick={() => void copyLocationPromptAnchor(profile)}
+                            disabled={!entitlement.isPro}
+                          >
+                            {entitlement.isPro ? "Copy location prompt" : "Pro: location prompt"}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="location-empty-studio">
+                    <strong>No locations have been detected yet.</strong>
+                    <p>
+                      Save a scene packet with a location, or start a manual Primary Location profile
+                      and fill the layout, light, dressing, and sound locks yourself.
+                    </p>
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={buildLocationBibleTemplate}
+                      disabled={!entitlement.isPro}
+                    >
+                      {entitlement.isPro ? "Start Primary Location Bible" : "Pro: start location bible"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           ) : null}
           {activeStepId === "lookbook" ? (
             <div className="bible-tool-card">
