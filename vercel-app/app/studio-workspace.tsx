@@ -167,23 +167,62 @@ type LocalVersion = {
 };
 
 type DialogueFlag = {
+  category: string;
   evidence: string;
   fix: string;
   label: string;
+  lineNumber?: number;
   severity: "High" | "Medium" | "Low";
+};
+
+type DialogueLineEntry = {
+  character: string;
+  line: string;
+  lineNumber: number;
+  wordCount: number;
+};
+
+type DialogueLineNote = {
+  character: string;
+  issue: string;
+  line: string;
+  lineNumber: number;
+  rewriteMove: string;
+  subtextTest: string;
+  tactic: string;
+};
+
+type DialogueScoreCard = {
+  detail: string;
+  label: string;
+  score: number;
+  status: string;
+};
+
+type DialogueCharacterVoice = {
+  assignment: string;
+  averageWords: number;
+  lineCount: number;
+  name: string;
+  risk: string;
 };
 
 type DialogueScan = {
   averageWordsPerLine: number;
   characterCount: number;
+  characterVoices: DialogueCharacterVoice[];
   dialogueLineCount: number;
   flags: DialogueFlag[];
+  lineNotes: DialogueLineNote[];
+  nextRewritePass: string;
   prompt: string;
   rubric: string[];
+  scoreCards: DialogueScoreCard[];
   score: number;
   sourceExcerpt: string;
   strengths: string[];
   wordCount: number;
+  rewriteMoves: string[];
 };
 
 export type AccessEntitlement = {
@@ -867,12 +906,14 @@ function hasShotMetadata(metadata: ShotMetadata) {
 }
 
 const dialogueFlagRules: Array<{
+  category: string;
   fix: string;
   label: string;
   pattern: RegExp;
   severity: DialogueFlag["severity"];
 }> = [
   {
+    category: "Subtext",
     label: "Emotion is stated instead of played",
     severity: "High",
     pattern:
@@ -880,28 +921,47 @@ const dialogueFlagRules: Array<{
     fix: "Replace the named emotion with a physical choice, object, silence, interruption, or contradiction.",
   },
   {
+    category: "Exposition",
     label: "Exposition is too visible",
     severity: "High",
     pattern: /\b(as you know|remember when|the reason is|let me explain|what this means|because we need|you have to understand)\b/i,
     fix: "Move information into conflict, behavior, set dressing, or what one character refuses to say directly.",
   },
   {
+    category: "Theme",
     label: "Line sounds like thesis copy",
     severity: "Medium",
     pattern: /\b(this is about|what matters is|the truth is|in the end|our journey|we must learn|it represents)\b/i,
     fix: "Make the line character-specific. Let the theme show through pressure, not explanation.",
   },
   {
+    category: "Specificity",
     label: "Generic urgency",
     severity: "Medium",
     pattern: /\b(we have to go|there is no time|we need to move|we need to hurry|everything depends on this)\b/i,
     fix: "Name the specific cost, obstacle, or immediate physical action that makes the urgency real.",
   },
   {
+    category: "Rhythm",
     label: "Flat agreement or response",
     severity: "Low",
     pattern: /\b(you're right|i know|okay|fine|sure|i understand)\b/i,
     fix: "Add friction, subtext, status change, or a behavior that changes the rhythm of the exchange.",
+  },
+  {
+    category: "AI Voice",
+    label: "Therapy-speak or polished self-summary",
+    severity: "Medium",
+    pattern:
+      /\b(i need to process|i'm trying to understand|i can't do this anymore|i just need closure|i need you to hear me|i am not ready|i'm doing my best)\b/i,
+    fix: "Make the line less clean. Give the character a defensive tactic, a concrete object, or a partial truth.",
+  },
+  {
+    category: "Specificity",
+    label: "Abstract stakes",
+    severity: "Medium",
+    pattern: /\b(our future|everything we built|the whole world|all of this|the mission|the plan|what we lost)\b/i,
+    fix: "Attach the stakes to a visible cost: a person, a prop, a deadline, a door closing, a body failing, or a choice that cannot be undone.",
   },
 ];
 
@@ -915,8 +975,13 @@ function isLikelyCharacterCue(line: string) {
   );
 }
 
+function countWords(value: string) {
+  return value.match(/\b[\w']+\b/g)?.length ?? 0;
+}
+
 function extractDialogueLines(source: string) {
   const lines = source.split(/\r?\n/).map((line) => line.trim());
+  const dialogueLineEntries: DialogueLineEntry[] = [];
   const dialogueLines: string[] = [];
   const characters = new Set<string>();
 
@@ -937,6 +1002,14 @@ function extractDialogueLines(source: string) {
       }
 
       if (!/^\(.+\)$/.test(nextLine)) {
+        const character = line.replace(/\s*\(.*\)\s*$/, "").trim();
+
+        dialogueLineEntries.push({
+          character,
+          line: nextLine,
+          lineNumber: nextIndex + 1,
+          wordCount: countWords(nextLine),
+        });
         dialogueLines.push(nextLine);
       }
     }
@@ -944,6 +1017,7 @@ function extractDialogueLines(source: string) {
 
   return {
     characters: Array.from(characters).filter(Boolean),
+    dialogueLineEntries,
     dialogueLines,
     lines,
   };
@@ -965,6 +1039,158 @@ function flagPenalty(flag: DialogueFlag) {
   return 6;
 }
 
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function scoreStatus(score: number) {
+  if (score >= 82) {
+    return "Strong";
+  }
+
+  if (score >= 62) {
+    return "Workable";
+  }
+
+  if (score >= 42) {
+    return "Needs pass";
+  }
+
+  return "At risk";
+}
+
+function inferDialogueTactic(line: string) {
+  const normalized = line.trim().toLowerCase();
+
+  if (/^(no|don't|stop|never|leave|get out)\b/.test(normalized)) {
+    return "Refuse";
+  }
+
+  if (/\?$/.test(normalized)) {
+    return "Test";
+  }
+
+  if (/\b(please|come on|just)\b/.test(normalized)) {
+    return "Bargain";
+  }
+
+  if (/\b(sorry|fine|okay|i know)\b/.test(normalized)) {
+    return "Retreat";
+  }
+
+  if (/\b(if|then|or else|unless)\b/.test(normalized)) {
+    return "Pressure";
+  }
+
+  return "Hide or press";
+}
+
+function buildLineIssue(line: string, wordCount: number) {
+  const issues = [
+    /\b(i feel|i'm scared|i am scared|i'm angry|i am angry|i'm sad|i am sad|i'm confused|i am confused)\b/i.test(line)
+      ? "names the emotion"
+      : "",
+    /\b(as you know|remember when|let me explain|you have to understand|the reason is)\b/i.test(line)
+      ? "explains backstory"
+      : "",
+    /\b(the truth is|what matters is|this is about|in the end|we must learn)\b/i.test(line)
+      ? "states the theme"
+      : "",
+    /\b(everything|something|anything|nothing|all of this|our future|the mission|the plan)\b/i.test(line)
+      ? "uses abstract stakes"
+      : "",
+    wordCount > 18 ? "runs long" : "",
+    /^(i|you|we|they|this|that)\b/i.test(line) ? "starts from a familiar pronoun shape" : "",
+  ].filter(Boolean);
+
+  return issues.length ? issues.join(", ") : "keep, but test for subtext and behavior";
+}
+
+function rewriteMoveForIssue(issue: string, tactic: string) {
+  if (issue.includes("emotion")) {
+    return "Remove the feeling word and externalize it through a prop, silence, distance shift, or refusal.";
+  }
+
+  if (issue.includes("backstory")) {
+    return "Let one character weaponize the information instead of explaining it cleanly.";
+  }
+
+  if (issue.includes("theme")) {
+    return "Turn the theme into a choice or accusation the character can act on.";
+  }
+
+  if (issue.includes("abstract")) {
+    return "Replace the abstract noun with the specific thing the camera can see or hear.";
+  }
+
+  if (issue.includes("long")) {
+    return "Split the line into pressure, interruption, and a smaller final turn.";
+  }
+
+  if (issue.includes("pronoun")) {
+    return `Start the line from a concrete object, action, or ${tactic.toLowerCase()} tactic.`;
+  }
+
+  return "Keep the line only if the surrounding beat gives it conflict, behavior, and a reason not to say the full truth.";
+}
+
+function buildDialogueLineNotes(entries: DialogueLineEntry[]) {
+  return entries
+    .map((entry) => {
+      const tactic = inferDialogueTactic(entry.line);
+      const issue = buildLineIssue(entry.line, entry.wordCount);
+
+      return {
+        character: entry.character,
+        issue,
+        line: entry.line,
+        lineNumber: entry.lineNumber,
+        rewriteMove: rewriteMoveForIssue(issue, tactic),
+        subtextTest: "What does this character want without admitting it?",
+        tactic,
+      };
+    })
+    .filter((note) => note.issue !== "keep, but test for subtext and behavior")
+    .slice(0, 8);
+}
+
+function buildCharacterVoices(entries: DialogueLineEntry[]) {
+  const grouped = entries.reduce<Record<string, DialogueLineEntry[]>>((accumulator, entry) => {
+    accumulator[entry.character] = [...(accumulator[entry.character] ?? []), entry];
+    return accumulator;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([name, characterEntries]) => {
+      const averageWords = characterEntries.length
+        ? Math.round(characterEntries.reduce((total, entry) => total + entry.wordCount, 0) / characterEntries.length)
+        : 0;
+      const questionCount = characterEntries.filter((entry) => /\?$/.test(entry.line.trim())).length;
+      const refusalCount = characterEntries.filter((entry) => /^(no|don't|stop|never)\b/i.test(entry.line.trim())).length;
+      const risk =
+        averageWords > 18
+          ? "may over-explain"
+          : questionCount === characterEntries.length && characterEntries.length > 1
+            ? "may only ask questions"
+            : refusalCount
+              ? "has friction"
+              : "needs a sharper speech pattern";
+
+      return {
+        assignment:
+          risk === "has friction"
+            ? "Preserve the resistance, but make each refusal specific to the scene object or relationship."
+            : "Give this character a repeatable speech behavior: deflects with jokes, answers with objects, interrupts, bargains, or says less than they know.",
+        averageWords,
+        lineCount: characterEntries.length,
+        name,
+        risk,
+      };
+    })
+    .sort((first, second) => second.lineCount - first.lineCount)
+    .slice(0, 6);
+}
+
 function analyzeDialogueSource({
   project,
   source,
@@ -975,7 +1201,7 @@ function analyzeDialogueSource({
   workflowTools: string;
 }): DialogueScan {
   const cleanSource = source.trim();
-  const { characters, dialogueLines, lines } = extractDialogueLines(cleanSource);
+  const { characters, dialogueLineEntries, dialogueLines, lines } = extractDialogueLines(cleanSource);
   const words = cleanSource.match(/\b[\w']+\b/g) ?? [];
   const dialogueWords = dialogueLines.join(" ").match(/\b[\w']+\b/g) ?? [];
   const averageWordsPerLine = dialogueLines.length
@@ -988,6 +1214,7 @@ function analyzeDialogueSource({
 
     if (evidence) {
       flags.push({
+        category: rule.category,
         evidence,
         fix: rule.fix,
         label: rule.label,
@@ -1001,6 +1228,7 @@ function analyzeDialogueSource({
 
   if (!physicalActionPattern.test(cleanSource)) {
     flags.push({
+      category: "Visual behavior",
       evidence: "No clear physical behavior detected in the scanned passage.",
       fix: "Add one playable action that changes the scene: a held object, distance shift, silence, interruption, or refusal.",
       label: "Missing visual behavior",
@@ -1010,6 +1238,7 @@ function analyzeDialogueSource({
 
   if (dialogueLines.length === 0) {
     flags.push({
+      category: "Formatting",
       evidence: "No screenplay-style dialogue blocks were detected.",
       fix: "Use character cues and dialogue blocks, or scan a smaller scene section with character lines.",
       label: "No dialogue blocks detected",
@@ -1019,6 +1248,7 @@ function analyzeDialogueSource({
 
   if (averageWordsPerLine > 16) {
     flags.push({
+      category: "Compression",
       evidence: `Average dialogue line length is ${averageWordsPerLine} words.`,
       fix: "Cut explanation. Give each line one job: pressure, dodge, reveal, attack, retreat, or decision.",
       label: "Dialogue lines may be over-explaining",
@@ -1030,6 +1260,7 @@ function analyzeDialogueSource({
 
   if (dialogueLines.length >= 4 && repeatedStarterCount / dialogueLines.length >= 0.55) {
     flags.push({
+      category: "Rhythm",
       evidence: `${repeatedStarterCount} of ${dialogueLines.length} dialogue lines start with a pronoun or abstract pointer.`,
       fix: "Vary rhythm with interruption, fragment, object reference, silence, or a line that starts from the character's tactic.",
       label: "Line rhythm is too similar",
@@ -1037,13 +1268,81 @@ function analyzeDialogueSource({
     });
   }
 
+  const longLineCount = dialogueLineEntries.filter((entry) => entry.wordCount > 20).length;
+  const questionLineCount = dialogueLineEntries.filter((entry) => /\?$/.test(entry.line.trim())).length;
+  const lineNotes = buildDialogueLineNotes(dialogueLineEntries);
+  const characterVoices = buildCharacterVoices(dialogueLineEntries);
+  const subtextFlagCount = flags.filter((flag) => ["Subtext", "Theme", "AI Voice"].includes(flag.category)).length;
+  const expositionFlagCount = flags.filter((flag) => flag.category === "Exposition").length;
+  const specificityFlagCount = flags.filter((flag) => flag.category === "Specificity").length;
+  const hasVisualBehavior = physicalActionPattern.test(cleanSource);
+  const rhythmPenalty = dialogueLines.length
+    ? Math.round((repeatedStarterCount / dialogueLines.length) * 34) + Math.round((longLineCount / dialogueLines.length) * 24)
+    : 32;
+  const scoreCards: DialogueScoreCard[] = [
+    {
+      detail: subtextFlagCount
+        ? `${subtextFlagCount} direct-emotion or thesis pattern${subtextFlagCount === 1 ? "" : "s"} found`
+        : "No major direct-emotion pattern detected",
+      label: "Subtext",
+      score: clampScore(92 - subtextFlagCount * 22),
+      status: scoreStatus(clampScore(92 - subtextFlagCount * 22)),
+    },
+    {
+      detail: expositionFlagCount
+        ? "Backstory or logic is being explained too directly"
+        : "Exposition is not obviously floating on the surface",
+      label: "Exposition control",
+      score: clampScore(88 - expositionFlagCount * 28),
+      status: scoreStatus(clampScore(88 - expositionFlagCount * 28)),
+    },
+    {
+      detail: specificityFlagCount
+        ? `${specificityFlagCount} abstract or generic stake pattern${specificityFlagCount === 1 ? "" : "s"} found`
+        : "Stakes are not obviously generic",
+      label: "Specificity",
+      score: clampScore(86 - specificityFlagCount * 20),
+      status: scoreStatus(clampScore(86 - specificityFlagCount * 20)),
+    },
+    {
+      detail: hasVisualBehavior ? "At least one playable physical behavior is present" : "No playable physical behavior detected",
+      label: "Visual behavior",
+      score: hasVisualBehavior ? 84 : 38,
+      status: scoreStatus(hasVisualBehavior ? 84 : 38),
+    },
+    {
+      detail: `${averageWordsPerLine || 0} average words per dialogue line / ${longLineCount} long line${longLineCount === 1 ? "" : "s"}`,
+      label: "Compression",
+      score: clampScore(90 - Math.max(0, averageWordsPerLine - 12) * 4 - longLineCount * 8),
+      status: scoreStatus(clampScore(90 - Math.max(0, averageWordsPerLine - 12) * 4 - longLineCount * 8)),
+    },
+    {
+      detail: `${questionLineCount} question line${questionLineCount === 1 ? "" : "s"} / ${repeatedStarterCount} repeated starter${repeatedStarterCount === 1 ? "" : "s"}`,
+      label: "Rhythm",
+      score: clampScore(88 - rhythmPenalty),
+      status: scoreStatus(clampScore(88 - rhythmPenalty)),
+    },
+  ];
+  const nextRewritePass =
+    [...scoreCards]
+      .sort((first, second) => first.score - second.score)[0]?.label ?? "Subtext";
+  const rewriteMoves = [
+    "Give every line a tactic: hide, attack, test, bargain, retreat, interrupt, or decide.",
+    "Replace named emotions with behavior the camera can hold.",
+    "Turn exposition into a conflict between what one character wants and what another refuses to give.",
+    "Cut any line that explains the scene after the viewer already understands it.",
+    "Add one silence, interruption, object handoff, or distance shift to carry the emotional turn.",
+  ];
   const strengths = [
     characters.length ? `${characters.length} speaking character${characters.length === 1 ? "" : "s"} detected.` : "",
     /^(INT\.|EXT\.|EST\.|I\/E\.)/im.test(cleanSource) ? "Scene heading detected." : "",
     physicalActionPattern.test(cleanSource) ? "Some visual behavior is already present." : "",
     dialogueLines.length > 0 && averageWordsPerLine <= 16 ? "Dialogue line length is workable." : "",
+    characterVoices.length ? "Character voice map generated." : "",
   ].filter(Boolean);
-  const score = Math.max(0, Math.min(100, 100 - flags.reduce((total, flag) => total + flagPenalty(flag), 0)));
+  const scoreFromFlags = 100 - flags.reduce((total, flag) => total + flagPenalty(flag), 0);
+  const scoreFromCards = scoreCards.reduce((total, card) => total + card.score, 0) / scoreCards.length;
+  const score = clampScore((scoreFromFlags + scoreFromCards) / 2);
   const rubric = [
     "Each character wants something specific in the moment.",
     "The line says less than the character means.",
@@ -1056,6 +1355,25 @@ function analyzeDialogueSource({
   const flagSummary = flags.length
     ? flags.map((flag) => `- ${flag.severity}: ${flag.label}. Fix: ${flag.fix}`).join("\n")
     : "- No major AI-voice patterns were detected. Tighten for specificity and subtext.";
+  const scoreSummary = scoreCards
+    .map((card) => `- ${card.label}: ${card.score}% (${card.status}). ${card.detail}`)
+    .join("\n");
+  const lineSummary = lineNotes.length
+    ? lineNotes
+        .map(
+          (note) =>
+            `- Line ${note.lineNumber}, ${note.character}: "${note.line}" / Issue: ${note.issue} / Move: ${note.rewriteMove}`,
+        )
+        .join("\n")
+    : "- No specific line-level issues were isolated. Still add subtext, behavior, and character-specific rhythm.";
+  const voiceSummary = characterVoices.length
+    ? characterVoices
+        .map(
+          (voice) =>
+            `- ${voice.name}: ${voice.lineCount} lines, ${voice.averageWords} average words, risk: ${voice.risk}. ${voice.assignment}`,
+        )
+        .join("\n")
+    : "- No character voice map available from this scan.";
   const prompt = [
     "You are a professional dialogue editor and script supervisor for AI filmmakers.",
     "",
@@ -1069,11 +1387,27 @@ function analyzeDialogueSource({
     "DIAGNOSIS TO ADDRESS",
     flagSummary,
     "",
+    "SCORECARD",
+    scoreSummary,
+    "",
+    "LINE NOTES",
+    lineSummary,
+    "",
+    "CHARACTER VOICE MAP",
+    voiceSummary,
+    "",
     "REWRITE RULES",
     ...rubric.map((item) => `- ${item}`),
     "",
     "TASK",
     "Rewrite the dialogue so it feels human, playable, specific, compressed, and full of subtext. Do not add a generic inspirational speech. Preserve the story intent and make the emotion visible through behavior.",
+    "",
+    "RETURN",
+    "1. One-paragraph diagnosis",
+    "2. Revised scene or dialogue section",
+    "3. Line-by-line change notes",
+    "4. Character voice notes",
+    "5. One visual beat that should carry the emotional turn",
     "",
     "SOURCE",
     cleanSource,
@@ -1082,14 +1416,19 @@ function analyzeDialogueSource({
   return {
     averageWordsPerLine,
     characterCount: characters.length,
+    characterVoices,
     dialogueLineCount: dialogueLines.length,
     flags,
+    lineNotes,
+    nextRewritePass,
     prompt,
     rubric,
+    scoreCards,
     score,
     sourceExcerpt: cleanSource.slice(0, 1200),
     strengths,
     wordCount: words.length,
+    rewriteMoves,
   };
 }
 
@@ -1099,6 +1438,8 @@ function buildDialogueReportMarkdown(scan: DialogueScan) {
         .map((flag) =>
           [
             `### ${flag.severity}: ${flag.label}`,
+            "",
+            `Category: ${flag.category}`,
             "",
             `Evidence: ${flag.evidence}`,
             "",
@@ -1116,14 +1457,54 @@ function buildDialogueReportMarkdown(scan: DialogueScan) {
     `Dialogue lines detected: ${scan.dialogueLineCount}`,
     `Speaking characters detected: ${scan.characterCount}`,
     `Average words per dialogue line: ${scan.averageWordsPerLine || "Not available"}`,
+    `Next rewrite pass: ${scan.nextRewritePass}`,
     "",
     "## Strengths",
     "",
     scan.strengths.length ? scan.strengths.map((strength) => `- ${strength}`).join("\n") : "- Needs a smaller screenplay-formatted scene sample.",
     "",
+    "## Dialogue Scorecard",
+    "",
+    scan.scoreCards
+      .map((card) => `- ${card.label}: ${card.score}% (${card.status}) - ${card.detail}`)
+      .join("\n"),
+    "",
     "## Flags",
     "",
     flags,
+    "",
+    "## Line-Level Diagnosis",
+    "",
+    scan.lineNotes.length
+      ? scan.lineNotes
+          .map((note) =>
+            [
+              `### Line ${note.lineNumber}: ${note.character}`,
+              "",
+              `Line: ${note.line}`,
+              `Issue: ${note.issue}`,
+              `Tactic: ${note.tactic}`,
+              `Rewrite move: ${note.rewriteMove}`,
+              `Subtext test: ${note.subtextTest}`,
+            ].join("\n"),
+          )
+          .join("\n\n")
+      : "No specific line-level issues were isolated. Still test the scene for subtext, behavior, and character-specific rhythm.",
+    "",
+    "## Character Voice Map",
+    "",
+    scan.characterVoices.length
+      ? scan.characterVoices
+          .map(
+            (voice) =>
+              `- ${voice.name}: ${voice.lineCount} line${voice.lineCount === 1 ? "" : "s"}, ${voice.averageWords} average words, ${voice.risk}. ${voice.assignment}`,
+          )
+          .join("\n")
+      : "- No character voice map available from this scan.",
+    "",
+    "## Rewrite Moves",
+    "",
+    scan.rewriteMoves.map((move) => `- ${move}`).join("\n"),
     "",
     "## Rewrite Rubric",
     "",
@@ -1534,12 +1915,13 @@ function DialogueScanPanel({
   scan: DialogueScan;
 }) {
   const topFlags = scan.flags.slice(0, 4);
+  const weakestCard = [...scan.scoreCards].sort((first, second) => first.score - second.score)[0];
 
   return (
     <section className="dialogue-scan-panel" aria-label="AI voice scanner report">
       <div className="dialogue-scan-head">
         <div>
-          <span>AI voice scanner</span>
+          <span>AI voice scanner 2.0</span>
           <strong>{scan.score}% dialogue discipline score</strong>
           <p>
             {scan.dialogueLineCount} dialogue line{scan.dialogueLineCount === 1 ? "" : "s"} /{" "}
@@ -1548,11 +1930,30 @@ function DialogueScanPanel({
         </div>
         <div className="dialogue-score-ring">{scan.score}%</div>
       </div>
+      <div className="dialogue-next-pass">
+        <span>Next rewrite pass</span>
+        <strong>{scan.nextRewritePass}</strong>
+        <p>
+          {weakestCard
+            ? `${weakestCard.detail}. Start here before polishing word choice.`
+            : "Start with subtext, behavior, and character-specific rhythm."}
+        </p>
+      </div>
+      <div className="dialogue-score-grid">
+        {scan.scoreCards.map((card) => (
+          <article key={card.label}>
+            <span>{card.status}</span>
+            <strong>{card.score}%</strong>
+            <p>{card.label}</p>
+            <small>{card.detail}</small>
+          </article>
+        ))}
+      </div>
       {topFlags.length ? (
         <div className="dialogue-flag-grid">
           {topFlags.map((flag) => (
             <article className="dialogue-flag-card" key={`${flag.label}-${flag.evidence}`}>
-              <span>{flag.severity}</span>
+              <span>{flag.severity} / {flag.category}</span>
               <strong>{flag.label}</strong>
               <p>{flag.evidence}</p>
               <small>{flag.fix}</small>
@@ -1565,6 +1966,41 @@ function DialogueScanPanel({
       <div className="rubric-grid">
         {scan.rubric.slice(0, 4).map((item) => (
           <span key={item}>{item}</span>
+        ))}
+      </div>
+      {scan.lineNotes.length ? (
+        <div className="dialogue-line-note-list">
+          <div className="mini-section-heading">
+            <span>Line diagnosis</span>
+            <strong>Where the human pass should start.</strong>
+          </div>
+          {scan.lineNotes.slice(0, 5).map((note) => (
+            <article key={`${note.lineNumber}-${note.character}-${note.line}`}>
+              <span>
+                Line {note.lineNumber} / {note.character} / {note.tactic}
+              </span>
+              <strong>{note.line}</strong>
+              <p>{note.issue}</p>
+              <small>{note.rewriteMove}</small>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {scan.characterVoices.length ? (
+        <div className="dialogue-voice-grid">
+          {scan.characterVoices.map((voice) => (
+            <article key={voice.name}>
+              <span>{voice.lineCount} line{voice.lineCount === 1 ? "" : "s"}</span>
+              <strong>{voice.name}</strong>
+              <p>{voice.risk}</p>
+              <small>{voice.assignment}</small>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      <div className="dialogue-move-strip">
+        {scan.rewriteMoves.slice(0, 3).map((move) => (
+          <span key={move}>{move}</span>
         ))}
       </div>
       <div className="dialogue-actions">
@@ -7455,13 +7891,13 @@ export function ProjectWorkspace({
                 <span>Dialogue discipline</span>
                 <strong>Find the lines that sound too robotic, expositional, or unplayable.</strong>
                 <p>
-                  Highlight a section or scan the script draft. MiseForge creates a practical
-                  diagnosis, rewrite rubric, and expert prompt you can use anywhere.
+                  Highlight a section or scan the script draft. MiseForge creates scorecards,
+                  line notes, character voice risks, rewrite moves, and an expert prompt you can use anywhere.
                 </p>
               </div>
               <div className="dialogue-actions">
                 <button className="button" type="button" onClick={runDialogueScanner}>
-                  Run AI Voice Scanner
+                  Run AI Voice Scanner 2.0
                 </button>
                 <button className="button secondary" type="button" onClick={copyDialogueScannerPrompt}>
                   Copy scanner prompt
@@ -7517,7 +7953,7 @@ export function ProjectWorkspace({
               Copy dialogue prompt
             </button>
             <button className="button secondary" type="button" onClick={runDialogueScanner}>
-              Run AI Voice Scanner
+              Run AI Voice Scanner 2.0
             </button>
             <button
               className="button secondary"
@@ -7620,7 +8056,7 @@ export function ProjectWorkspace({
             Copy script prompt
           </button>
           <button type="button" onClick={runDialogueScanner}>
-            Run AI voice scan
+            Run AI voice scan 2.0
           </button>
           <button type="button" onClick={() => copyExpertPrompt("breakdown")}>
             Copy breakdown prompt
