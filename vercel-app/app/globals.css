@@ -143,10 +143,24 @@ a {
   color: #fffaf1;
 }
 
+.command-topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .command-topbar nav a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
   border-color: rgba(255, 250, 241, 0.12);
+  border-radius: 999px;
+  padding: 0 12px;
   background: rgba(255, 250, 241, 0.06);
   color: rgba(255, 250, 241, 0.84);
+  font-size: 12px;
+  font-weight: 760;
 }
 
 .command-topbar nav a:hover {
