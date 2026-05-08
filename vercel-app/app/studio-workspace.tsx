@@ -3312,6 +3312,30 @@ export function ProjectWorkspace({
       wardrobeAnchorCount,
     };
   }, [characterProfiles, productionAssets, sceneBreakdowns]);
+  const packetGradeLabel =
+    readiness.score >= 85
+      ? "Production handoff ready"
+      : readiness.score >= 65
+        ? "Strong packet draft"
+        : readiness.score >= 40
+          ? "Needs lock pass"
+          : "Early build";
+  const packetGradeDescription =
+    readiness.score >= 85
+      ? "Most production locks are clear enough to brief image, animation, sound, and edit work."
+      : readiness.score >= 65
+        ? "The packet has useful production shape; finish the open locks before final generation."
+        : readiness.score >= 40
+          ? "The film has a working shell, but several creative and production locks still need decisions."
+          : "Start with story, scene packets, and identity locks before treating this as a production handoff.";
+  const exportRiskLabels = [
+    sceneBreakdowns.length ? "" : "No scene packets saved",
+    characterProfiles.length ? "" : "Character identity locks missing",
+    locationProfiles.length ? "" : "Location identity locks missing",
+    roomMetrics.shotCount ? "" : "Shot list not built",
+    roomMetrics.imagePromptCount ? "" : "Image prompts not generated",
+    roomMetrics.animationSoundPromptCount ? "" : "Animation and sound handoff missing",
+  ].filter((value): value is string => Boolean(value));
   const scheduleLockPhases = useMemo<GenerationLockPhase[]>(() => {
     const averageCharacterReadiness = characterProfiles.length
       ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
@@ -6876,6 +6900,8 @@ export function ProjectWorkspace({
       month: "short",
       year: "numeric",
     });
+    const packetIsoDate = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+    const packetId = `MF-${slugFileName(project.title).toUpperCase().slice(0, 18)}-${packetIsoDate}`;
     const readinessItems = [
       { label: "Story documents", value: `${docSections.length} saved` },
       { label: "Scene packets", value: `${sceneBreakdowns.length} mapped` },
@@ -6948,6 +6974,14 @@ export function ProjectWorkspace({
       imagePromptCount ? "" : "Image prompts still need to be generated from approved shot rows.",
       animationSoundPromptCount ? "" : "Animation and sound prompts still need to be generated after image prompts.",
     ].filter((value): value is string => Boolean(value));
+    const readyGateLabels = exportGates
+      .filter((gate) => gate.isReady)
+      .slice(0, 4)
+      .map((gate) => gate.label);
+    const openGateLabels = exportGates
+      .filter((gate) => !gate.isReady)
+      .slice(0, 5)
+      .map((gate) => gate.label);
     const coverageItems = [
       { label: "Readiness", value: `${readiness.score}%`, detail: `${readiness.completedCount} of ${readiness.total} checks` },
       { label: "Scenes", value: `${sceneBreakdowns.length}`, detail: `${completeSceneCount} complete` },
@@ -6958,26 +6992,112 @@ export function ProjectWorkspace({
       { label: "Shots", value: `${shotCount}`, detail: "shot rows" },
       { label: "Prompts", value: `${imagePromptCount + animationSoundPromptCount}`, detail: "image/animation/sound" },
     ];
-    const packetGrade =
-      readiness.score >= 85
-        ? "Production handoff ready"
-        : readiness.score >= 65
-          ? "Strong packet draft"
-          : readiness.score >= 40
-            ? "Needs lock pass"
-            : "Early build";
-    const packetGradeDetail =
-      readiness.score >= 85
-        ? "Most production locks are clear enough to brief image, animation, sound, and edit work."
-        : readiness.score >= 65
-          ? "The packet has useful production shape; finish the open locks before final generation."
-          : readiness.score >= 40
-            ? "The film has a working shell, but several creative and production locks still need decisions."
-            : "Start with story, scene packets, and identity locks before treating this as a production handoff.";
+    const packetGrade = packetGradeLabel;
+    const packetGradeDetail = packetGradeDescription;
     const nextActionItems = readiness.checks
       .filter((check) => !check.isComplete)
       .slice(0, 6)
       .map((check) => check.label);
+    const departmentHandoffItems = [
+      {
+        detail: hasText(project.logline) ? project.logline : "Lock the logline and premise pressure before sharing externally.",
+        lane: "Story",
+        owner: "Writer / Director",
+        status: hasText(project.logline) && (hasText(drafts.treatment) || hasText(drafts.story)) ? "Ready" : "Needs spine",
+      },
+      {
+        detail: characterProfiles.length
+          ? `${characterProfiles.length} character card${characterProfiles.length === 1 ? "" : "s"} mapped for identity, wardrobe, props, and scene state.`
+          : "Map character identity, wardrobe, props, relationships, and emotional state.",
+        lane: "Character",
+        owner: "Continuity",
+        status: characterProfiles.length ? "Mapped" : "Open",
+      },
+      {
+        detail: locationProfiles.length
+          ? `${locationProfiles.length} location card${locationProfiles.length === 1 ? "" : "s"} mapped for light, layout, dressing, sound, and geography.`
+          : "Map recurring location rules before image generation.",
+        lane: "Locations",
+        owner: "Art / Layout",
+        status: locationProfiles.length ? "Mapped" : "Open",
+      },
+      {
+        detail: visualStyleRules.length
+          ? `${visualStyleRules.length} visual rule card${visualStyleRules.length === 1 ? "" : "s"} active across palette, camera, location, and negative prompts.`
+          : "Create the film-wide look system before shot prompt expansion.",
+        lane: "Look",
+        owner: "Visual Lead",
+        status: visualStyleRules.length ? "Started" : "Open",
+      },
+      {
+        detail: shotCount ? `${shotCount} detailed shot row${shotCount === 1 ? "" : "s"} ready for image prompt work.` : "Build shot rows from the scene packets.",
+        lane: "Camera",
+        owner: "Shot Planning",
+        status: shotCount ? "Ready" : "Open",
+      },
+      {
+        detail: imagePromptCount
+          ? `${imagePromptCount} image prompt${imagePromptCount === 1 ? "" : "s"} ready, with ${animationSoundPromptCount} motion/sound handoff row${animationSoundPromptCount === 1 ? "" : "s"}.`
+          : "Generate image prompts only after scene and shot intent are stable.",
+        lane: "Prompts",
+        owner: "AI Production",
+        status: imagePromptCount ? "Ready" : "Open",
+      },
+      {
+        detail: hasText(drafts.sound_map)
+          ? `${soundSceneCount} scene${soundSceneCount === 1 ? "" : "s"} include sound notes and the sound map has been started.`
+          : "Build room tone, silence, foley, dialogue pressure, and final mix notes.",
+        lane: "Sound",
+        owner: "Sound / Edit",
+        status: hasText(drafts.sound_map) ? "Started" : "Open",
+      },
+      {
+        detail: continuityRows.length
+          ? `${continuityRows.length} continuity handoff${continuityRows.length === 1 ? "" : "s"} mapped across props, wardrobe, light, sound, and blocking.`
+          : "Map cross-scene handoffs before final generations are approved.",
+        lane: "Continuity",
+        owner: "Producer",
+        status: continuityRows.length ? "Mapped" : "Open",
+      },
+    ];
+    const riskRegisterItems = [
+      {
+        action: "Write or tighten the logline before using the packet as a creative handoff.",
+        impact: "Every prompt, shot, and edit choice can drift without a stable story promise.",
+        isControlled: hasText(project.logline),
+        risk: "Story spine",
+      },
+      {
+        action: "Save scene packets with summary, characters, props, wardrobe, sound, and blocking.",
+        impact: "Shot lists and prompt rows will be incomplete or generic without scene-level production detail.",
+        isControlled: sceneBreakdowns.length > 0 && completeSceneCount === sceneBreakdowns.length,
+        risk: "Scene packet coverage",
+      },
+      {
+        action: "Build character and location cards from saved scenes, then fill missing identity locks.",
+        impact: "Recurring people and places may change across image generations.",
+        isControlled: characterProfiles.length > 0 && locationProfiles.length > 0,
+        risk: "Identity continuity",
+      },
+      {
+        action: "Build the continuity tracker and review props, wardrobe, light, geography, and sound handoffs.",
+        impact: "Images can look individually strong while failing as one film.",
+        isControlled: continuityRows.length > 0 && hasText(drafts.continuity_tracker),
+        risk: "Cross-scene handoff",
+      },
+      {
+        action: "Create shot rows, then generate image prompts from approved shot intent.",
+        impact: "Generation work may happen out of order, causing wasted stills and animation passes.",
+        isControlled: shotCount > 0 && imagePromptCount > 0,
+        risk: "Shot and prompt order",
+      },
+      {
+        action: "Build animation, sound, schedule, and final export notes after image prompts are approved.",
+        impact: "Motion, dialogue timing, and edit decisions may lack a clear handoff.",
+        isControlled: animationSoundPromptCount > 0 && hasText(drafts.sound_map) && hasText(drafts.production_schedule),
+        risk: "Final delivery handoff",
+      },
+    ];
     const signoffItems = [
       {
         label: "Story spine",
@@ -7009,9 +7129,12 @@ export function ProjectWorkspace({
     const tocItems = [
       "Cover",
       "Producer Handoff",
+      "One-Page Production Brief",
       "Story Development Snapshot",
       "Production Readiness",
       "Lock Sequence",
+      "Department Handoff",
+      "Risk Register",
       "Project Roadmap",
       visualStyleRules.length ? "Visual Style Bible Snapshot" : "",
       characterProfiles.length ? "Character Continuity Cards" : "",
@@ -7397,6 +7520,97 @@ export function ProjectWorkspace({
             <strong>${openRiskList.length ? `${openRiskList.length} remaining risk${openRiskList.length === 1 ? "" : "s"}` : "No major automatic risks flagged."}</strong>
             ${htmlList(openRiskList, "No major automatic risks flagged.")}
           </article>
+        </div>
+      </section>
+    `;
+    const packetBriefSection = `
+      <section class="packet-section brief-page">
+        <div class="section-label">One-Page Production Brief</div>
+        <h2>The film, the state of the packet, and the next move.</h2>
+        <p class="lede">${htmlValue(project.logline, "No logline entered yet. This page becomes the fast handoff once the story spine is locked.")}</p>
+        <div class="packet-meta-strip">
+          <article><span>Packet ID</span><strong>${htmlValue(packetId)}</strong></article>
+          <article><span>Generated</span><strong>${htmlValue(packetDate)}</strong></article>
+          <article><span>Grade</span><strong>${htmlValue(packetGrade)}</strong></article>
+          <article><span>Readiness</span><strong>${readiness.score}%</strong></article>
+        </div>
+        <div class="brief-grid">
+          <article class="brief-card wide">
+            <span>Creative Thesis</span>
+            <h3>${htmlValue(project.title, "Untitled Project")}</h3>
+            <p>${htmlValue(project.logline, "Lock the one-sentence movie promise before this packet becomes a final handoff.")}</p>
+            <div class="brief-meta">
+              <b>Genre</b><span>${htmlValue(project.genre)}</span>
+              <b>Tone</b><span>${htmlValue(project.tone)}</span>
+              <b>Workflow</b><span>${htmlValue(workflowTools, "Tool stack not specified")}</span>
+            </div>
+          </article>
+          <article class="brief-card">
+            <span>Packet State</span>
+            <h3>${htmlValue(packetGrade)}</h3>
+            <p>${htmlValue(packetGradeDetail)}</p>
+          </article>
+          <article class="brief-card">
+            <span>Next Best Action</span>
+            <h3>${htmlValue(readiness.next)}</h3>
+            ${htmlList(nextActionItems.slice(0, 4), "No automatic next actions remain. Review manually before final generation.")}
+          </article>
+          <article class="brief-card">
+            <span>Strongest Locks</span>
+            <h3>${readyGateLabels.length ? `${readyGateLabels.length} ready` : "No locks ready yet"}</h3>
+            ${htmlList(readyGateLabels, "No major lock gates are ready yet.")}
+          </article>
+          <article class="brief-card">
+            <span>Open Locks</span>
+            <h3>${openGateLabels.length ? `${openGateLabels.length} open` : "No open gate flagged"}</h3>
+            ${htmlList(openGateLabels, "No open gate flagged by the packet.")}
+          </article>
+        </div>
+      </section>
+    `;
+    const departmentHandoffSection = `
+      <section class="packet-section department-page">
+        <div class="section-label">Department Handoff</div>
+        <h2>Who can use this packet, and what each lane needs.</h2>
+        <p class="lede">A production packet should turn scattered creative decisions into clean lanes for story, continuity, camera, prompts, animation, sound, and edit work.</p>
+        <div class="department-grid">
+          ${departmentHandoffItems
+            .map(
+              (item) => `
+                <article class="department-card ${item.status === "Ready" || item.status === "Mapped" || item.status === "Started" ? "active" : ""}">
+                  <div>
+                    <span>${htmlValue(item.owner)}</span>
+                    <strong>${htmlValue(item.lane)}</strong>
+                  </div>
+                  <b>${htmlValue(item.status)}</b>
+                  <p>${htmlValue(item.detail)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    `;
+    const riskRegisterSection = `
+      <section class="packet-section risk-page">
+        <div class="section-label">Risk Register</div>
+        <h2>What could still break the film.</h2>
+        <p class="lede">This page is the practical stop sign before expensive generation work: unresolved story, continuity, shot, prompt, sound, and schedule risks should be cleared before final production.</p>
+        <div class="risk-register">
+          ${riskRegisterItems
+            .map(
+              (item) => `
+                <article class="risk-row ${item.isControlled ? "complete" : ""}">
+                  <div class="risk-status">${item.isControlled ? "Controlled" : "Open"}</div>
+                  <div>
+                    <h3>${htmlValue(item.risk)}</h3>
+                    <p><b>Impact</b>${htmlValue(item.impact)}</p>
+                    <p><b>Action</b>${htmlValue(item.action)}</p>
+                  </div>
+                </article>
+              `,
+            )
+            .join("")}
         </div>
       </section>
     `;
@@ -7876,6 +8090,170 @@ export function ProjectWorkspace({
         color: var(--muted);
         font-size: 12px;
       }
+      .packet-meta-strip,
+      .brief-grid,
+      .department-grid,
+      .risk-register {
+        display: grid;
+        gap: 12px;
+      }
+      .packet-meta-strip {
+        grid-template-columns: repeat(4, 1fr);
+        margin: 22px 0;
+      }
+      .packet-meta-strip article,
+      .brief-card,
+      .department-card,
+      .risk-row {
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(240, 231, 222, 0.44)),
+          white;
+        break-inside: avoid;
+      }
+      .packet-meta-strip span,
+      .brief-card span,
+      .department-card span {
+        display: block;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .packet-meta-strip strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--deep);
+        font-size: 18px;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+      }
+      .brief-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .brief-card.wide {
+        grid-column: 1 / -1;
+        background:
+          linear-gradient(135deg, rgba(29, 26, 28, 0.96), rgba(116, 52, 61, 0.84)),
+          var(--deep);
+        color: white;
+      }
+      .brief-card h3 {
+        margin: 8px 0;
+        color: var(--deep);
+        font-size: 24px;
+        line-height: 1.08;
+      }
+      .brief-card.wide h3,
+      .brief-card.wide p,
+      .brief-card.wide b,
+      .brief-card.wide span {
+        color: rgba(255, 255, 255, 0.82);
+      }
+      .brief-card.wide h3 {
+        color: white;
+      }
+      .brief-card p,
+      .department-card p,
+      .risk-row p {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+      .brief-card.wide p {
+        max-width: 760px;
+      }
+      .brief-card ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .brief-meta {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 8px 12px;
+        margin-top: 18px;
+        color: rgba(255, 255, 255, 0.78);
+      }
+      .brief-meta b {
+        color: rgba(255, 255, 255, 0.58);
+      }
+      .department-grid {
+        grid-template-columns: repeat(2, 1fr);
+        margin-top: 24px;
+      }
+      .department-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: start;
+      }
+      .department-card.active {
+        border-color: rgba(77, 115, 100, 0.22);
+        background:
+          linear-gradient(145deg, rgba(223, 231, 226, 0.72), rgba(255, 255, 255, 0.74)),
+          white;
+      }
+      .department-card strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--deep);
+        font-size: 21px;
+        line-height: 1.08;
+      }
+      .department-card > b {
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 999px;
+        padding: 5px 8px;
+        color: var(--accent);
+        font-size: 10px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .department-card.active > b {
+        border-color: rgba(77, 115, 100, 0.26);
+        color: #4d7364;
+      }
+      .risk-register {
+        margin-top: 24px;
+      }
+      .risk-row {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .risk-row.complete {
+        border-color: rgba(77, 115, 100, 0.2);
+        background:
+          linear-gradient(145deg, rgba(223, 231, 226, 0.72), rgba(255, 255, 255, 0.74)),
+          white;
+      }
+      .risk-status {
+        border: 1px solid rgba(157, 72, 83, 0.18);
+        border-radius: 999px;
+        padding: 6px 8px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .risk-row.complete .risk-status {
+        border-color: rgba(77, 115, 100, 0.26);
+        color: #4d7364;
+      }
+      .risk-row h3 {
+        margin: 0 0 8px;
+        color: var(--deep);
+        font-size: 22px;
+      }
+      .risk-row p b {
+        display: inline;
+        margin-right: 8px;
+      }
       .lock-timeline {
         gap: 10px;
         margin-top: 24px;
@@ -8245,9 +8623,17 @@ export function ProjectWorkspace({
           padding: 0.55in;
         }
         .toc-grid,
+        .brief-grid,
+        .department-grid,
         .details-grid,
         .checklist {
           grid-template-columns: repeat(2, 1fr);
+        }
+        .packet-meta-strip {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .risk-row {
+          grid-template-columns: 90px minmax(0, 1fr);
         }
         .readiness-grid,
         .roadmap-strip {
@@ -8268,7 +8654,7 @@ export function ProjectWorkspace({
           <div class="cover-mark">MF</div>
         </div>
         <div class="cover-title-block">
-          <span class="packet-code">Founder production packet / ${packetDate}</span>
+          <span class="packet-code">Founder production packet / ${packetDate} / ${packetId}</span>
           <div>
             <p class="cover-kicker">Pre-production command packet</p>
             <h1>${htmlValue(project.title, "Untitled Project")}</h1>
@@ -8283,6 +8669,8 @@ export function ProjectWorkspace({
             <div><b>Scenes</b><span>${sceneBreakdowns.length}</span></div>
             <div><b>Shots</b><span>${shotCount}</span></div>
             <div><b>Prompt Cards</b><span>${promptCardCount}</span></div>
+            <div><b>Packet ID</b><span>${packetId}</span></div>
+            <div><b>Grade</b><span>${htmlValue(packetGrade)}</span></div>
           </div>
           <div class="cover-footer-line"></div>
           <div class="cover-footer-meta">
@@ -8293,10 +8681,13 @@ export function ProjectWorkspace({
         </div>
       </section>
       ${producerHandoffSection}
+      ${packetBriefSection}
       ${tocSection}
       ${storyDiagnosticSection}
       ${readinessSection}
       ${lockSequenceSection}
+      ${departmentHandoffSection}
+      ${riskRegisterSection}
       <section class="packet-section">
         <div class="section-label">Project Overview</div>
         <h2>Production Roadmap</h2>
@@ -8321,13 +8712,6 @@ export function ProjectWorkspace({
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
       ${signoffSection}
     </main>
-    <script>
-      window.addEventListener("load", function () {
-        window.setTimeout(function () {
-          window.print();
-        }, 500);
-      });
-    </script>
   </body>
 </html>`;
   }
@@ -8395,7 +8779,7 @@ export function ProjectWorkspace({
       return;
     }
 
-    setSaveStatus("Premium PDF preview opened. Choose Save as PDF in the print window.");
+    setSaveStatus("Premium packet preview opened. Use Save / Print PDF when it is ready.");
     setSaveError("");
     window.setTimeout(() => URL.revokeObjectURL(url), 12000);
   }
@@ -9042,29 +9426,50 @@ export function ProjectWorkspace({
       <div className="export-panel premium-export-panel" aria-label="Production packet export">
         <div className="export-copy">
           <span>Production packet delivery</span>
-          <strong>{readiness.score}% ready / {readiness.next}</strong>
+          <strong>{packetGradeLabel} / {readiness.score}% ready</strong>
           <p>
             Export a working film packet with story locks, bibles, continuity, scene packets, shot
             rows, prompt cards, sound handoff, schedule, and final review gates.
           </p>
+          <ul className="export-includes" aria-label="Premium packet includes">
+            <li>Producer handoff</li>
+            <li>One-page brief</li>
+            <li>Department lanes</li>
+            <li>Risk register</li>
+            <li>Scene, shot, and prompt cards</li>
+          </ul>
         </div>
-        <div className="export-metric-strip" aria-label="Packet contents">
-          <article>
-            <span>Scenes</span>
-            <strong>{sceneBreakdowns.length}</strong>
-          </article>
-          <article>
-            <span>Shots</span>
-            <strong>{roomMetrics.shotCount}</strong>
-          </article>
-          <article>
-            <span>Prompts</span>
-            <strong>{roomMetrics.imagePromptCount + roomMetrics.animationSoundPromptCount}</strong>
-          </article>
-          <article>
-            <span>Locks</span>
-            <strong>{scheduleReadyCount}/{scheduleLockPhases.length}</strong>
-          </article>
+        <div className="export-proof-stack">
+          <div className="export-metric-strip" aria-label="Packet contents">
+            <article>
+              <span>Scenes</span>
+              <strong>{sceneBreakdowns.length}</strong>
+            </article>
+            <article>
+              <span>Shots</span>
+              <strong>{roomMetrics.shotCount}</strong>
+            </article>
+            <article>
+              <span>Prompts</span>
+              <strong>{roomMetrics.imagePromptCount + roomMetrics.animationSoundPromptCount}</strong>
+            </article>
+            <article>
+              <span>Locks</span>
+              <strong>{scheduleReadyCount}/{scheduleLockPhases.length}</strong>
+            </article>
+          </div>
+          <div className="export-quality-row" aria-label="Packet quality">
+            <article>
+              <span>Packet grade</span>
+              <strong>{packetGradeLabel}</strong>
+              <p>{packetGradeDescription}</p>
+            </article>
+            <article>
+              <span>Open risks</span>
+              <strong>{exportRiskLabels.length ? `${exportRiskLabels.length} flagged` : "Clear"}</strong>
+              <p>{exportRiskLabels.slice(0, 2).join(", ") || "No major automatic export risks flagged."}</p>
+            </article>
+          </div>
         </div>
         <div className="export-actions">
           <button className="button secondary" type="button" onClick={copyProductionPacket}>
@@ -9074,7 +9479,7 @@ export function ProjectWorkspace({
             Download Markdown
           </button>
           <button className="button" type="button" onClick={openPremiumPacketPreview}>
-            {entitlement.isPro ? "Premium PDF preview" : "Pro: Premium PDF preview"}
+            {entitlement.isPro ? "Premium Packet Preview" : "Pro: Premium Packet"}
           </button>
         </div>
       </div>
