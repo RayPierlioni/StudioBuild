@@ -1,4 +1,5 @@
 import { getVerifiedRequestUser } from "../../../../lib/auth";
+import { getUserEntitlement } from "../../../../lib/entitlements";
 import { getStripeClient } from "../../../../lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,19 @@ function getBaseUrl(request: Request) {
 export async function POST(request: Request) {
   try {
     const { user } = await getVerifiedRequestUser(request);
+    const entitlement = await getUserEntitlement(user);
     const priceId = process.env.STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID;
+
+    if (entitlement.isPro) {
+      return Response.json(
+        {
+          ok: false,
+          alreadyPro: true,
+          error: "Founder Pro is already unlocked for this account.",
+        },
+        { status: 409 },
+      );
+    }
 
     if (!priceId) {
       return Response.json(
@@ -80,7 +93,7 @@ export async function POST(request: Request) {
           user_id: user.id,
         },
       },
-      success_url: `${baseUrl}/app?checkout=success`,
+      success_url: `${baseUrl}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     });
 
     if (!checkoutSession.url) {

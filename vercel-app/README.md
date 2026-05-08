@@ -50,6 +50,7 @@ Never commit real values for:
 - `/api/db-status` - confirms the app can reach the MiseForge Supabase auth service
 - `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
 - `/api/billing/checkout` - opens Founder Pro subscription checkout for signed-in users
+- `/api/billing/sync` - confirms returned Stripe checkout sessions and refreshes Pro access
 - `/api/billing/webhook` - receives billing events and updates subscription access
 - `/api/projects` - authenticated project list/create route backed by Supabase
 - `/api/projects/[projectId]` - authenticated single-project loader

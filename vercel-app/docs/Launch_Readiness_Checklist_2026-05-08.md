@@ -35,7 +35,7 @@ These events are now tracked through Vercel Web Analytics custom events:
 - Confirm Google OAuth redirect URLs include `https://miseforge.com`.
 - Confirm Supabase production tables and policies match the deployed app.
 - Confirm admin access still works for `rpierlioni@gmail.com`.
-- Confirm checkout success returns to `/app?checkout=success`.
+- Confirm checkout success returns to `/app?checkout=success&session_id=...` and Pro access syncs without manual support.
 - Confirm a non-admin free account can create one project and hits the right upgrade gates.
 - Confirm a paid account can access multiple projects, shot lists, prompt cards, and premium export.
 

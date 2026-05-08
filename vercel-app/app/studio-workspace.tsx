@@ -246,6 +246,20 @@ type ProjectUsage = {
   freeProjectLimit: number;
 };
 
+type ProjectsResponse = {
+  ok: boolean;
+  entitlement?: AccessEntitlement;
+  projects?: Project[];
+  usage?: ProjectUsage;
+  error?: string;
+};
+
+type BillingSyncResponse = {
+  ok: boolean;
+  entitlement?: AccessEntitlement;
+  error?: string;
+};
+
 export type GuideAssistantContext = {
   activeStageLabel: string;
   assetCount: number;
@@ -2095,9 +2109,12 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [hasLoadedAccount, setHasLoadedAccount] = useState(false);
   const [upgradeIntent, setUpgradeIntent] = useState(false);
+  const [pendingCheckoutSessionId, setPendingCheckoutSessionId] = useState("");
+  const [billingRefreshRequested, setBillingRefreshRequested] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const checkoutStartedFromIntentRef = useRef(false);
+  const billingSyncStartedRef = useRef(false);
 
   async function loadProjects(accessToken: string) {
     setIsLoadingProjects(true);
@@ -2110,13 +2127,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      const result = (await response.json()) as {
-        ok: boolean;
-        entitlement?: AccessEntitlement;
-        projects?: Project[];
-        usage?: ProjectUsage;
-        error?: string;
-      };
+      const result = (await response.json()) as ProjectsResponse;
 
       if (!response.ok || !result.ok) {
         throw new Error(result.error ?? "Unable to load projects.");
@@ -2131,8 +2142,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setSelectedProjectId((current) =>
         current && result.projects?.some((project) => project.id === current) ? current : "",
       );
+      return result;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load projects.");
+      return null;
     } finally {
       setIsLoadingProjects(false);
       setHasLoadedAccount(true);
@@ -2184,11 +2197,16 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     const checkout = params.get("checkout");
 
     if (checkout === "success") {
-      setMessage("Payment complete. Founder Pro access will unlock in a moment.");
+      billingSyncStartedRef.current = false;
+      setPendingCheckoutSessionId(params.get("session_id") ?? "");
+      setBillingRefreshRequested(true);
+      setMessage("Payment complete. Confirming Founder Pro access...");
       return;
     }
 
     if (checkout === "cancelled") {
+      setPendingCheckoutSessionId("");
+      setBillingRefreshRequested(false);
       setMessage("Checkout cancelled. You can upgrade whenever you are ready.");
       return;
     }
@@ -2196,6 +2214,8 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     const billing = params.get("billing");
 
     if (billing === "return") {
+      billingSyncStartedRef.current = false;
+      setBillingRefreshRequested(true);
       setMessage("Billing settings saved. Your MiseForge access will refresh automatically.");
       return;
     }
@@ -2205,6 +2225,100 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setMessage("Founder Pro is the live paid plan. Sign in to open checkout, or start free and upgrade when the packet is ready.");
     }
   }, []);
+
+  useEffect(() => {
+    if (
+      !session?.access_token ||
+      (!pendingCheckoutSessionId && !billingRefreshRequested) ||
+      billingSyncStartedRef.current
+    ) {
+      return;
+    }
+
+    let isCancelled = false;
+    const accessToken = session.access_token;
+    billingSyncStartedRef.current = true;
+
+    async function waitForBillingRefresh() {
+      try {
+        if (pendingCheckoutSessionId) {
+          const response = await fetch("/api/billing/sync", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ checkoutSessionId: pendingCheckoutSessionId }),
+          });
+          const result = (await response.json()) as BillingSyncResponse;
+
+          if (isCancelled) {
+            return;
+          }
+
+          if (!response.ok || !result.ok) {
+            throw new Error(result.error ?? "Unable to confirm Founder Pro access.");
+          }
+
+          if (result.entitlement) {
+            setEntitlement(result.entitlement);
+          }
+
+          if (result.entitlement?.isPro) {
+            setMessage("Founder Pro is unlocked. Your full production workspace is ready.");
+            setError("");
+            setPendingCheckoutSessionId("");
+            setBillingRefreshRequested(false);
+            void loadProjects(accessToken);
+            return;
+          }
+        }
+
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          const result = await loadProjects(accessToken);
+
+          if (isCancelled) {
+            return;
+          }
+
+          if (result?.entitlement?.isPro) {
+            setMessage("Founder Pro is unlocked. Your full production workspace is ready.");
+            setError("");
+            setPendingCheckoutSessionId("");
+            setBillingRefreshRequested(false);
+            return;
+          }
+
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, attempt === 0 ? 1200 : 3500);
+          });
+        }
+
+        if (!isCancelled) {
+          setMessage("Payment complete. Founder Pro access is still syncing; refresh in a minute if it does not appear.");
+          setPendingCheckoutSessionId("");
+          setBillingRefreshRequested(false);
+        }
+      } catch (caught) {
+        if (!isCancelled) {
+          setError(caught instanceof Error ? caught.message : "Unable to confirm Founder Pro access.");
+          setMessage("Payment complete, but MiseForge could not confirm Pro access automatically.");
+          setPendingCheckoutSessionId("");
+          setBillingRefreshRequested(false);
+        }
+      } finally {
+        if (!isCancelled) {
+          billingSyncStartedRef.current = false;
+        }
+      }
+    }
+
+    void waitForBillingRefresh();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [billingRefreshRequested, pendingCheckoutSessionId, session?.access_token]);
 
   useEffect(() => {
     if (session?.access_token) {
