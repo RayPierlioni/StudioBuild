@@ -75,10 +75,10 @@ export default function Home() {
             <span>MISEFORGE</span>
           </div>
           <nav aria-label="MiseForge sections">
-            <a href="#fix-scene">Demo</a>
-            <a href="#sample-project">Sample Film</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/app">Open App</a>
+            <a data-analytics-area="nav" data-analytics-event="CTA Click" data-analytics-target="demo" href="#fix-scene">Demo</a>
+            <a data-analytics-area="nav" data-analytics-event="CTA Click" data-analytics-target="sample_film" href="#sample-project">Sample Film</a>
+            <a data-analytics-area="nav" data-analytics-event="CTA Click" data-analytics-target="pricing" href="#pricing">Pricing</a>
+            <a data-analytics-area="nav" data-analytics-event="CTA Click" data-analytics-target="open_app" href="/app">Open App</a>
           </nav>
         </div>
         <div className="hero-copy">
@@ -90,13 +90,13 @@ export default function Home() {
             generate a single shot.
           </p>
           <div className="hero-actions">
-            <a className="button" href="/app/start/idea">
+            <a className="button" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="start_free" href="/app/start/idea">
               Start Free
             </a>
-            <a className="button secondary ghost" href="/app/demo">
+            <a className="button secondary ghost" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="sample_film" href="/app/demo">
               Explore Sample Film
             </a>
-            <a className="button secondary ghost" href="#fix-scene">
+            <a className="button secondary ghost" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="fix_scene" href="#fix-scene">
               Fix a Scene Free
             </a>
           </div>
@@ -127,10 +127,10 @@ export default function Home() {
               prompt cards, continuity notes, and an export-ready production packet.
             </p>
             <div className="sample-actions">
-              <a className="button" href="/app/demo">
+              <a className="button" data-analytics-area="sample_project" data-analytics-event="CTA Click" data-analytics-target="view_sample" href="/app/demo">
                 View Complete Sample
               </a>
-              <a className="button secondary" href="/app/start/idea">
+              <a className="button secondary" data-analytics-area="sample_project" data-analytics-event="CTA Click" data-analytics-target="start_film" href="/app/start/idea">
                 Start Your Film
               </a>
             </div>
@@ -143,7 +143,7 @@ export default function Home() {
                 <strong>Signal House</strong>
                 <p>Contained sci-fi mystery / elegant, tense, intimate</p>
               </div>
-              <a href="/app/demo">Open</a>
+              <a data-analytics-area="sample_preview" data-analytics-event="CTA Click" data-analytics-target="open_sample" href="/app/demo">Open</a>
             </div>
 
             <div className="sample-stat-grid">
@@ -217,7 +217,13 @@ export default function Home() {
                 <strong>{price}</strong>
                 <p>{text}</p>
                 {href ? (
-                  <a className={featured ? "button" : "button secondary"} href={href}>
+                  <a
+                    className={featured ? "button" : "button secondary"}
+                    data-analytics-area="pricing"
+                    data-analytics-event="Pricing Click"
+                    data-analytics-target={name === "Founder Pro" ? "founder_pro" : "free"}
+                    href={href}
+                  >
                     {cta}
                   </a>
                 ) : (

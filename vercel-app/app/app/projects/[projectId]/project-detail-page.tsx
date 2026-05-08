@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { AuthReturnHandler, rememberAuthReturnPath } from "../../../auth-handler";
 import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
+import { trackLaunchEvent } from "../../../launch-analytics";
 import {
   ProjectWorkspace,
   type AccessEntitlement,
@@ -119,6 +120,10 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
     setError("");
     const nextPath = `${window.location.pathname}${window.location.search}`;
     rememberAuthReturnPath(nextPath);
+    trackLaunchEvent("Auth Intent", {
+      area: "project",
+      target: "open_project",
+    });
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -141,6 +146,10 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       return;
     }
 
+    trackLaunchEvent("Checkout Intent", {
+      area: "project",
+      target: "founder_pro",
+    });
     setIsStartingCheckout(true);
     setError("");
 

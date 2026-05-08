@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { clearAuthReturnState, getPendingAuthDiagnostic, rememberAuthReturnPath } from "./auth-handler";
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
+import { trackLaunchEvent } from "./launch-analytics";
 
 export type Project = {
   id: string;
@@ -414,6 +415,10 @@ const freeEntitlement: AccessEntitlement = {
   planLabel: "Free",
   status: "free",
 };
+
+function analyticsPlan(entitlement: AccessEntitlement) {
+  return entitlement.isAdmin ? "admin" : entitlement.isPro ? "pro" : "free";
+}
 
 const defaultUsage: ProjectUsage = {
   projectCount: 0,
@@ -2218,6 +2223,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     setMessage("");
     const nextPath = `${window.location.pathname}${window.location.search}`;
     rememberAuthReturnPath(nextPath);
+    trackLaunchEvent("Auth Intent", {
+      area: "app",
+      target: upgradeIntent ? "upgrade" : "save_project",
+    });
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -2251,6 +2260,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       return;
     }
 
+    trackLaunchEvent("Checkout Intent", {
+      area: "app",
+      target: "founder_pro",
+    });
     setIsStartingCheckout(true);
     setError("");
     setMessage("");
@@ -2379,6 +2392,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
         ...current,
         projectCount: current.projectCount + 1,
       }));
+      trackLaunchEvent("Project Created", {
+        area: startMode,
+        target: analyticsPlan(result.entitlement ?? entitlement),
+      });
       setSelectedProjectId(result.project.id);
       setDraftText(form.initialContent);
       setForm(emptyForm);
@@ -6200,6 +6217,10 @@ export function ProjectWorkspace({
       onDocumentsChange?.(result.documents ?? [result.document]);
       onSceneBreakdownsChange?.(result.sceneBreakdowns ?? []);
       setActiveStepId("breakdown");
+      trackLaunchEvent("Scene Packet Saved", {
+        area: activeStepId,
+        target: analyticsPlan(entitlement),
+      });
       setSaveStatus(
         result.message ??
           `${result.sceneBreakdowns?.length ?? 0} scene packet row(s) saved to Supabase.`,
@@ -8316,6 +8337,10 @@ export function ProjectWorkspace({
 
     try {
       await navigator.clipboard.writeText(packet);
+      trackLaunchEvent("Export Click", {
+        area: "copy_packet",
+        target: analyticsPlan(entitlement),
+      });
       setSaveStatus("Production packet copied.");
       setSaveError("");
     } catch {
@@ -8335,6 +8360,10 @@ export function ProjectWorkspace({
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
+    trackLaunchEvent("Export Click", {
+      area: "markdown",
+      target: analyticsPlan(entitlement),
+    });
     setSaveStatus("Markdown production packet downloaded.");
     setSaveError("");
   }
@@ -8348,6 +8377,10 @@ export function ProjectWorkspace({
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const opened = window.open(url, "_blank");
+    trackLaunchEvent("Export Click", {
+      area: "premium_pdf",
+      target: analyticsPlan(entitlement),
+    });
 
     if (!opened) {
       const anchor = document.createElement("a");

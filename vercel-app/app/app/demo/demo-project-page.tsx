@@ -32,8 +32,8 @@ export function DemoProjectPage() {
         </a>
         <nav aria-label="Demo project navigation">
           <a href="/">Landing</a>
-          <a href="/app">Open App</a>
-          <a href="/app/start/idea">New Film</a>
+          <a data-analytics-area="demo_nav" data-analytics-event="CTA Click" data-analytics-target="open_app" href="/app">Open App</a>
+          <a data-analytics-area="demo_nav" data-analytics-event="CTA Click" data-analytics-target="new_film" href="/app/start/idea">New Film</a>
         </nav>
       </div>
 
@@ -48,7 +48,7 @@ export function DemoProjectPage() {
               production scheduling already filled in.
             </p>
           </div>
-          <a className="button" href="/app">
+          <a className="button" data-analytics-area="demo_project" data-analytics-event="CTA Click" data-analytics-target="start_own_film" href="/app/start/idea">
             Start your own film
           </a>
         </div>
@@ -74,4 +74,3 @@ export function DemoProjectPage() {
     </main>
   );
 }
-
