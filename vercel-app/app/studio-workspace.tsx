@@ -3025,6 +3025,41 @@ export function ProjectWorkspace({
       total: checks.length,
     };
   }, [drafts, productionAssets, project, sceneBreakdowns]);
+  const roomMetrics = useMemo(() => {
+    const completeScenePacketCount = sceneBreakdowns.filter(
+      (scene) =>
+        hasText(scene.summary) &&
+        hasList(scene.characters) &&
+        hasList(scene.props) &&
+        hasList(scene.wardrobe) &&
+        hasText(scene.sound_notes) &&
+        hasText(scene.blocking),
+    ).length;
+    const shotCount = productionAssets.filter((asset) => asset.asset_type === "shot").length;
+    const promptCardCount = productionAssets.filter((asset) => asset.asset_type !== "shot").length;
+    const imagePromptCount = productionAssets.filter((asset) => hasText(asset.image_prompt)).length;
+    const animationSoundPromptCount = productionAssets.filter(
+      (asset) => hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+    ).length;
+    const averageCharacterReadiness = characterProfiles.length
+      ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
+      : 0;
+    const wardrobeAnchorCount = characterProfiles.filter((profile) => profile.wardrobe.length > 0).length;
+    const propAnchorCount = characterProfiles.filter((profile) => profile.props.length > 0).length;
+    const promptAnchorCount = characterProfiles.filter((profile) => profile.productionAssets.length > 0).length;
+
+    return {
+      animationSoundPromptCount,
+      averageCharacterReadiness,
+      completeScenePacketCount,
+      imagePromptCount,
+      promptAnchorCount,
+      promptCardCount,
+      propAnchorCount,
+      shotCount,
+      wardrobeAnchorCount,
+    };
+  }, [characterProfiles, productionAssets, sceneBreakdowns]);
   const scheduleLockPhases = useMemo<GenerationLockPhase[]>(() => {
     const averageCharacterReadiness = characterProfiles.length
       ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
@@ -8630,6 +8665,67 @@ export function ProjectWorkspace({
               </div>
             </div>
           ) : null}
+          {activeStepId === "breakdown" ? (
+            <div className="room-command-board breakdown-command-board">
+              <div className="room-command-head">
+                <div>
+                  <span>Scene Breakdown command board</span>
+                  <strong>Turn pages into production decisions before prompt work starts.</strong>
+                  <p>
+                    Page 1 locks the scene purpose and physical needs. Page 2 builds the detailed
+                    shot list. Page 3 turns approved shots into image, animation, dialogue, and sound prompts.
+                  </p>
+                </div>
+                <div className="dialogue-actions">
+                  <button className="button" type="button" onClick={saveScenePacket} disabled={isSavingPacket}>
+                    {isSavingPacket ? "Saving packet..." : "Save scene packet"}
+                  </button>
+                  <button className="button secondary" type="button" onClick={() => copyExpertPrompt("breakdown")}>
+                    Copy breakdown prompt
+                  </button>
+                </div>
+              </div>
+              <div className="room-command-grid">
+                <article>
+                  <span>Scene packets</span>
+                  <strong>{sceneBreakdowns.length}</strong>
+                  <p>{roomMetrics.completeScenePacketCount} include core production fields.</p>
+                </article>
+                <article>
+                  <span>Shot rows</span>
+                  <strong>{roomMetrics.shotCount}</strong>
+                  <p>Detailed shot-list rows ready for image-prompt work.</p>
+                </article>
+                <article>
+                  <span>Image prompts</span>
+                  <strong>{roomMetrics.imagePromptCount}</strong>
+                  <p>Still-frame prompts attached to approved shots or inserts.</p>
+                </article>
+                <article>
+                  <span>Motion + sound</span>
+                  <strong>{roomMetrics.animationSoundPromptCount}</strong>
+                  <p>Animation, sound, and dialogue handoff prompts generated.</p>
+                </article>
+              </div>
+              <div className="breakdown-flow-grid">
+                <article>
+                  <span>Page 1</span>
+                  <strong>Scene packet</strong>
+                  <p>Purpose, emotional turn, characters, props, wardrobe, set, sound, blocking, and continuity.</p>
+                </article>
+                <article>
+                  <span>Page 2</span>
+                  <strong>Detailed shot list</strong>
+                  <p>Shot type, angle, movement, lens feel, duration, action, dialogue, and continuity risk.</p>
+                </article>
+                <article>
+                  <span>Page 3</span>
+                  <strong>Prompt handoff</strong>
+                  <p>Image prompts first, then animation plus sound/dialogue prompts from the approved shot row.</p>
+                </article>
+              </div>
+            </div>
+          ) : null}
           {activeStepId === "characters" ? (
             <>
               <div className="bible-tool-card">
@@ -8649,6 +8745,55 @@ export function ProjectWorkspace({
                 >
                   {entitlement.isPro ? "Build Character Bible" : "Pro: Build Character Bible"}
                 </button>
+              </div>
+              <div className="room-command-board character-command-board">
+                <div className="room-command-head">
+                  <div>
+                    <span>Character Bible command board</span>
+                    <strong>Lock faces, wardrobe, voice, props, and scene state before images drift.</strong>
+                    <p>
+                      A serious AI film needs repeatable character anchors. This room shows what is
+                      already reusable and what still needs a continuity pass.
+                    </p>
+                  </div>
+                  <small>{roomMetrics.averageCharacterReadiness}% average readiness</small>
+                </div>
+                <div className="room-command-grid">
+                  <article>
+                    <span>Profiles</span>
+                    <strong>{characterProfiles.length}</strong>
+                    <p>Characters detected from saved scene packets.</p>
+                  </article>
+                  <article>
+                    <span>Wardrobe anchors</span>
+                    <strong>{roomMetrics.wardrobeAnchorCount}</strong>
+                    <p>Profiles with reusable clothing or look continuity.</p>
+                  </article>
+                  <article>
+                    <span>Carried props</span>
+                    <strong>{roomMetrics.propAnchorCount}</strong>
+                    <p>Profiles with physical objects that must stay consistent.</p>
+                  </article>
+                  <article>
+                    <span>Prompt anchors</span>
+                    <strong>{roomMetrics.promptAnchorCount}</strong>
+                    <p>Profiles connected to production asset or prompt rows.</p>
+                  </article>
+                </div>
+                <div className="room-sequence-list">
+                  {[
+                    "Identity baseline",
+                    "Wardrobe rules",
+                    "Speech pattern",
+                    "Relationship map",
+                    "Prompt anchor",
+                  ].map((step, index) => (
+                    <div className="room-sequence-step" key={step}>
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <strong>{step}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="character-bible-studio" aria-label="Character bible sheets">
                 <div className="tool-heading">

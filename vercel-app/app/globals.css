@@ -2408,6 +2408,153 @@ textarea:focus {
   font-weight: 820;
 }
 
+.room-command-board {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.11);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 250, 241, 0.86), rgba(237, 241, 240, 0.6)),
+    white;
+  box-shadow: 0 14px 36px rgba(46, 36, 29, 0.08);
+}
+
+.breakdown-command-board {
+  border-color: rgba(102, 127, 118, 0.18);
+  background:
+    linear-gradient(145deg, rgba(237, 241, 240, 0.82), rgba(255, 250, 241, 0.7)),
+    white;
+}
+
+.character-command-board {
+  border-color: rgba(182, 93, 104, 0.18);
+}
+
+.room-command-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.room-command-head > div {
+  display: grid;
+  gap: 6px;
+  max-width: 760px;
+}
+
+.room-command-head span,
+.room-command-grid span,
+.breakdown-flow-grid span,
+.room-sequence-step span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 860;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.room-command-head strong {
+  color: var(--deep);
+  font-family: var(--display);
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+}
+
+.room-command-head p,
+.room-command-grid p,
+.breakdown-flow-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.room-command-head small {
+  flex: 0 0 auto;
+  border: 1px solid rgba(102, 127, 118, 0.22);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(223, 231, 226, 0.72);
+  color: #415f57;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.room-command-grid,
+.breakdown-flow-grid,
+.room-sequence-list {
+  display: grid;
+  gap: 10px;
+}
+
+.room-command-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.breakdown-flow-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.room-sequence-list {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.room-command-grid article,
+.breakdown-flow-grid article,
+.room-sequence-step {
+  border: 1px solid rgba(52, 47, 45, 0.09);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.room-command-grid strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--deep);
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 0.95;
+}
+
+.room-command-grid p {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.breakdown-flow-grid strong,
+.room-sequence-step strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--deep);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.breakdown-flow-grid article {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 250, 241, 0.58)),
+    white;
+}
+
+.room-sequence-step {
+  min-height: 84px;
+  background: rgba(29, 26, 28, 0.92);
+}
+
+.room-sequence-step span {
+  color: rgba(255, 250, 241, 0.48);
+}
+
+.room-sequence-step strong {
+  color: #fffaf1;
+  font-size: 13px;
+}
+
 .character-bible-studio,
 .location-bible-studio {
   display: grid;
@@ -3475,7 +3622,7 @@ textarea:focus {
 
 .scene-packet-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -3484,8 +3631,11 @@ textarea:focus {
   gap: 12px;
   border: 1px solid rgba(52, 47, 45, 0.12);
   border-radius: 8px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.68);
+  padding: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 250, 241, 0.6)),
+    white;
+  box-shadow: 0 16px 40px rgba(46, 36, 29, 0.08);
 }
 
 .packet-card-top {
@@ -3509,7 +3659,8 @@ textarea:focus {
 
 .packet-card-top strong {
   color: var(--deep);
-  font-size: 18px;
+  font-family: var(--display);
+  font-size: 24px;
   line-height: 1.2;
 }
 
@@ -3552,6 +3703,7 @@ textarea:focus {
 
 .packet-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
   margin: 0;
 }
@@ -3559,6 +3711,10 @@ textarea:focus {
 .packet-list div {
   display: grid;
   gap: 3px;
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .packet-list dt {
@@ -3613,15 +3769,23 @@ textarea:focus {
 .asset-section {
   display: grid;
   gap: 10px;
-  border-top: 1px solid rgba(52, 47, 45, 0.1);
-  padding-top: 12px;
+  border: 1px solid rgba(182, 93, 104, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, rgba(251, 240, 241, 0.62), rgba(255, 250, 241, 0.56)),
+    white;
 }
 
 .shot-list-section {
   display: grid;
   gap: 12px;
-  border-top: 1px solid rgba(52, 47, 45, 0.1);
-  padding-top: 12px;
+  border: 1px solid rgba(102, 127, 118, 0.18);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, rgba(237, 241, 240, 0.72), rgba(255, 255, 255, 0.6)),
+    white;
 }
 
 .asset-heading {
@@ -4215,6 +4379,10 @@ code {
     .style-rule-grid,
     .scene-look-card dl,
     .character-profile-meta,
+    .room-command-grid,
+    .breakdown-flow-grid,
+    .room-sequence-list,
+    .room-command-head,
     .project-workspace > .guide-assistant,
     .guide-chat-form,
     .story-tool-card,
@@ -4297,6 +4465,10 @@ code {
   }
 
   .board-heading {
+    display: grid;
+  }
+
+  .room-command-head {
     display: grid;
   }
 
