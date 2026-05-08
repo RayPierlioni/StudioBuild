@@ -208,9 +208,9 @@ export default async function StartModePage({ params }: RouteContext) {
   };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell command-app-shell">
       <AuthReturnHandler fallbackNext={`/app/start/${startMode}`} quiet />
-      <header className="app-topbar">
+      <header className="app-topbar command-topbar">
         <a className="brand-link" href="/app">
           Back to Guide
         </a>
