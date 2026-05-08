@@ -123,7 +123,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/app`,
+        redirectTo: `${window.location.origin}/`,
         queryParams: {
           prompt: "select_account",
         },

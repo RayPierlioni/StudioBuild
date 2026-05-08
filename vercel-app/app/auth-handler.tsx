@@ -63,7 +63,7 @@ export function getPendingAuthDiagnostic() {
 
   return [
     "Google returned to MiseForge without a Supabase auth code.",
-    "In Supabase Authentication > URL Configuration, add these Redirect URLs: https://miseforge.com/app and https://miseforge.com/**.",
+    "In Supabase Authentication > URL Configuration, add these Redirect URLs: https://miseforge.com/, https://miseforge.com/app, and https://miseforge.com/**.",
   ].join(" ");
 }
 
@@ -89,6 +89,12 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
 
   useEffect(() => {
     if (!hasAuthReturnInCurrentUrl()) {
+      const authDiagnostic = getPendingAuthDiagnostic();
+
+      if (authDiagnostic) {
+        setMessage(authDiagnostic);
+      }
+
       return;
     }
 
