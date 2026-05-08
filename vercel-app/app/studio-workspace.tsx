@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 
-import { rememberAuthReturnPath } from "./auth-handler";
+import { clearAuthReturnState, getPendingAuthDiagnostic, rememberAuthReturnPath } from "./auth-handler";
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
 
 export type Project = {
@@ -2139,6 +2139,16 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
 
       setSession(data.session);
       setIsLoadingSession(false);
+
+      if (!data.session) {
+        const authDiagnostic = getPendingAuthDiagnostic();
+
+        if (authDiagnostic) {
+          setError(authDiagnostic);
+        }
+      } else {
+        clearAuthReturnState();
+      }
     });
 
     const {
@@ -2147,6 +2157,10 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setSession(nextSession);
       setMessage("");
       setError("");
+
+      if (nextSession) {
+        clearAuthReturnState();
+      }
     });
 
     return () => {
@@ -2210,6 +2224,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   async function signOut() {
     setError("");
     setMessage("");
+    clearAuthReturnState();
     await supabase.auth.signOut();
     setProjects([]);
     setEntitlement(freeEntitlement);

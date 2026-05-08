@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
 
+const authNextKey = "miseforge.auth.next";
+const authStartedAtKey = "miseforge.auth.startedAt";
+const authErrorKey = "miseforge.auth.error";
+const authPendingWindowMs = 10 * 60 * 1000;
+
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/app";
@@ -17,12 +22,12 @@ function storedNextPath(fallbackNext: string) {
     return fallbackNext;
   }
 
-  const stored = window.localStorage.getItem("miseforge.auth.next");
+  const stored = window.localStorage.getItem(authNextKey);
 
   return safeNextPath(stored ?? fallbackNext);
 }
 
-function hasAuthReturnInUrl() {
+export function hasAuthReturnInCurrentUrl() {
   if (typeof window === "undefined") {
     return false;
   }
@@ -39,6 +44,39 @@ function hasAuthReturnInUrl() {
   );
 }
 
+export function getPendingAuthDiagnostic() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const storedError = window.sessionStorage.getItem(authErrorKey);
+
+  if (storedError) {
+    return `MiseForge could not finish sign-in: ${storedError}`;
+  }
+
+  const startedAt = Number(window.localStorage.getItem(authStartedAtKey) ?? "0");
+
+  if (!startedAt || Date.now() - startedAt > authPendingWindowMs || hasAuthReturnInCurrentUrl()) {
+    return "";
+  }
+
+  return [
+    "Google returned to MiseForge without a Supabase auth code.",
+    "In Supabase Authentication > URL Configuration, add these Redirect URLs: https://miseforge.com/app and https://miseforge.com/**.",
+  ].join(" ");
+}
+
+export function clearAuthReturnState() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(authNextKey);
+  window.localStorage.removeItem(authStartedAtKey);
+  window.sessionStorage.removeItem(authErrorKey);
+}
+
 function authReturnParams() {
   const search = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -50,7 +88,7 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (!hasAuthReturnInUrl()) {
+    if (!hasAuthReturnInCurrentUrl()) {
       return;
     }
 
@@ -73,10 +111,14 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
         }
 
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
             throw error;
+          }
+
+          if (!data.session) {
+            throw new Error("Supabase accepted the code but did not return a session.");
           }
         } else if (accessToken && refreshToken) {
           const { data, error } = await supabase.auth.setSession({
@@ -103,11 +145,11 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
           }
         }
 
-        window.localStorage.removeItem("miseforge.auth.next");
+        clearAuthReturnState();
         window.location.replace(next);
       } catch (caught) {
         const detail = caught instanceof Error ? caught.message : "Unknown auth return error.";
-        window.sessionStorage.setItem("miseforge.auth.error", detail);
+        window.sessionStorage.setItem(authErrorKey, detail);
 
         if (isMounted) {
           setMessage(`MiseForge could not finish sign-in: ${detail}`);
@@ -138,5 +180,7 @@ export function rememberAuthReturnPath(nextPath: string) {
     return;
   }
 
-  window.localStorage.setItem("miseforge.auth.next", safeNextPath(nextPath));
+  window.localStorage.setItem(authNextKey, safeNextPath(nextPath));
+  window.localStorage.setItem(authStartedAtKey, String(Date.now()));
+  window.sessionStorage.removeItem(authErrorKey);
 }

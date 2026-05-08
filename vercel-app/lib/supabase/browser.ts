@@ -24,8 +24,8 @@ export function getSupabaseBrowserClient() {
     cachedClient = createClient(url, publishableKey, {
       auth: {
         autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: "implicit",
+        detectSessionInUrl: false,
+        flowType: "pkce",
         persistSession: true,
       },
     });
