@@ -1597,6 +1597,34 @@ function completionLine(label: string, isComplete: boolean) {
   return { label, isComplete };
 }
 
+function createDraftState(documents: ProjectDocument[] = [], draftText = ""): Record<DocType, string> {
+  const drafts: Record<DocType, string> = {
+    idea: "",
+    synopsis: "",
+    treatment: "",
+    character_bible: "",
+    location_bible: "",
+    look_book: "",
+    story: "",
+    script: "",
+    dialogue_notes: "",
+    continuity_tracker: "",
+    breakdown_notes: "",
+    production_schedule: "",
+    sound_map: "",
+  };
+
+  for (const document of documents) {
+    drafts[document.doc_type] = document.content;
+  }
+
+  if (draftText && !drafts.idea) {
+    drafts.idea = draftText;
+  }
+
+  return drafts;
+}
+
 function buildGuideAnswer(question: string, context: GuideAssistantContext) {
   const lowerQuestion = question.toLowerCase();
   const projectName = context.projectTitle?.trim() || "this film";
@@ -2092,6 +2120,31 @@ function DialogueScanPanel({
   );
 }
 
+function WorkspaceLoadingActions() {
+  return (
+    <div className="workspace-loading-actions" aria-label="MiseForge workspace is loading">
+      <article>
+        <span>Sample ready</span>
+        <strong>Explore Signal House</strong>
+        <p>Open the complete demo while MiseForge checks your session.</p>
+        <a href="/app/demo">View sample project</a>
+      </article>
+      <article>
+        <span>Start path</span>
+        <strong>Begin with an idea</strong>
+        <p>Create the film shell first, then fill the production rooms.</p>
+        <a href="/app/start/idea">Start free</a>
+      </article>
+      <article>
+        <span>Access check</span>
+        <strong>Checking your plan</strong>
+        <p>Saved projects and Founder Pro status load here after sign-in.</p>
+        <small>Loading workspace...</small>
+      </article>
+    </div>
+  );
+}
+
 export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: StartMode } = {}) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const modeCopy = startModeCopy[startMode] ?? startModeCopy.dashboard;
@@ -2550,14 +2603,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       </div>
 
       {isLoadingSession ? (
-        <div className="workspace-skeleton" aria-label="Loading MiseForge workspace">
-          <div className="skeleton-card large" />
-          <div className="skeleton-grid">
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
+        <WorkspaceLoadingActions />
       ) : !session ? (
         <div className="auth-box">
           <p>
@@ -2772,21 +2818,7 @@ export function ProjectWorkspace({
   const initialStep =
     pipelineSteps.find((step) => step.projectStage === project.active_stage)?.id ?? "idea";
   const [activeStepId, setActiveStepId] = useState<StageId>(initialStep);
-  const [drafts, setDrafts] = useState<Record<DocType, string>>({
-    idea: "",
-    synopsis: "",
-    treatment: "",
-    character_bible: "",
-    location_bible: "",
-    look_book: "",
-    story: "",
-    script: "",
-    dialogue_notes: "",
-    continuity_tracker: "",
-    breakdown_notes: "",
-    production_schedule: "",
-    sound_map: "",
-  });
+  const [drafts, setDrafts] = useState<Record<DocType, string>>(() => createDraftState(documents, draftText));
   const [workflowTools, setWorkflowTools] = useState("");
   const [versionLabel, setVersionLabel] = useState("");
   const [versions, setVersions] = useState<LocalVersion[]>([]);

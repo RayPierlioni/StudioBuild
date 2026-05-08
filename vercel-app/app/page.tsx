@@ -90,14 +90,11 @@ export default function Home() {
             generate a single shot.
           </p>
           <div className="hero-actions">
-            <a className="button" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="start_free" href="/app/start/idea">
-              Start Free
-            </a>
-            <a className="button secondary ghost" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="sample_film" href="/app/demo">
+            <a className="button" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="sample_film" href="/app/demo">
               Explore Sample Film
             </a>
-            <a className="button secondary ghost" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="fix_scene" href="#fix-scene">
-              Fix a Scene Free
+            <a className="button secondary ghost" data-analytics-area="hero" data-analytics-event="CTA Click" data-analytics-target="start_free" href="/app/start/idea">
+              Start Free
             </a>
           </div>
           <div className="hero-chips" aria-label="MiseForge focus">

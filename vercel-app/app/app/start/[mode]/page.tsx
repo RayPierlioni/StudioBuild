@@ -221,22 +221,24 @@ export default async function StartModePage({ params }: RouteContext) {
         </nav>
       </header>
 
-      <section className="start-hero">
-        <MiniPhilosopherGuide compact context={guideContext} minimal />
-        <div>
-          <p className="eyebrow">{copy.eyebrow}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.subtitle}</p>
-          <ol>
-            {copy.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
+      <section className="start-command-flow" aria-label={`${copy.title} start flow`}>
+        <div className="start-hero">
+          <MiniPhilosopherGuide compact context={guideContext} minimal />
+          <div>
+            <p className="eyebrow">{copy.eyebrow}</p>
+            <h1>{copy.title}</h1>
+            <p>{copy.subtitle}</p>
+            <ol>
+              {copy.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
         </div>
-      </section>
 
-      <section className="app-workspace">
-        <StudioWorkspace startMode={startMode} />
+        <section className="app-workspace start-workspace">
+          <StudioWorkspace startMode={startMode} />
+        </section>
       </section>
     </main>
   );

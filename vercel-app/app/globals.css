@@ -619,6 +619,48 @@ a {
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24);
 }
 
+.start-command-flow {
+  width: min(1560px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 250, 241, 0.12);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(182, 93, 104, 0.14), transparent 32%),
+    linear-gradient(145deg, rgba(255, 250, 241, 0.92), rgba(237, 241, 240, 0.84)),
+    #fffaf1;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24);
+}
+
+.command-app-shell .start-command-flow .start-hero {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.start-command-flow .start-workspace {
+  width: 100%;
+  margin: 0;
+  padding: 0 clamp(20px, 4vw, 38px) clamp(20px, 4vw, 38px);
+}
+
+.start-command-flow .studio-panel {
+  border-color: rgba(52, 47, 45, 0.1);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 241, 0.76)),
+    rgba(255, 250, 241, 0.82);
+  box-shadow: none;
+}
+
+.start-command-flow .auth-box {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.88), rgba(237, 241, 240, 0.76)),
+    rgba(255, 250, 241, 0.72);
+}
+
 .command-app-shell .app-workspace {
   width: min(1560px, 100%);
 }
@@ -1238,6 +1280,53 @@ h1 {
 .auth-box p {
   flex: 1 1 260px;
   margin: 0;
+}
+
+.workspace-loading-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workspace-loading-actions article {
+  display: grid;
+  gap: 8px;
+  min-height: 128px;
+  border: 1px solid rgba(102, 127, 118, 0.18);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.9), rgba(237, 241, 240, 0.72)),
+    white;
+}
+
+.workspace-loading-actions span {
+  color: #415f57;
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.workspace-loading-actions strong {
+  color: var(--deep);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.workspace-loading-actions p,
+.workspace-loading-actions small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workspace-loading-actions a {
+  width: fit-content;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 820;
 }
 
 .demo-detail-shell .command-project-panel {
@@ -4951,6 +5040,7 @@ code {
     .sound-scene-grid,
     .launch-readiness-strip,
     .skeleton-grid,
+    .workspace-loading-actions,
     .character-card-grid,
     .character-command-dashboard,
     .character-lock-strip,
