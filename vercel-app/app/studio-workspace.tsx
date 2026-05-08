@@ -2088,11 +2088,15 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   const [isSaving, setIsSaving] = useState(false);
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [hasLoadedAccount, setHasLoadedAccount] = useState(false);
+  const [upgradeIntent, setUpgradeIntent] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const checkoutStartedFromIntentRef = useRef(false);
 
   async function loadProjects(accessToken: string) {
     setIsLoadingProjects(true);
+    setHasLoadedAccount(false);
     setError("");
 
     try {
@@ -2126,6 +2130,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setError(caught instanceof Error ? caught.message : "Unable to load projects.");
     } finally {
       setIsLoadingProjects(false);
+      setHasLoadedAccount(true);
     }
   }
 
@@ -2170,7 +2175,8 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   }, [supabase]);
 
   useEffect(() => {
-    const checkout = new URLSearchParams(window.location.search).get("checkout");
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
 
     if (checkout === "success") {
       setMessage("Payment complete. Founder Pro access will unlock in a moment.");
@@ -2182,10 +2188,16 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       return;
     }
 
-    const billing = new URLSearchParams(window.location.search).get("billing");
+    const billing = params.get("billing");
 
     if (billing === "return") {
       setMessage("Billing settings saved. Your MiseForge access will refresh automatically.");
+      return;
+    }
+
+    if (params.get("upgrade") === "founder") {
+      setUpgradeIntent(true);
+      setMessage("Founder Pro is the live paid plan. Sign in to open checkout, or start free and upgrade when the packet is ready.");
     }
   }, []);
 
@@ -2198,6 +2210,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     setProjects([]);
     setEntitlement(freeEntitlement);
     setUsage(defaultUsage);
+    setHasLoadedAccount(false);
   }, [session?.access_token]);
 
   async function signInWithGoogle() {
@@ -2262,6 +2275,25 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       setIsStartingCheckout(false);
     }
   }
+
+  useEffect(() => {
+    if (!upgradeIntent || !session?.access_token || !hasLoadedAccount || isLoadingProjects || isStartingCheckout) {
+      return;
+    }
+
+    if (entitlement.isPro) {
+      setMessage("Founder Pro is already unlocked for this account.");
+      return;
+    }
+
+    if (checkoutStartedFromIntentRef.current) {
+      return;
+    }
+
+    checkoutStartedFromIntentRef.current = true;
+    setMessage("Opening Founder Pro checkout...");
+    void startCheckout();
+  }, [entitlement.isPro, hasLoadedAccount, isLoadingProjects, isStartingCheckout, session?.access_token, upgradeIntent]);
 
   async function openBillingPortal() {
     if (!session?.access_token) {
@@ -2398,11 +2430,12 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       ) : !session ? (
         <div className="auth-box">
           <p>
-            Sign in with Google to save your film projects, reopen the command center, and keep
-            your production packets organized.
+            {upgradeIntent
+              ? "Sign in with Google to open Founder Pro checkout. You can still start free and upgrade when the packet is ready."
+              : "Sign in with Google to save your film projects, reopen the command center, and keep your production packets organized."}
           </p>
           <button className="button" type="button" onClick={signInWithGoogle}>
-            Sign in with Google
+            {upgradeIntent ? "Sign in to upgrade" : "Sign in with Google"}
           </button>
           <a className="button secondary" href="/app/demo">
             View sample project

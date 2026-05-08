@@ -36,13 +36,31 @@ const sampleProjectArtifacts = [
 const sampleProjectStages = ["Idea", "Characters", "Breakdown", "Shot List", "Packet"];
 
 const pricingCards = [
-  ["Free", "$0", "One project, one scene-packet preview, basic prompt copying, and Markdown export."],
-  [
-    "Founder Pro",
-    "$12.99/mo",
-    "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, visual look books, continuity tracker, sound maps, AI voice scans, full-script parsing, production board, shot lists, production scheduling, prompt cards, version history, and premium PDF packets.",
-  ],
-  ["Project Pass", "$9/project", "Try one film before committing: one complete production packet for filmmakers who think in projects."],
+  {
+    cta: "Start Free",
+    href: "/app/start/idea",
+    name: "Free",
+    price: "$0",
+    status: "Available now",
+    text: "One project, one scene-packet preview, basic prompt copying, and Markdown export.",
+  },
+  {
+    cta: "Upgrade to Founder Pro",
+    featured: true,
+    href: "/app?upgrade=founder",
+    name: "Founder Pro",
+    price: "$12.99/mo",
+    status: "Live paid plan",
+    text: "Multiple projects, Logline Lab, Treatment Blueprint, character bibles, location bibles, visual look books, continuity tracker, sound maps, AI voice scans, full-script parsing, production board, shot lists, production scheduling, prompt cards, version history, and premium PDF packets.",
+  },
+  {
+    cta: "Planned after launch",
+    name: "Project Pass",
+    price: "$9/project",
+    projectPass: true,
+    status: "Planned",
+    text: "A one-film purchase path is planned for creators who think project by project. Founder Pro is the active paid option today.",
+  },
 ];
 
 export default function Home() {
@@ -72,14 +90,14 @@ export default function Home() {
             generate a single shot.
           </p>
           <div className="hero-actions">
-            <a className="button" href="#fix-scene">
-              Fix a Scene Free
+            <a className="button" href="/app/start/idea">
+              Start Free
             </a>
             <a className="button secondary ghost" href="/app/demo">
               Explore Sample Film
             </a>
-            <a className="button secondary ghost" href="/app">
-              Open App
+            <a className="button secondary ghost" href="#fix-scene">
+              Fix a Scene Free
             </a>
           </div>
           <div className="hero-chips" aria-label="MiseForge focus">
@@ -112,7 +130,7 @@ export default function Home() {
               <a className="button" href="/app/demo">
                 View Complete Sample
               </a>
-              <a className="button secondary" href="/app">
+              <a className="button secondary" href="/app/start/idea">
                 Start Your Film
               </a>
             </div>
@@ -183,17 +201,28 @@ export default function Home() {
           <p>
             Start with one project and a scene-packet preview. Upgrade when you want the complete
             pre-production system: full-script parsing, production boards, shot lists, sound maps,
-            prompt cards, version history, and premium production packets.
+            prompt cards, version history, and premium production packets. Founder Pro is the live
+            paid plan today.
           </p>
           <div className="pricing-grid">
-            {pricingCards.map(([name, price, text]) => (
+            {pricingCards.map(({ cta, featured, href, name, price, projectPass, status, text }) => (
               <article
-                className={`pricing-card${name === "Founder Pro" ? " featured" : ""}${name === "Project Pass" ? " project-pass" : ""}`}
+                className={`pricing-card${featured ? " featured" : ""}${projectPass ? " project-pass" : ""}`}
                 key={name}
               >
-                <span>{name}</span>
+                <div className="pricing-card-top">
+                  <span>{name}</span>
+                  <em>{status}</em>
+                </div>
                 <strong>{price}</strong>
                 <p>{text}</p>
+                {href ? (
+                  <a className={featured ? "button" : "button secondary"} href={href}>
+                    {cta}
+                  </a>
+                ) : (
+                  <small className="pricing-card-note">{cta}</small>
+                )}
               </article>
             ))}
           </div>
