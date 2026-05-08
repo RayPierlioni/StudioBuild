@@ -34,6 +34,7 @@ export function DemoProjectPage() {
           <a href="/">Landing</a>
           <a data-analytics-area="demo_nav" data-analytics-event="CTA Click" data-analytics-target="open_app" href="/app">Open App</a>
           <a data-analytics-area="demo_nav" data-analytics-event="CTA Click" data-analytics-target="new_film" href="/app/start/idea">New Film</a>
+          <a href="/support">Support</a>
         </nav>
       </div>
 

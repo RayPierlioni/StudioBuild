@@ -214,6 +214,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         <nav aria-label="Project navigation">
           <a href="/">Landing</a>
           <a href="/app">All Projects</a>
+          <a href="/support">Support</a>
         </nav>
       </div>
 

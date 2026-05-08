@@ -74,6 +74,7 @@ export default function AppHome() {
           <a href="/app/start/idea">New Film</a>
           <a href="/app/start/script">Import Script</a>
           <a href="/app/start/breakdown">Breakdown</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
 

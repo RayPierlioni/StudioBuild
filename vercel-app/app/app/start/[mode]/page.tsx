@@ -217,6 +217,7 @@ export default async function StartModePage({ params }: RouteContext) {
         <nav aria-label="Start flow navigation">
           <a href="/">Landing</a>
           <a href="/app">App Home</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
 

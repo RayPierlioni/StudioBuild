@@ -38,6 +38,8 @@ These events are now tracked through Vercel Web Analytics custom events:
 - Confirm checkout success returns to `/app?checkout=success&session_id=...` and Pro access syncs without manual support.
 - Confirm a non-admin free account can create one project and hits the right upgrade gates.
 - Confirm a paid account can access multiple projects, shot lists, prompt cards, and premium export.
+- Confirm Privacy, Terms, Refunds, and Support pages are reachable from the public site.
+- Confirm public diagnostics do not expose admin-only database status in production.
 
 ## Launch Fence
 

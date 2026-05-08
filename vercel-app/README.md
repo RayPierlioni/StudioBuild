@@ -43,12 +43,17 @@ Never commit real values for:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 
+Optional production diagnostics:
+
+- `ENABLE_ADMIN_DB_CHECK=true` enables `/api/admin-db-check` for admin-authenticated requests.
+
 ## Current Routes
 
 - `/` - public product landing page with the no-cost Fix a Scene Free parser and Prompt Compiler
+- `/privacy`, `/terms`, `/refunds`, `/support` - public launch policy and support pages
 - `/api/health` - basic app health check
 - `/api/db-status` - confirms the app can reach the MiseForge Supabase auth service
-- `/api/admin-db-check` - confirms the server-only Supabase key can reach protected tables
+- `/api/admin-db-check` - disabled unless `ENABLE_ADMIN_DB_CHECK=true`, then admin-only
 - `/api/billing/checkout` - opens Founder Pro subscription checkout for signed-in users
 - `/api/billing/sync` - confirms returned Stripe checkout sessions and refreshes Pro access
 - `/api/billing/webhook` - receives billing events and updates subscription access

@@ -233,6 +233,19 @@ export default function Home() {
             ))}
           </div>
         </article>
+
+        <footer className="landing-footer" aria-label="MiseForge footer">
+          <div>
+            <strong>MISEFORGE</strong>
+            <span>Build the film before you generate the frame.</span>
+          </div>
+          <nav aria-label="Footer navigation">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/refunds">Refunds</a>
+            <a href="/support">Support</a>
+          </nav>
+        </footer>
       </section>
     </main>
   );
