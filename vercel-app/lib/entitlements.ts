@@ -126,7 +126,7 @@ async function stripeSubscriptionMatchesCurrentPrice(record: SubscriptionAccessR
   const expectedPriceId = currentFounderPriceId();
 
   if (!expectedPriceId) {
-    return stripeProStatuses.has(normalizeStatus(record.status));
+    return false;
   }
 
   if (record.stripe_price_id) {

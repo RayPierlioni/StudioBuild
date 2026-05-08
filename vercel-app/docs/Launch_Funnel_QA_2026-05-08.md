@@ -12,6 +12,7 @@ Purpose: confirm the app can accept real beta traffic without losing users betwe
 - The existing Stripe webhook still handles ongoing subscription created, updated, and canceled events.
 - Checkout is blocked server-side for accounts that already have Pro/Admin access to prevent accidental duplicate subscriptions.
 - Stripe `active` or `trialing` status only unlocks Founder Pro when the subscription matches `STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID`.
+- If `STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID` is missing in Vercel, Stripe subscriptions do not unlock Founder Pro.
 - Legacy weekly test subscriptions should no longer keep a non-admin account on Founder Pro.
 
 ## Manual Non-Admin Test
