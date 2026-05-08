@@ -196,18 +196,19 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   }
 
   return (
-    <main className="detail-shell">
+    <main className="detail-shell command-app-shell">
       <AuthReturnHandler fallbackNext={`/app/projects/${projectId}`} quiet />
-      <div className="detail-topbar">
+      <div className="detail-topbar command-topbar">
         <a className="brand-link" href="/">
           MISEFORGE
         </a>
-        <a className="button secondary" href="/app">
-          All Projects
-        </a>
+        <nav aria-label="Project navigation">
+          <a href="/">Landing</a>
+          <a href="/app">All Projects</a>
+        </nav>
       </div>
 
-      <section className="detail-panel panel">
+      <section className="detail-panel panel command-project-panel">
         {isLoadingSession || isLoadingProject ? (
           <p className="subtle">Opening project...</p>
         ) : !session ? (

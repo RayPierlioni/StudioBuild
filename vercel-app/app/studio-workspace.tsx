@@ -2368,7 +2368,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
       <div className="panel-heading">
         <div>
           <p className="eyebrow">{selectedProject ? "Live workspace" : modeCopy.eyebrow}</p>
-          <h2>{selectedProject ? "Project command center." : "Start where your film is today."}</h2>
+          <h2>{selectedProject ? "Project command center." : modeCopy.heading}</h2>
           {!selectedProject ? <p className="workspace-helper">{modeCopy.helper}</p> : null}
           {session ? (
             <p className="workspace-account">
@@ -2425,10 +2425,6 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
             />
           ) : (
             <form className="project-form" onSubmit={saveProject}>
-              <div className="signed-in-line">
-                <span>Signed in as</span>
-                <strong>{userEmail}</strong>
-              </div>
               <ProUnlockPanel
                 compact
                 entitlement={entitlement}

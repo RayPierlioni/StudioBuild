@@ -70,6 +70,24 @@ a {
   margin: 0 auto;
 }
 
+.detail-shell.command-app-shell {
+  padding: 18px;
+}
+
+.detail-shell .command-topbar {
+  width: min(1560px, 100%);
+}
+
+.command-project-panel {
+  width: min(1560px, 100%);
+  max-width: none;
+  border-color: rgba(255, 250, 241, 0.12);
+  background:
+    linear-gradient(145deg, rgba(255, 250, 241, 0.9), rgba(237, 241, 240, 0.82)),
+    #fffaf1;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24);
+}
+
 .app-shell {
   min-height: 100vh;
   padding: clamp(18px, 4vw, 44px);
@@ -290,6 +308,11 @@ a {
   background: #7bb296;
 }
 
+.command-sidebar .pipeline-nav a.ready::before {
+  border-color: rgba(123, 178, 150, 0.7);
+  background: #7bb296;
+}
+
 .command-sidebar .pipeline-nav a.active {
   border-color: rgba(255, 250, 241, 0.24);
   background:
@@ -304,7 +327,7 @@ a {
 }
 
 .command-sidebar .pipeline-nav a.upcoming {
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .pipeline-nav a:hover,
