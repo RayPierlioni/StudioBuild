@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { AuthReturnHandler } from "../../../auth-handler";
 import { MiniPhilosopherGuide, StudioWorkspace, type GuideAssistantContext, type StartMode } from "../../../studio-workspace";
 
 type RouteContext = {
@@ -208,6 +209,7 @@ export default async function StartModePage({ params }: RouteContext) {
 
   return (
     <main className="app-shell">
+      <AuthReturnHandler fallbackNext={`/app/start/${startMode}`} quiet />
       <header className="app-topbar">
         <a className="brand-link" href="/app">
           Back to Guide

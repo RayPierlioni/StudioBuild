@@ -12,6 +12,16 @@ function safeNextPath(value: string | null) {
   return value;
 }
 
+function storedNextPath(fallbackNext: string) {
+  if (typeof window === "undefined") {
+    return fallbackNext;
+  }
+
+  const stored = window.localStorage.getItem("miseforge.auth.next");
+
+  return safeNextPath(stored ?? fallbackNext);
+}
+
 function hasAuthReturnInUrl() {
   if (typeof window === "undefined") {
     return false;
@@ -44,7 +54,7 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
       const supabase = getSupabaseBrowserClient();
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
-      const next = safeNextPath(url.searchParams.get("next") ?? fallbackNext);
+      const next = safeNextPath(url.searchParams.get("next") ?? storedNextPath(fallbackNext));
 
       try {
         if (code) {
@@ -65,6 +75,7 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
           }
         }
 
+        window.localStorage.removeItem("miseforge.auth.next");
         window.location.replace(next);
       } catch {
         if (isMounted) {
@@ -89,4 +100,12 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
       {message}
     </p>
   ) : null;
+}
+
+export function rememberAuthReturnPath(nextPath: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem("miseforge.auth.next", safeNextPath(nextPath));
 }

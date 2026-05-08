@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
+import { AuthReturnHandler, rememberAuthReturnPath } from "../../../auth-handler";
 import { getSupabaseBrowserClient } from "../../../../lib/supabase/browser";
 import {
   ProjectWorkspace,
@@ -116,13 +117,13 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
 
   async function signInWithGoogle() {
     setError("");
+    const nextPath = `${window.location.pathname}${window.location.search}`;
+    rememberAuthReturnPath(nextPath);
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-          `${window.location.pathname}${window.location.search}`,
-        )}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         queryParams: {
           prompt: "select_account",
         },
@@ -196,6 +197,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
 
   return (
     <main className="detail-shell">
+      <AuthReturnHandler fallbackNext={`/app/projects/${projectId}`} quiet />
       <div className="detail-topbar">
         <a className="brand-link" href="/">
           MISEFORGE

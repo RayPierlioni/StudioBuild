@@ -1,3 +1,4 @@
+import { AuthReturnHandler } from "../auth-handler";
 import { MiniPhilosopherGuide, StudioWorkspace, type GuideAssistantContext } from "../studio-workspace";
 
 const guidePaths = [
@@ -62,6 +63,7 @@ const dashboardGuideContext: GuideAssistantContext = {
 export default function AppHome() {
   return (
     <main className="app-shell command-app-shell">
+      <AuthReturnHandler fallbackNext="/app" quiet />
       <header className="app-topbar command-topbar">
         <a className="brand-link" href="/">
           MISEFORGE

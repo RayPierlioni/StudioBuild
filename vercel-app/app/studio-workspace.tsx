@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 
+import { rememberAuthReturnPath } from "./auth-handler";
 import { getSupabaseBrowserClient } from "../lib/supabase/browser";
 
 export type Project = {
@@ -2188,11 +2189,13 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
   async function signInWithGoogle() {
     setError("");
     setMessage("");
+    const nextPath = `${window.location.pathname}${window.location.search}`;
+    rememberAuthReturnPath(nextPath);
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/app")}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         queryParams: {
           prompt: "select_account",
         },
