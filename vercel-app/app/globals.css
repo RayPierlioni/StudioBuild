@@ -2622,6 +2622,91 @@ textarea:focus {
     white;
 }
 
+.location-command-dashboard,
+.look-command-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.location-command-card,
+.look-command-card {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(237, 241, 240, 0.5)),
+    white;
+  box-shadow: 0 14px 36px rgba(46, 36, 29, 0.07);
+}
+
+.location-command-card span,
+.look-command-card span,
+.location-lock-strip span,
+.look-lock-strip span {
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.location-command-card strong,
+.look-command-card strong {
+  color: var(--deep);
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 0.95;
+}
+
+.location-command-card p,
+.look-command-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.location-lock-strip,
+.look-lock-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid rgba(102, 127, 118, 0.18);
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, rgba(237, 241, 240, 0.82), rgba(255, 250, 241, 0.64)),
+    white;
+}
+
+.location-lock-strip article,
+.look-lock-strip article {
+  min-height: 94px;
+  border: 1px solid rgba(52, 47, 45, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.location-lock-strip p,
+.look-lock-strip p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.look-command-card {
+  border-color: rgba(182, 93, 104, 0.14);
+  background:
+    linear-gradient(145deg, rgba(255, 250, 241, 0.88), rgba(251, 240, 241, 0.58)),
+    white;
+}
+
 .character-sheet-grid,
 .location-sheet-grid {
   display: grid;
@@ -4576,6 +4661,10 @@ code {
     .skeleton-grid,
     .character-card-grid,
     .character-sheet-grid,
+    .location-command-dashboard,
+    .location-lock-strip,
+    .look-command-dashboard,
+    .look-lock-strip,
     .location-sheet-grid,
     .continuity-stat-grid,
     .continuity-row-meta,

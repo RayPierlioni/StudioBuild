@@ -2980,6 +2980,120 @@ export function ProjectWorkspace({
       },
     ];
   }, [characterProfiles, locationProfiles, productionAssets, project, sceneBreakdowns, visualSceneProfiles, workflowTools]);
+  const locationCommandCards = useMemo(() => {
+    const averageReadiness = locationProfiles.length
+      ? Math.round(locationProfiles.reduce((total, profile) => total + profile.readiness, 0) / locationProfiles.length)
+      : 0;
+    const promptRows = locationProfiles.reduce(
+      (total, profile) =>
+        total +
+        profile.productionAssets.filter(
+          (asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+        ).length,
+      0,
+    );
+    const recurringLocations = locationProfiles.filter((profile) => profile.scenes.length > 1).length;
+    const missingAnchors = uniqueSorted(locationProfiles.flatMap((profile) => profile.missing)).slice(0, 5);
+
+    return [
+      {
+        detail: locationProfiles.length ? "location identity profiles" : "save a scene packet first",
+        label: "Profiles",
+        value: `${locationProfiles.length}`,
+      },
+      {
+        detail: locationProfiles.length ? "average location lock score" : "needs location data",
+        label: "Readiness",
+        value: `${averageReadiness}%`,
+      },
+      {
+        detail: recurringLocations ? "places reused across scenes" : "no recurring places yet",
+        label: "Recurring",
+        value: `${recurringLocations}`,
+      },
+      {
+        detail: promptRows ? "prompt rows tied to places" : missingAnchors.join(", ") || "no prompt rows yet",
+        label: "Handoffs",
+        value: `${promptRows}`,
+      },
+    ];
+  }, [locationProfiles]);
+  const locationLockRows = useMemo(() => {
+    const layoutLocks = uniqueSorted(locationProfiles.flatMap((profile) => profile.blockingNotes)).slice(0, 3);
+    const lightLocks = uniqueSorted(locationProfiles.flatMap((profile) => profile.colorNotes)).slice(0, 3);
+    const dressingLocks = uniqueSorted(locationProfiles.flatMap((profile) => profile.setDressing)).slice(0, 5);
+    const soundLocks = uniqueSorted(locationProfiles.flatMap((profile) => profile.soundNotes)).slice(0, 3);
+    const riskLocks = uniqueSorted(locationProfiles.flatMap((profile) => profile.missing)).slice(0, 5);
+
+    return [
+      {
+        detail: layoutLocks.length ? layoutLocks.join("; ") : "Map entrances, exits, eyelines, and camera-safe geography.",
+        label: "Layout",
+      },
+      {
+        detail: lightLocks.length ? lightLocks.join("; ") : "Lock practical sources, time-of-day behavior, and contrast.",
+        label: "Light and color",
+      },
+      {
+        detail: dressingLocks.length ? dressingLocks.join(", ") : "Choose repeatable dressing, props, and background texture.",
+        label: "Dressing",
+      },
+      {
+        detail: soundLocks.length ? soundLocks.join("; ") : "Define room tone, machinery, exterior bleed, and silence rules.",
+        label: "Sound",
+      },
+      {
+        detail: riskLocks.length ? riskLocks.join(", ") : "No major missing location anchors flagged.",
+        label: "Risks",
+      },
+    ];
+  }, [locationProfiles]);
+  const lookCommandCards = useMemo(() => {
+    const averageStyleReadiness = visualStyleRules.length
+      ? Math.round(visualStyleRules.reduce((total, rule) => total + rule.readiness, 0) / visualStyleRules.length)
+      : 0;
+    const lookReadyScenes = visualSceneProfiles.filter((profile) => profile.readiness >= 70).length;
+    const imagePromptCount = productionAssets.filter((asset) => hasText(asset.image_prompt)).length;
+    const negativeGuardrails = visualStyleRules.find((rule) => rule.id === "negative-deck")?.anchors.length ?? 0;
+
+    return [
+      {
+        detail: "film-wide visual rules",
+        label: "Style rules",
+        value: `${visualStyleRules.length}`,
+      },
+      {
+        detail: "average visual lock score",
+        label: "Readiness",
+        value: `${averageStyleReadiness}%`,
+      },
+      {
+        detail: `${visualSceneProfiles.length || 0} scene look map${visualSceneProfiles.length === 1 ? "" : "s"}`,
+        label: "Look-ready",
+        value: `${lookReadyScenes}`,
+      },
+      {
+        detail: negativeGuardrails ? "negative prompt guardrails active" : "needs prompt guardrails",
+        label: "Prompts",
+        value: `${imagePromptCount}`,
+      },
+    ];
+  }, [productionAssets, visualSceneProfiles, visualStyleRules]);
+  const lookLockRows = useMemo(() => {
+    const visualThesis = visualStyleRules.find((rule) => rule.id === "visual-thesis");
+    const colorSystem = visualStyleRules.find((rule) => rule.id === "color-system");
+    const cameraGrammar = visualStyleRules.find((rule) => rule.id === "camera-grammar");
+    const locationAnchors = visualStyleRules.find((rule) => rule.id === "location-anchors");
+    const toolAdapters = visualStyleRules.find((rule) => rule.id === "tool-adapters");
+
+    return [
+      { detail: visualThesis?.anchors.join(", ") || "Genre, tone, and references need to be locked.", label: "Thesis" },
+      { detail: colorSystem?.anchors.join(", ") || "Palette and contrast are not mapped yet.", label: "Palette" },
+      { detail: cameraGrammar?.anchors.join("; ") || "Camera distance, movement, and lens feel need rules.", label: "Camera" },
+      { detail: locationAnchors?.anchors.join(", ") || "Location look anchors need profiles.", label: "Places" },
+      { detail: toolAdapters?.anchors.join(", ") || "Workflow tools and prompt adapters are not set.", label: "Tools" },
+    ];
+  }, [visualStyleRules]);
   const readiness = useMemo(() => {
     const shotAssets = productionAssets.filter((asset) => asset.asset_type === "shot");
     const promptAssets = productionAssets.filter((asset) => asset.asset_type !== "shot");
@@ -8959,6 +9073,23 @@ export function ProjectWorkspace({
                   {entitlement.isPro ? "Build Location Bible" : "Pro: Build Location Bible"}
                 </button>
               </div>
+              <div className="location-command-dashboard" aria-label="Location bible production dashboard">
+                {locationCommandCards.map((card) => (
+                  <article className="location-command-card" key={card.label}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="location-lock-strip" aria-label="Location production locks">
+                {locationLockRows.map((row) => (
+                  <article key={row.label}>
+                    <span>{row.label}</span>
+                    <p>{row.detail}</p>
+                  </article>
+                ))}
+              </div>
               <div className="location-bible-studio" aria-label="Location bible sheets">
                 <div className="tool-heading">
                   <div>
@@ -9074,6 +9205,23 @@ export function ProjectWorkspace({
                     {entitlement.isPro ? "Copy style prompt" : "Pro: style prompt"}
                   </button>
                 </div>
+              </div>
+              <div className="look-command-dashboard" aria-label="Look book production dashboard">
+                {lookCommandCards.map((card) => (
+                  <article className="look-command-card" key={card.label}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="look-lock-strip" aria-label="Visual language locks">
+                {lookLockRows.map((row) => (
+                  <article key={row.label}>
+                    <span>{row.label}</span>
+                    <p>{row.detail}</p>
+                  </article>
+                ))}
               </div>
               <div className="style-bible-studio">
                 <div className="tool-heading">
