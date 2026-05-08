@@ -2404,6 +2404,9 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
           <button className="button" type="button" onClick={signInWithGoogle}>
             Sign in with Google
           </button>
+          <a className="button secondary" href="/app/demo">
+            View sample project
+          </a>
         </div>
       ) : (
         <div className="studio-grid">
@@ -2566,6 +2569,7 @@ export function ProjectWorkspace({
   draftText,
   documents = [],
   entitlement = freeEntitlement,
+  isReadOnlyDemo = false,
   isOpeningBillingPortal = false,
   isStartingCheckout = false,
   onDocumentsChange,
@@ -2584,6 +2588,7 @@ export function ProjectWorkspace({
   draftText: string;
   documents?: ProjectDocument[];
   entitlement?: AccessEntitlement;
+  isReadOnlyDemo?: boolean;
   isOpeningBillingPortal?: boolean;
   isStartingCheckout?: boolean;
   onDocumentsChange?: (documents: ProjectDocument[]) => void;
@@ -2634,6 +2639,8 @@ export function ProjectWorkspace({
   const [savingSceneId, setSavingSceneId] = useState("");
   const activeStep = pipelineSteps.find((step) => step.id === activeStepId) ?? pipelineSteps[0];
   const currentDraft = drafts[activeStep.docType] ?? "";
+  const demoSaveMessage =
+    "This sample project is read-only. Sign in and create your own project to save changes.";
   const assetsBySceneId = useMemo(() => {
     return productionAssets.reduce<Record<string, ProductionAsset[]>>((grouped, asset) => {
       const key = asset.scene_breakdown_id;
@@ -3729,6 +3736,11 @@ export function ProjectWorkspace({
       `${feature} belongs to Founder Pro. Your free project can still build a preview, copy expert prompts, and export Markdown; upgrade when you want the full production system and premium PDF packet.`,
     );
     return false;
+  }
+
+  function showDemoSaveNotice() {
+    setSaveStatus(demoSaveMessage);
+    setSaveError("");
   }
 
   function saveLocalVersion() {
@@ -5846,6 +5858,11 @@ export function ProjectWorkspace({
   }
 
   async function saveStageDraft() {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before saving stage drafts.");
       return;
@@ -5908,6 +5925,11 @@ export function ProjectWorkspace({
   }
 
   async function saveScenePacket() {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before saving scene packets.");
       return;
@@ -5997,6 +6019,11 @@ export function ProjectWorkspace({
   }
 
   async function saveSceneEdit(scene: SceneBreakdown) {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!accessToken) {
       setSaveError("Open this project from its project page before editing scene packets.");
       return;
@@ -6112,6 +6139,11 @@ export function ProjectWorkspace({
   }
 
   async function createInsertShot(scene: SceneBreakdown) {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!requirePro("Insert-shot prompt cards")) {
       return;
     }
@@ -6154,6 +6186,11 @@ export function ProjectWorkspace({
   }
 
   async function buildDetailedShotList(scene: SceneBreakdown) {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!requirePro("Detailed shot lists")) {
       return;
     }
@@ -6199,6 +6236,11 @@ export function ProjectWorkspace({
     asset: ProductionAsset,
     action: "image_prompt" | "animation_prompt",
   ) {
+    if (isReadOnlyDemo) {
+      showDemoSaveNotice();
+      return;
+    }
+
     if (!requirePro(action === "image_prompt" ? "Image prompts" : "Animation, sound, and dialogue prompts")) {
       return;
     }
@@ -7873,11 +7915,11 @@ export function ProjectWorkspace({
     <section className="project-workspace">
       <div className="project-toolbar">
         <button className="button secondary" type="button" onClick={onBack}>
-          All Projects
+          {isReadOnlyDemo ? "Back to App" : "All Projects"}
         </button>
-        <span>Opened by {userEmail}</span>
+        <span>{isReadOnlyDemo ? "Public sample project" : `Opened by ${userEmail}`}</span>
         <strong className={entitlement.isPro ? "plan-badge active" : "plan-badge"}>
-          {entitlement.planLabel}
+          {isReadOnlyDemo ? "Sample" : entitlement.planLabel}
         </strong>
       </div>
 
@@ -7900,13 +7942,30 @@ export function ProjectWorkspace({
         ))}
       </div>
 
-      <ProUnlockPanel
-        entitlement={entitlement}
-        isManagingBilling={isOpeningBillingPortal}
-        isUpgrading={isStartingCheckout}
-        onManageBilling={onManageBilling}
-        onUpgrade={onUpgrade}
-      />
+      {isReadOnlyDemo ? (
+        <section className="pro-panel active demo-mode-panel">
+          <div>
+            <span>Sample film</span>
+            <strong>Explore a complete MiseForge production packet.</strong>
+            <p>
+              This read-only project shows the kind of story, character, location, continuity,
+              shot-list, prompt-card, sound-map, schedule, and export material a finished workspace
+              can hold.
+            </p>
+          </div>
+          <a className="button secondary" href="/app">
+            Start your own film
+          </a>
+        </section>
+      ) : (
+        <ProUnlockPanel
+          entitlement={entitlement}
+          isManagingBilling={isOpeningBillingPortal}
+          isUpgrading={isStartingCheckout}
+          onManageBilling={onManageBilling}
+          onUpgrade={onUpgrade}
+        />
+      )}
 
       <MiniPhilosopherGuide context={guideContext} />
 

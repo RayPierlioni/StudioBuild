@@ -1239,6 +1239,60 @@ h1 {
   margin: 0;
 }
 
+.demo-detail-shell .command-project-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.demo-project-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(102, 127, 118, 0.22);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, rgba(237, 241, 240, 0.88), rgba(255, 250, 241, 0.76)),
+    white;
+}
+
+.demo-project-notice > div {
+  display: grid;
+  flex: 1 1 520px;
+  gap: 5px;
+}
+
+.demo-project-notice span,
+.demo-mode-panel span {
+  color: #415f57;
+  font-size: 11px;
+  font-weight: 860;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-project-notice strong {
+  color: var(--deep);
+  font-family: var(--display);
+  font-size: clamp(24px, 3vw, 36px);
+  line-height: 1;
+}
+
+.demo-project-notice p {
+  max-width: 880px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.demo-inline-link {
+  width: fit-content;
+  margin-top: 14px;
+}
+
 .workspace-skeleton {
   display: grid;
   gap: 14px;

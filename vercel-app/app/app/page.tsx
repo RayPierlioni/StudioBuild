@@ -70,6 +70,7 @@ export default function AppHome() {
         </a>
         <nav aria-label="App navigation">
           <a href="/">Landing</a>
+          <a href="/app/demo">View Demo</a>
           <a href="/app/start/idea">New Film</a>
           <a href="/app/start/script">Import Script</a>
           <a href="/app/start/breakdown">Breakdown</a>
@@ -106,6 +107,9 @@ export default function AppHome() {
               Bring an idea, rough pages, a single scene, a character problem, or an existing
               production packet. MiseForge turns the starting point into a structured film workspace.
             </p>
+            <a className="button secondary demo-inline-link" href="/app/demo">
+              Open complete sample project
+            </a>
           </div>
           <StudioWorkspace />
         </section>

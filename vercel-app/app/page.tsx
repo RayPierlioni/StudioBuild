@@ -40,6 +40,7 @@ export default function Home() {
           </div>
           <nav aria-label="MiseForge sections">
             <a href="#fix-scene">Demo</a>
+            <a href="/app/demo">Sample Project</a>
             <a href="#pricing">Pricing</a>
             <a href="/app">Open App</a>
           </nav>
@@ -55,6 +56,9 @@ export default function Home() {
           <div className="hero-actions">
             <a className="button" href="#fix-scene">
               Fix a Scene Free
+            </a>
+            <a className="button secondary ghost" href="/app/demo">
+              View Sample Project
             </a>
             <a className="button secondary ghost" href="/app">
               Open App
