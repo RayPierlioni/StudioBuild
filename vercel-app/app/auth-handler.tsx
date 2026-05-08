@@ -27,8 +27,7 @@ function hasAuthReturnInUrl() {
     return false;
   }
 
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const { hash, search } = authReturnParams();
 
   return Boolean(
     search.get("code") ||
@@ -38,6 +37,13 @@ function hasAuthReturnInUrl() {
       hash.get("error") ||
       search.get("error"),
   );
+}
+
+function authReturnParams() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+  return { hash, search };
 }
 
 export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fallbackNext?: string; quiet?: boolean }) {
@@ -53,15 +59,37 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
     async function finishSignIn() {
       const supabase = getSupabaseBrowserClient();
       const url = new URL(window.location.href);
+      const { hash, search } = authReturnParams();
       const code = url.searchParams.get("code");
+      const accessToken = hash.get("access_token") ?? search.get("access_token");
+      const refreshToken = hash.get("refresh_token") ?? search.get("refresh_token");
+      const errorDescription =
+        hash.get("error_description") ?? search.get("error_description") ?? hash.get("error") ?? search.get("error");
       const next = safeNextPath(url.searchParams.get("next") ?? storedNextPath(fallbackNext));
 
       try {
+        if (errorDescription) {
+          throw new Error(errorDescription);
+        }
+
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
             throw error;
+          }
+        } else if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          if (!data.session) {
+            throw new Error("No MiseForge session was returned.");
           }
         } else {
           const { data, error } = await supabase.auth.getSession();
@@ -77,9 +105,12 @@ export function AuthReturnHandler({ fallbackNext = "/app", quiet = false }: { fa
 
         window.localStorage.removeItem("miseforge.auth.next");
         window.location.replace(next);
-      } catch {
+      } catch (caught) {
+        const detail = caught instanceof Error ? caught.message : "Unknown auth return error.";
+        window.sessionStorage.setItem("miseforge.auth.error", detail);
+
         if (isMounted) {
-          setMessage("MiseForge could not finish sign-in. Return to the app and try Google sign-in again.");
+          setMessage(`MiseForge could not finish sign-in: ${detail}`);
         }
       }
     }

@@ -2195,7 +2195,7 @@ export function StudioWorkspace({ startMode = "dashboard" }: { startMode?: Start
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        redirectTo: `${window.location.origin}${nextPath}`,
         queryParams: {
           prompt: "select_account",
         },
