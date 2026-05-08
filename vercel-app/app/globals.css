@@ -3274,16 +3274,15 @@ textarea:focus {
 }
 
 .export-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(260px, 1fr) auto;
+  align-items: stretch;
+  gap: 14px;
   border: 1px solid rgba(52, 47, 45, 0.12);
   border-radius: 8px;
-  padding: 14px;
+  padding: 16px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(237, 241, 240, 0.56)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(237, 241, 240, 0.58)),
     rgba(255, 250, 241, 0.54);
 }
 
@@ -3306,9 +3305,41 @@ textarea:focus {
   line-height: 1.25;
 }
 
+.export-panel p {
+  max-width: 580px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.export-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.export-metric-strip article {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-height: 74px;
+  border: 1px solid rgba(52, 47, 45, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.export-metric-strip strong {
+  font-size: 22px;
+}
+
 .export-actions {
   display: flex;
   flex-wrap: wrap;
+  align-content: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -4713,12 +4744,17 @@ code {
   .demo-grid,
   .production-board-grid,
   .locked-feature-grid,
-  .pro-panel,
-  .deliverable-grid,
-  .phase-grid,
-  .pricing-grid,
-  .scene-packet-grid {
+    .pro-panel,
+    .deliverable-grid,
+    .phase-grid,
+    .export-panel,
+    .pricing-grid,
+    .scene-packet-grid {
     grid-template-columns: 1fr;
+  }
+
+  .export-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pipeline-strip {
@@ -4768,6 +4804,7 @@ code {
 
   .export-actions {
     width: 100%;
+    justify-content: stretch;
   }
 
   .version-save-row,

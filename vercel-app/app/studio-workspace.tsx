@@ -6904,11 +6904,60 @@ export function ProjectWorkspace({
       { label: "Shots", value: `${shotCount}`, detail: "shot rows" },
       { label: "Prompts", value: `${imagePromptCount + animationSoundPromptCount}`, detail: "image/animation/sound" },
     ];
+    const packetGrade =
+      readiness.score >= 85
+        ? "Production handoff ready"
+        : readiness.score >= 65
+          ? "Strong packet draft"
+          : readiness.score >= 40
+            ? "Needs lock pass"
+            : "Early build";
+    const packetGradeDetail =
+      readiness.score >= 85
+        ? "Most production locks are clear enough to brief image, animation, sound, and edit work."
+        : readiness.score >= 65
+          ? "The packet has useful production shape; finish the open locks before final generation."
+          : readiness.score >= 40
+            ? "The film has a working shell, but several creative and production locks still need decisions."
+            : "Start with story, scene packets, and identity locks before treating this as a production handoff.";
+    const nextActionItems = readiness.checks
+      .filter((check) => !check.isComplete)
+      .slice(0, 6)
+      .map((check) => check.label);
+    const signoffItems = [
+      {
+        label: "Story spine",
+        value: hasText(project.logline) ? "Locked" : "Needs logline",
+      },
+      {
+        label: "Identity locks",
+        value:
+          characterProfiles.length && locationProfiles.length
+            ? `${characterProfiles.length} character / ${locationProfiles.length} location`
+            : "Needs bible pass",
+      },
+      {
+        label: "Scene coverage",
+        value: sceneBreakdowns.length ? `${completeSceneCount} of ${sceneBreakdowns.length} complete` : "No scene packets",
+      },
+      {
+        label: "Prompt handoff",
+        value:
+          imagePromptCount || animationSoundPromptCount
+            ? `${imagePromptCount} image / ${animationSoundPromptCount} motion-sound`
+            : "Needs prompt rows",
+      },
+      {
+        label: "Sound and schedule",
+        value: hasText(drafts.sound_map) && hasText(drafts.production_schedule) ? "Started" : "Needs final pass",
+      },
+    ];
     const tocItems = [
       "Cover",
       "Producer Handoff",
       "Story Development Snapshot",
       "Production Readiness",
+      "Lock Sequence",
       "Project Roadmap",
       visualStyleRules.length ? "Visual Style Bible Snapshot" : "",
       characterProfiles.length ? "Character Continuity Cards" : "",
@@ -6919,6 +6968,7 @@ export function ProjectWorkspace({
       sceneBreakdowns.length ? "Scene Packets" : "",
       sceneBreakdowns.length ? "Detailed Shot Lists" : "",
       sceneBreakdowns.length ? "Prompt Cards" : "",
+      "Final Signoff",
     ].filter(Boolean);
 
     const sceneSections = sceneBreakdowns
@@ -7284,15 +7334,46 @@ export function ProjectWorkspace({
         </div>
         <div class="handoff-grid">
           <article>
-            <span>Production Strength</span>
-            <strong>${htmlValue(readiness.completedCount ? `${readiness.completedCount} production checks are complete.` : "The project shell is ready to be filled.")}</strong>
-            <p>MiseForge has converted saved project data into bibles, packets, shot rows, prompts, and exportable production decisions.</p>
+            <span>Packet Grade</span>
+            <strong>${htmlValue(packetGrade)}</strong>
+            <p>${htmlValue(packetGradeDetail)}</p>
           </article>
           <article>
             <span>Open Risks</span>
             <strong>${openRiskList.length ? `${openRiskList.length} remaining risk${openRiskList.length === 1 ? "" : "s"}` : "No major automatic risks flagged."}</strong>
             ${htmlList(openRiskList, "No major automatic risks flagged.")}
           </article>
+        </div>
+      </section>
+    `;
+    const lockSequenceSection = `
+      <section class="packet-section lock-sequence-page">
+        <div class="section-label">Lock Sequence</div>
+        <h2>The order this film should be finished in.</h2>
+        <p class="lede">A premium packet is useful because it protects the sequence: lock the story, identity, look, continuity, shot plan, image prompts, and only then move into animation, sound, and export.</p>
+        <div class="lock-timeline">
+          ${scheduleLockPhases
+            .map(
+              (phase, index) => `
+                <article class="${phase.isReady ? "complete" : ""}">
+                  <span>${String(index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <b>${phase.isReady ? "Ready" : "Needs Work"}</b>
+                    <h3>${htmlValue(phase.label)}</h3>
+                    <p>${htmlValue(phase.detail)}</p>
+                    <small>${htmlValue(phase.status)}</small>
+                  </div>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="next-action-panel">
+          <div>
+            <span>Next Best Action</span>
+            <strong>${htmlValue(readiness.next)}</strong>
+          </div>
+          ${htmlList(nextActionItems, "No automatic next actions remain. Review the packet manually before final generation.")}
         </div>
       </section>
     `;
@@ -7359,6 +7440,40 @@ export function ProjectWorkspace({
             )
             .join("")}
         </div>
+      </section>
+    `;
+    const signoffSection = `
+      <section class="packet-section signoff-page">
+        <div class="section-label">Final Signoff</div>
+        <h2>Before this packet leaves pre-production.</h2>
+        <p class="lede">Use this page as the last pass before spending time on image generations, animation passes, sound design, edit assembly, or client review.</p>
+        <div class="signoff-grid">
+          ${signoffItems
+            .map(
+              (item) => `
+                <article>
+                  <span>${htmlValue(item.label)}</span>
+                  <strong>${htmlValue(item.value)}</strong>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="signature-strip">
+          <article>
+            <span>Creator Approval</span>
+            <div></div>
+          </article>
+          <article>
+            <span>Continuity Review</span>
+            <div></div>
+          </article>
+          <article>
+            <span>Generation Sprint Date</span>
+            <div></div>
+          </article>
+        </div>
+        <p class="packet-footer-note">Generated by MiseForge as a working pre-production document. Re-export after every major story, scene, shot, prompt, or sound revision.</p>
       </section>
     `;
 
@@ -7531,7 +7646,11 @@ export function ProjectWorkspace({
       .roadmap-strip,
       .coverage-grid,
       .gate-grid,
-      .handoff-grid {
+      .handoff-grid,
+      .lock-timeline,
+      .next-action-panel,
+      .signoff-grid,
+      .signature-strip {
         display: grid;
         gap: 12px;
       }
@@ -7544,7 +7663,9 @@ export function ProjectWorkspace({
       .prompt-grid section,
       .readiness-grid article,
       .toc-grid article,
-      .roadmap-strip article {
+      .roadmap-strip article,
+      .signoff-grid article,
+      .signature-strip article {
         border: 1px solid rgba(21, 21, 21, 0.12);
         border-radius: 8px;
         padding: 14px;
@@ -7560,7 +7681,11 @@ export function ProjectWorkspace({
       .prompt-card span,
       .roadmap-strip span,
       .readiness-grid span,
-      .toc-grid span {
+      .toc-grid span,
+      .lock-timeline b,
+      .next-action-panel span,
+      .signoff-grid span,
+      .signature-strip span {
         display: block;
         color: var(--accent);
         font-size: 11px;
@@ -7696,6 +7821,73 @@ export function ProjectWorkspace({
         padding-left: 18px;
         color: var(--muted);
         font-size: 12px;
+      }
+      .lock-timeline {
+        gap: 10px;
+        margin-top: 24px;
+      }
+      .lock-timeline article {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 14px;
+        border: 1px solid rgba(21, 21, 21, 0.1);
+        border-radius: 8px;
+        padding: 14px;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(240, 231, 222, 0.44)),
+          white;
+        break-inside: avoid;
+      }
+      .lock-timeline article.complete {
+        border-color: rgba(77, 115, 100, 0.22);
+        background:
+          linear-gradient(145deg, rgba(223, 231, 226, 0.72), rgba(255, 255, 255, 0.74)),
+          white;
+      }
+      .lock-timeline article > span {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        background: var(--deep);
+        color: white;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .lock-timeline h3 {
+        margin: 5px 0 5px;
+      }
+      .lock-timeline p,
+      .lock-timeline small,
+      .next-action-panel li,
+      .packet-footer-note {
+        color: var(--muted);
+      }
+      .lock-timeline small {
+        display: block;
+        font-weight: 760;
+      }
+      .next-action-panel {
+        grid-template-columns: 0.9fr 1.1fr;
+        margin-top: 22px;
+        border: 1px solid rgba(157, 72, 83, 0.16);
+        border-radius: 10px;
+        padding: 18px;
+        background:
+          linear-gradient(135deg, rgba(245, 221, 225, 0.58), rgba(255, 255, 255, 0.78)),
+          white;
+      }
+      .next-action-panel strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--deep);
+        font-size: 22px;
+        line-height: 1.08;
+      }
+      .next-action-panel ul {
+        margin: 0;
+        padding-left: 18px;
       }
       .toc-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -7936,6 +8128,40 @@ export function ProjectWorkspace({
       .document-body p {
         max-width: 780px;
       }
+      .signoff-grid {
+        grid-template-columns: repeat(5, 1fr);
+        margin-top: 24px;
+      }
+      .signoff-grid article {
+        min-height: 104px;
+        display: grid;
+        align-content: space-between;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(223, 231, 226, 0.48)),
+          white;
+      }
+      .signoff-grid strong {
+        display: block;
+        color: var(--deep);
+        font-size: 18px;
+        line-height: 1.12;
+      }
+      .signature-strip {
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 34px;
+      }
+      .signature-strip article {
+        background: transparent;
+      }
+      .signature-strip div {
+        height: 54px;
+        margin-top: 28px;
+        border-bottom: 1px solid rgba(21, 21, 21, 0.42);
+      }
+      .packet-footer-note {
+        margin-top: 34px;
+        font-size: 12px;
+      }
       .empty {
         border: 1px dashed var(--line);
         border-radius: 8px;
@@ -8016,6 +8242,7 @@ export function ProjectWorkspace({
       ${tocSection}
       ${storyDiagnosticSection}
       ${readinessSection}
+      ${lockSequenceSection}
       <section class="packet-section">
         <div class="section-label">Project Overview</div>
         <h2>Production Roadmap</h2>
@@ -8038,6 +8265,7 @@ export function ProjectWorkspace({
       ${documentSections}
       ${versionSections}
       ${sceneSections || `<section class="packet-section"><h2>No scene packets yet</h2><p class="empty">Build a scene packet before exporting the premium PDF layout.</p></section>`}
+      ${signoffSection}
     </main>
     <script>
       window.addEventListener("load", function () {
@@ -8745,13 +8973,32 @@ export function ProjectWorkspace({
         </div>
       </section>
 
-      <div className="export-panel" aria-label="Production packet export">
-        <div>
-          <span>Production packet</span>
-          <strong>
-            {sceneBreakdowns.length} scene{sceneBreakdowns.length === 1 ? "" : "s"} / {productionAssets.length} asset
-            {productionAssets.length === 1 ? "" : "s"}
-          </strong>
+      <div className="export-panel premium-export-panel" aria-label="Production packet export">
+        <div className="export-copy">
+          <span>Production packet delivery</span>
+          <strong>{readiness.score}% ready / {readiness.next}</strong>
+          <p>
+            Export a working film packet with story locks, bibles, continuity, scene packets, shot
+            rows, prompt cards, sound handoff, schedule, and final review gates.
+          </p>
+        </div>
+        <div className="export-metric-strip" aria-label="Packet contents">
+          <article>
+            <span>Scenes</span>
+            <strong>{sceneBreakdowns.length}</strong>
+          </article>
+          <article>
+            <span>Shots</span>
+            <strong>{roomMetrics.shotCount}</strong>
+          </article>
+          <article>
+            <span>Prompts</span>
+            <strong>{roomMetrics.imagePromptCount + roomMetrics.animationSoundPromptCount}</strong>
+          </article>
+          <article>
+            <span>Locks</span>
+            <strong>{scheduleReadyCount}/{scheduleLockPhases.length}</strong>
+          </article>
         </div>
         <div className="export-actions">
           <button className="button secondary" type="button" onClick={copyProductionPacket}>
