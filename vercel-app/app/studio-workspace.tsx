@@ -2700,6 +2700,87 @@ export function ProjectWorkspace({
       };
     });
   }, [characterBibleNames, productionAssets, sceneBreakdowns]);
+  const characterCommandCards = useMemo(() => {
+    const averageReadiness = characterProfiles.length
+      ? Math.round(characterProfiles.reduce((total, profile) => total + profile.readiness, 0) / characterProfiles.length)
+      : 0;
+    const appearances = characterProfiles.reduce((total, profile) => total + profile.appearances.length, 0);
+    const promptRows = characterProfiles.reduce(
+      (total, profile) =>
+        total +
+        profile.productionAssets.filter(
+          (asset) => hasText(asset.image_prompt) || hasText(asset.animation_prompt) || hasText(asset.sound_prompt),
+        ).length,
+      0,
+    );
+    const relationshipLinks = characterProfiles.reduce((total, profile) => total + profile.coCharacters.length, 0);
+    const missingAnchors = uniqueSorted(characterProfiles.flatMap((profile) => profile.missing)).slice(0, 5);
+
+    return [
+      {
+        detail: characterProfiles.length ? "character identity profiles" : "save a scene packet first",
+        label: "Profiles",
+        value: `${characterProfiles.length}`,
+      },
+      {
+        detail: characterProfiles.length ? "average identity lock score" : "needs character data",
+        label: "Readiness",
+        value: `${averageReadiness}%`,
+      },
+      {
+        detail: appearances ? "scene appearances mapped" : "no appearances mapped yet",
+        label: "Appearances",
+        value: `${appearances}`,
+      },
+      {
+        detail: promptRows ? `${relationshipLinks} relationship link${relationshipLinks === 1 ? "" : "s"}` : missingAnchors.join(", ") || "no prompt rows yet",
+        label: "Handoffs",
+        value: `${promptRows}`,
+      },
+    ];
+  }, [characterProfiles]);
+  const characterLockRows = useMemo(() => {
+    const wardrobeLocks = uniqueSorted(characterProfiles.flatMap((profile) => profile.wardrobe)).slice(0, 6);
+    const propLocks = uniqueSorted(characterProfiles.flatMap((profile) => profile.props)).slice(0, 6);
+    const relationshipLocks = uniqueSorted(
+      characterProfiles.flatMap((profile) =>
+        profile.coCharacters.map((coCharacter) => `${profile.name} + ${coCharacter}`),
+      ),
+    ).slice(0, 4);
+    const performanceLocks = uniqueSorted(
+      characterProfiles.flatMap((profile) => [...profile.toneNotes, ...profile.soundNotes]),
+    ).slice(0, 4);
+    const riskLocks = uniqueSorted(characterProfiles.flatMap((profile) => profile.missing)).slice(0, 5);
+
+    return [
+      {
+        detail: characterProfiles.length
+          ? `${characterProfiles.filter((profile) => profile.productionAssets.length > 0).length} profile${characterProfiles.length === 1 ? "" : "s"} tied to prompt rows.`
+          : "Define face, silhouette, age, physical texture, and consistent identity references.",
+        label: "Face and silhouette",
+      },
+      {
+        detail: wardrobeLocks.length ? wardrobeLocks.join(", ") : "Lock baseline clothing, changes, damage, and act-to-act continuity.",
+        label: "Wardrobe",
+      },
+      {
+        detail: propLocks.length ? propLocks.join(", ") : "Name carried objects, ownership, handoffs, and first/last appearance.",
+        label: "Props",
+      },
+      {
+        detail: relationshipLocks.length ? relationshipLocks.join("; ") : "Map who changes the character in each scene.",
+        label: "Relationships",
+      },
+      {
+        detail: performanceLocks.length ? performanceLocks.join("; ") : "Define speech rhythm, emotional pressure, subtext, and sound texture.",
+        label: "Voice and state",
+      },
+      {
+        detail: riskLocks.length ? riskLocks.join(", ") : "No major character anchors missing.",
+        label: "Drift risks",
+      },
+    ];
+  }, [characterProfiles]);
   const locationBibleNames = useMemo(() => {
     return uniqueSorted(sceneBreakdowns.map((scene) => scene.location));
   }, [sceneBreakdowns]);
@@ -8919,6 +9000,23 @@ export function ProjectWorkspace({
                   {entitlement.isPro ? "Build Character Bible" : "Pro: Build Character Bible"}
                 </button>
               </div>
+              <div className="character-command-dashboard" aria-label="Character bible production dashboard">
+                {characterCommandCards.map((card) => (
+                  <article className="character-command-card" key={card.label}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="character-lock-strip" aria-label="Character identity locks">
+                {characterLockRows.map((row) => (
+                  <article key={row.label}>
+                    <span>{row.label}</span>
+                    <p>{row.detail}</p>
+                  </article>
+                ))}
+              </div>
               <div className="room-command-board character-command-board">
                 <div className="room-command-head">
                   <div>
@@ -8930,28 +9028,6 @@ export function ProjectWorkspace({
                     </p>
                   </div>
                   <small>{roomMetrics.averageCharacterReadiness}% average readiness</small>
-                </div>
-                <div className="room-command-grid">
-                  <article>
-                    <span>Profiles</span>
-                    <strong>{characterProfiles.length}</strong>
-                    <p>Characters detected from saved scene packets.</p>
-                  </article>
-                  <article>
-                    <span>Wardrobe anchors</span>
-                    <strong>{roomMetrics.wardrobeAnchorCount}</strong>
-                    <p>Profiles with reusable clothing or look continuity.</p>
-                  </article>
-                  <article>
-                    <span>Carried props</span>
-                    <strong>{roomMetrics.propAnchorCount}</strong>
-                    <p>Profiles with physical objects that must stay consistent.</p>
-                  </article>
-                  <article>
-                    <span>Prompt anchors</span>
-                    <strong>{roomMetrics.promptAnchorCount}</strong>
-                    <p>Profiles connected to production asset or prompt rows.</p>
-                  </article>
                 </div>
                 <div className="room-sequence-list">
                   {[
@@ -9008,6 +9084,12 @@ export function ProjectWorkspace({
                             <dd>{profile.coCharacters.length ? profile.coCharacters.join(", ") : "Needs relationship map"}</dd>
                           </div>
                         </dl>
+                        <div className="character-scene-strip">
+                          {profile.sceneLabels.slice(0, 4).map((sceneLabel) => (
+                            <span key={sceneLabel}>{sceneLabel}</span>
+                          ))}
+                          {profile.sceneLabels.length > 4 ? <span>+{profile.sceneLabels.length - 4} more</span> : null}
+                        </div>
                         <div className="missing-anchor-row">
                           <span>Missing</span>
                           <p>{profile.missing.length ? profile.missing.join(", ") : "No major anchors flagged."}</p>

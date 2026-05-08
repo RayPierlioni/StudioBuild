@@ -2622,6 +2622,7 @@ textarea:focus {
     white;
 }
 
+.character-command-dashboard,
 .location-command-dashboard,
 .look-command-dashboard {
   display: grid;
@@ -2629,6 +2630,7 @@ textarea:focus {
   gap: 10px;
 }
 
+.character-command-card,
 .location-command-card,
 .look-command-card {
   display: grid;
@@ -2643,8 +2645,10 @@ textarea:focus {
   box-shadow: 0 14px 36px rgba(46, 36, 29, 0.07);
 }
 
+.character-command-card span,
 .location-command-card span,
 .look-command-card span,
+.character-lock-strip span,
 .location-lock-strip span,
 .look-lock-strip span {
   color: var(--accent-dark);
@@ -2654,6 +2658,7 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+.character-command-card strong,
 .location-command-card strong,
 .look-command-card strong {
   color: var(--deep);
@@ -2662,6 +2667,7 @@ textarea:focus {
   line-height: 0.95;
 }
 
+.character-command-card p,
 .location-command-card p,
 .look-command-card p {
   margin: 0;
@@ -2670,6 +2676,7 @@ textarea:focus {
   line-height: 1.35;
 }
 
+.character-lock-strip,
 .location-lock-strip,
 .look-lock-strip {
   display: grid;
@@ -2683,6 +2690,11 @@ textarea:focus {
     white;
 }
 
+.character-lock-strip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.character-lock-strip article,
 .location-lock-strip article,
 .look-lock-strip article {
   min-height: 94px;
@@ -2692,12 +2704,20 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.66);
 }
 
+.character-lock-strip p,
 .location-lock-strip p,
 .look-lock-strip p {
   margin: 7px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.38;
+}
+
+.character-command-card {
+  border-color: rgba(182, 93, 104, 0.14);
+  background:
+    linear-gradient(145deg, rgba(255, 250, 241, 0.9), rgba(255, 255, 255, 0.62)),
+    white;
 }
 
 .look-command-card {
@@ -4660,6 +4680,8 @@ code {
     .launch-readiness-strip,
     .skeleton-grid,
     .character-card-grid,
+    .character-command-dashboard,
+    .character-lock-strip,
     .character-sheet-grid,
     .location-command-dashboard,
     .location-lock-strip,
