@@ -11,6 +11,8 @@ Purpose: confirm the app can accept real beta traffic without losing users betwe
 - The app syncs the subscription immediately after checkout success, then refreshes project entitlement.
 - The existing Stripe webhook still handles ongoing subscription created, updated, and canceled events.
 - Checkout is blocked server-side for accounts that already have Pro/Admin access to prevent accidental duplicate subscriptions.
+- Stripe `active` or `trialing` status only unlocks Founder Pro when the subscription matches `STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID`.
+- Legacy weekly test subscriptions should no longer keep a non-admin account on Founder Pro.
 
 ## Manual Non-Admin Test
 
@@ -37,6 +39,7 @@ Use a Google account that is not `rpierlioni@gmail.com`.
 - If `/api/billing/sync` returns account mismatch, make sure the same Google account completed checkout.
 - If billing portal does not open, confirm the `subscriptions` row has a Stripe customer ID or the Stripe customer email matches the signed-in email.
 - If a canceled subscription still shows Pro, confirm the `customer.subscription.deleted` webhook reached `/api/billing/webhook`.
+- If an old weekly test subscription still shows Pro, cancel it in Stripe test mode and confirm its price ID does not match `STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID`.
 
 ## Launch Pass Criteria
 
@@ -44,5 +47,6 @@ Use a Google account that is not `rpierlioni@gmail.com`.
 - Second project hits the Pro gate.
 - Stripe Checkout opens from the app.
 - Checkout return unlocks Pro automatically.
+- Old weekly test subscriptions do not unlock the current monthly Founder Pro plan.
 - Billing portal opens after purchase.
 - Premium Packet Preview is available only to Pro/Admin.

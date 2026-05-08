@@ -121,6 +121,8 @@ credit-based convenience path.
 
 Founder Pro pricing is now positioned as `$12.99/month`. Set
 `STRIPE_FOUNDER_PRO_MONTHLY_PRICE_ID` to a monthly Stripe Price ID before enabling checkout.
+Stripe subscription entitlements are checked against that configured monthly Price ID, so old weekly
+test subscriptions should not keep granting current Founder Pro access.
 
 ## Deployment Direction
 

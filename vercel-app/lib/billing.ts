@@ -7,6 +7,7 @@ type SubscriptionRecord = {
   currentPeriodEnd?: string;
   customerId?: string;
   email?: string;
+  priceId?: string;
   status: string;
   subscriptionId?: string;
   userId?: string;
@@ -27,6 +28,14 @@ export function stripePeriodEnd(subscription: Stripe.Subscription) {
   return typeof currentPeriodEnd === "number" ? new Date(currentPeriodEnd * 1000).toISOString() : undefined;
 }
 
+export function stripeSubscriptionPriceId(subscription: Stripe.Subscription | null) {
+  const firstItem = (subscription as unknown as {
+    items?: { data?: Array<{ price?: { id?: string } }> };
+  } | null)?.items?.data?.[0];
+
+  return firstItem?.price?.id ?? "";
+}
+
 export async function saveSubscription(record: SubscriptionRecord) {
   if (!record.userId && !record.email) {
     throw new Error("Stripe event did not include a MiseForge user reference.");
@@ -41,11 +50,33 @@ export async function saveSubscription(record: SubscriptionRecord) {
     plan: "founder_pro",
     status: record.status,
     stripe_customer_id: record.customerId ?? "",
+    stripe_price_id: record.priceId ?? "",
+    stripe_subscription_id: record.subscriptionId ?? "",
+    updated_at: updatedAt,
+    user_id: record.userId ?? "",
+  };
+  const fullRowWithoutPrice = {
+    current_period_end: record.currentPeriodEnd ?? null,
+    email: normalizedEmail,
+    plan: "founder_pro",
+    status: record.status,
+    stripe_customer_id: record.customerId ?? "",
     stripe_subscription_id: record.subscriptionId ?? "",
     updated_at: updatedAt,
     user_id: record.userId ?? "",
   };
   const ownerFullRow = {
+    current_period_end: record.currentPeriodEnd ?? null,
+    email: normalizedEmail,
+    owner_id: record.userId ?? "",
+    plan: "founder_pro",
+    status: record.status,
+    stripe_customer_id: record.customerId ?? "",
+    stripe_price_id: record.priceId ?? "",
+    stripe_subscription_id: record.subscriptionId ?? "",
+    updated_at: updatedAt,
+  };
+  const ownerFullRowWithoutPrice = {
     current_period_end: record.currentPeriodEnd ?? null,
     email: normalizedEmail,
     owner_id: record.userId ?? "",
@@ -84,9 +115,21 @@ export async function saveSubscription(record: SubscriptionRecord) {
       async () =>
         supabase.from("subscriptions").update(fullRow, { count: "exact" }).eq("user_id", record.userId).select("status"),
       async () =>
+        supabase
+          .from("subscriptions")
+          .update(fullRowWithoutPrice, { count: "exact" })
+          .eq("user_id", record.userId)
+          .select("status"),
+      async () =>
         supabase.from("subscriptions").update(minimalRow, { count: "exact" }).eq("user_id", record.userId).select("status"),
       async () =>
         supabase.from("subscriptions").update(ownerFullRow, { count: "exact" }).eq("owner_id", record.userId).select("status"),
+      async () =>
+        supabase
+          .from("subscriptions")
+          .update(ownerFullRowWithoutPrice, { count: "exact" })
+          .eq("owner_id", record.userId)
+          .select("status"),
       async () =>
         supabase
           .from("subscriptions")
@@ -94,6 +137,7 @@ export async function saveSubscription(record: SubscriptionRecord) {
           .eq("owner_id", record.userId)
           .select("status"),
       async () => supabase.from("subscriptions").upsert(fullRow, { onConflict: "user_id" }),
+      async () => supabase.from("subscriptions").upsert(fullRowWithoutPrice, { onConflict: "user_id" }),
       async () => supabase.from("subscriptions").upsert(minimalRow, { onConflict: "user_id" }),
       async () => supabase.from("subscriptions").upsert(bareRow, { onConflict: "user_id" }),
     );
@@ -144,6 +188,7 @@ export async function syncCheckoutSessionSubscription(session: Stripe.Checkout.S
     currentPeriodEnd: subscription ? stripePeriodEnd(subscription) : undefined,
     customerId: stripeObjectId(session.customer) || (subscription ? stripeObjectId(subscription.customer) : ""),
     email: session.customer_details?.email ?? session.customer_email ?? session.metadata?.email ?? "",
+    priceId: stripeSubscriptionPriceId(subscription),
     status: subscription?.status ?? "active",
     subscriptionId,
     userId: checkoutSessionUserId(session),
@@ -155,6 +200,7 @@ export async function syncStripeSubscription(subscription: Stripe.Subscription, 
     currentPeriodEnd: stripePeriodEnd(subscription),
     customerId: stripeObjectId(subscription.customer),
     email: subscription.metadata?.email ?? "",
+    priceId: stripeSubscriptionPriceId(subscription),
     status: fallbackStatus ?? subscription.status,
     subscriptionId: subscription.id,
     userId: subscription.metadata?.user_id,

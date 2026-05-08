@@ -1,5 +1,5 @@
 import { getVerifiedRequestUser } from "../../../lib/auth";
-import { isAdminEmail } from "../../../lib/admin";
+import { getUserEntitlement } from "../../../lib/entitlements";
 import { getSupabaseAdminClient } from "../../../lib/supabase/server";
 
 type GenerateMode =
@@ -188,28 +188,6 @@ function spliceSelection(content: string, start: number | undefined, end: number
   }
 
   return `${content.slice(0, start)}${replacement}${content.slice(end)}`;
-}
-
-async function hasPremiumAccess(
-  supabase: ReturnType<typeof getSupabaseAdminClient>,
-  userId: string,
-  email: string | undefined,
-) {
-  if (isAdminEmail(email)) {
-    return true;
-  }
-
-  const [{ data: profile }, { data: subscription }] = await Promise.all([
-    supabase.from("profiles").select("role").eq("id", userId).maybeSingle(),
-    supabase.from("subscriptions").select("status").eq("user_id", userId).maybeSingle(),
-  ]);
-
-  return (
-    profile?.role === "admin" ||
-    profile?.role === "subscriber" ||
-    subscription?.status === "active" ||
-    subscription?.status === "trialing"
-  );
 }
 
 function formatProjectContext(project: ProjectRecord, workflow: string) {
@@ -573,9 +551,9 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
-    const premiumAccess = await hasPremiumAccess(supabase, user.id, user.email);
+    const entitlement = await getUserEntitlement(user);
 
-    if (!premiumAccess) {
+    if (!entitlement.isPro) {
       return Response.json(
         {
           ok: false,
