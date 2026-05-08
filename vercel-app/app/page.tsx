@@ -17,6 +17,24 @@ const workflowPhases = [
   ["Produce", "Look book, scene cards, continuity tracker, sound map, shot needs, generation order, prompt packs, and production packet export"],
 ];
 
+const sampleProjectStats = [
+  ["3", "parsed scenes"],
+  ["4", "core characters"],
+  ["6", "shot rows"],
+  ["12", "pipeline rooms"],
+];
+
+const sampleProjectArtifacts = [
+  "Treatment and theme spine",
+  "Character and location bibles",
+  "Scene breakdown packets",
+  "Detailed shot list with prompt cards",
+  "Continuity, schedule, and sound map",
+  "Premium production packet export",
+];
+
+const sampleProjectStages = ["Idea", "Characters", "Breakdown", "Shot List", "Packet"];
+
 const pricingCards = [
   ["Free", "$0", "One project, one scene-packet preview, basic prompt copying, and Markdown export."],
   [
@@ -40,7 +58,7 @@ export default function Home() {
           </div>
           <nav aria-label="MiseForge sections">
             <a href="#fix-scene">Demo</a>
-            <a href="/app/demo">Sample Project</a>
+            <a href="#sample-project">Sample Film</a>
             <a href="#pricing">Pricing</a>
             <a href="/app">Open App</a>
           </nav>
@@ -58,7 +76,7 @@ export default function Home() {
               Fix a Scene Free
             </a>
             <a className="button secondary ghost" href="/app/demo">
-              View Sample Project
+              Explore Sample Film
             </a>
             <a className="button secondary ghost" href="/app">
               Open App
@@ -80,6 +98,58 @@ export default function Home() {
         </div>
 
         <SceneFixDemo />
+
+        <article className="panel sample-project-panel" id="sample-project">
+          <div className="sample-copy">
+            <p className="eyebrow">Complete Sample Film</p>
+            <h2>Open Signal House and see the whole system filled in.</h2>
+            <p>
+              Browse a finished MiseForge workspace before you commit your own project. The sample
+              shows how a rough concept becomes story documents, bibles, scene packets, shot rows,
+              prompt cards, continuity notes, and an export-ready production packet.
+            </p>
+            <div className="sample-actions">
+              <a className="button" href="/app/demo">
+                View Complete Sample
+              </a>
+              <a className="button secondary" href="/app">
+                Start Your Film
+              </a>
+            </div>
+          </div>
+
+          <div className="sample-preview" aria-label="Signal House sample project preview">
+            <div className="sample-preview-top">
+              <div>
+                <span>Sample Project</span>
+                <strong>Signal House</strong>
+                <p>Contained sci-fi mystery / elegant, tense, intimate</p>
+              </div>
+              <a href="/app/demo">Open</a>
+            </div>
+
+            <div className="sample-stat-grid">
+              {sampleProjectStats.map(([value, label]) => (
+                <div key={label}>
+                  <strong>{value}</strong>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="sample-stage-row" aria-label="Sample project progress">
+              {sampleProjectStages.map((stage) => (
+                <span key={stage}>{stage}</span>
+              ))}
+            </div>
+
+            <div className="sample-artifacts">
+              {sampleProjectArtifacts.map((artifact) => (
+                <span key={artifact}>{artifact}</span>
+              ))}
+            </div>
+          </div>
+        </article>
 
         <article className="panel" id="what-you-get">
           <p className="eyebrow">What MiseForge Gives You</p>

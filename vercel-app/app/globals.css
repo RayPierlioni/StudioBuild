@@ -1051,6 +1051,7 @@ h1 {
 
 #workspace,
 #fix-scene,
+#sample-project,
 #pricing,
 #what-you-get {
   scroll-margin-top: 20px;
@@ -4264,6 +4265,155 @@ textarea:focus {
   line-height: 1.18;
 }
 
+.sample-project-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(360px, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  border-color: rgba(102, 127, 118, 0.22);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.9), rgba(237, 241, 240, 0.74)),
+    white;
+}
+
+.sample-copy {
+  display: grid;
+  align-content: center;
+}
+
+.sample-copy p {
+  max-width: 620px;
+}
+
+.sample-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.sample-preview {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52, 47, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(145deg, rgba(29, 26, 28, 0.92), rgba(43, 35, 36, 0.88)),
+    #1d1a1c;
+  color: #fffaf1;
+  box-shadow: 0 22px 54px rgba(29, 26, 28, 0.2);
+}
+
+.sample-preview-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sample-preview-top > div {
+  display: grid;
+  gap: 6px;
+}
+
+.sample-preview-top span,
+.sample-artifacts span,
+.sample-stage-row span {
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sample-preview-top span {
+  color: #dca0a9;
+}
+
+.sample-preview-top strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.sample-preview-top p {
+  margin: 0;
+  color: rgba(255, 250, 241, 0.68);
+  font-size: 13px;
+}
+
+.sample-preview-top a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 250, 241, 0.18);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 250, 241, 0.08);
+  color: #fffaf1;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.sample-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sample-stat-grid div {
+  display: grid;
+  gap: 5px;
+  min-height: 82px;
+  border: 1px solid rgba(255, 250, 241, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 250, 241, 0.055);
+}
+
+.sample-stat-grid strong {
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 0.95;
+}
+
+.sample-stat-grid span {
+  color: rgba(255, 250, 241, 0.62);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sample-stage-row,
+.sample-artifacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sample-stage-row {
+  border: 1px solid rgba(102, 127, 118, 0.22);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(102, 127, 118, 0.12);
+}
+
+.sample-stage-row span {
+  border-radius: 999px;
+  padding: 7px 9px;
+  background: rgba(255, 250, 241, 0.1);
+  color: rgba(255, 250, 241, 0.76);
+}
+
+.sample-artifacts span {
+  border: 1px solid rgba(255, 250, 241, 0.12);
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255, 250, 241, 0.075);
+  color: rgba(255, 250, 241, 0.82);
+  letter-spacing: 0.04em;
+}
+
 .prompt-compiler {
   display: grid;
   gap: 10px;
@@ -4448,6 +4598,7 @@ code {
     .rubric-grid,
     .shot-meta-grid,
     .workspace-tools,
+  .sample-project-panel,
   .demo-grid,
   .production-board-grid,
   .locked-feature-grid,
@@ -4579,6 +4730,14 @@ code {
 }
 
 @media (max-width: 560px) {
+  .sample-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sample-preview-top {
+    display: grid;
+  }
+
   .pipeline-nav {
     grid-template-columns: 1fr;
   }

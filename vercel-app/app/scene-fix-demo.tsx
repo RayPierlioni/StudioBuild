@@ -128,6 +128,9 @@ export function SceneFixDemo() {
           <button className="button" type="button" onClick={copyPrompt}>
             Copy Expert Prompt
           </button>
+          <a className="button secondary" href="/app/demo">
+            See Finished Sample
+          </a>
           <a className="button secondary" href="/app">
             Open MiseForge Workspace
           </a>
